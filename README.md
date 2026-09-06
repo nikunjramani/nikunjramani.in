@@ -3,7 +3,7 @@
 Source for my personal site — portfolio, projects and writing.
 Live at **[nikunjramani.in](https://nikunjramani.in)** *(not deployed yet)*.
 
-> 📋 Full architecture and build plan: **[PLAN.md](./PLAN.md)**
+> 📋 Full architecture and build plan: **[plan/](./plan/README.md)**
 
 ---
 
@@ -60,7 +60,7 @@ make deploy  # terraform apply + deploy functions
 
 ## Status
 
-Pre-development. See [PLAN.md](./PLAN.md) for the phase breakdown.
+Pre-development. See [plan/](./plan/README.md) for the phase breakdown.
 
 - [x] Architecture and build plan
 - [ ] Phase 0 — Foundation & infra
