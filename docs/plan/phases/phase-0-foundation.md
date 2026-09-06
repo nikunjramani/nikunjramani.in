@@ -91,10 +91,14 @@ checklist as it runs.
 
 - [ ] `backend/functions/` with `uv` and `pyproject.toml`, Python 3.13
 - [ ] `firebase.json` with `"runtime": "python313"`
-- [ ] FastAPI app factory + `a2wsgi` wrapper + `/health`
-- [ ] `ruff` + `mypy --strict` configured and clean
+- [ ] `shared/` skeleton — `core/`, `api.py`, `repositories/`
+- [ ] `shared/api.py` — `make_function()`, the FastAPI + `a2wsgi` wrapper
+- [ ] **One proof-of-concept domain**: `src/system/` exporting `api_system` with `/health`
+- [ ] `main.py` importing and re-exporting it
+- [ ] Hosting rewrite for it in `firebase.json`
+- [ ] `ruff` + `mypy --strict` + `import-linter` configured and clean
 - [ ] Firebase emulators (Firestore, Auth, Storage, Functions) start
-- [ ] `/health` responds through the emulator
+- [ ] `/health` responds through the emulator **via the rewrite**, not the raw function URL
 
 ### 0.8 · Wire it together
 

@@ -1,6 +1,6 @@
 # Phase 3 · Backend
 
-**~12 hours** · Status: ⬜ Not started
+**~14 hours** · Status: ⬜ Not started
 
 > **Goal:** A complete, tested Python API — every CRUD route the admin panel will need,
 > the contact pipeline, and the background triggers — running on the emulator.
@@ -25,16 +25,16 @@ triggers and tests. → [ADR 0011](../../adr/0011-domain-wise-separate-functions
 
 Everything below depends on it, and it's the only code more than one domain may import.
 
-- [ ] `core/config.py` — `pydantic-settings`, env-driven, fails loudly on missing values
-- [ ] `core/firebase.py` — Admin SDK init, emulator-aware
-- [ ] `core/errors.py` — typed exceptions → consistent JSON error envelope
-- [ ] `core/logging.py` — structured JSON logs for Cloud Logging
-- [ ] `core/security.py` — verify ID token, assert `admin` claim
-- [ ] `core/rate_limit.py` — Firestore-backed, per-IP and global
-- [ ] `repositories/base.py` — `BaseRepository[T]`: CRUD, pagination, ordering, soft delete
+- [ ] `shared/core/config.py` — `pydantic-settings`, env-driven, fails loudly on missing values
+- [ ] `shared/core/firebase.py` — Admin SDK init, emulator-aware
+- [ ] `shared/core/errors.py` — typed exceptions → consistent JSON error envelope
+- [ ] `shared/core/logging.py` — structured JSON logs for Cloud Logging
+- [ ] `shared/core/security.py` — verify ID token, assert `admin` claim
+- [ ] `shared/core/rate_limit.py` — Firestore-backed, per-IP and global
+- [ ] `shared/repositories/base.py` — `BaseRepository[T]`: CRUD, pagination, ordering, soft delete
 - [ ] Firestore `Timestamp` ↔ ISO string conversion, in exactly one place
-- [ ] `services/` — storage, email (Resend + retry), image, audit
-- [ ] **`api.py` — `make_function()`**: the FastAPI + `a2wsgi` + CORS wrapper, written once
+- [ ] `shared/services/` — storage, email (Resend + retry), image, audit
+- [ ] **`shared/api.py` — `make_function()`**: the FastAPI + `a2wsgi` + CORS wrapper, written once
 
 > ⚠️ `shared/` may never import from `src/`. Get this rule wrong once and the circular import will
 > cost an afternoon.

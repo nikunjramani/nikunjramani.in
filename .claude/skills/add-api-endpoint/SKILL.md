@@ -51,7 +51,7 @@ A router that imports the Firestore SDK is a bug. So is a service that raises `H
 **1 · Model** — already generated from `architecture/schemas/`. Need a new field? Use the
 `add-schema-field` skill. Never hand-write a model.
 
-**2 · Repository** — `backend/functions/repositories/`. Most collections just subclass:
+**2 · Repository** — `src/<domain>/repository.py`. Most collections just subclass:
 
 ```python
 class ProjectRepository(BaseRepository[Project]):

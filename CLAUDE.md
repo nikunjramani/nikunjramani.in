@@ -42,7 +42,8 @@ docs/adr/       Architecture decision records
 make setup   # install both sides
 make dev     # Next.js dev server + Firebase emulators
 make gen     # regenerate models from architecture/schemas  ← after ANY schema edit
-make lint    # eslint + ruff + mypy --strict + terraform fmt
+make validate # validate schemas + example fixtures
+make lint    # eslint + ruff + mypy --strict + import-linter + terraform fmt
 make test    # vitest + pytest
 make deploy  # terraform apply + firebase deploy
 ```
