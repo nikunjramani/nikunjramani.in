@@ -116,8 +116,9 @@ architecture/   JSON Schemas — the single source of truth
 frontend/       Next.js app (public site + /admin)
 backend/        Python Firebase Functions (API, triggers, scheduled jobs)
 infra/          Terraform for Firebase/GCP + security rules
-docs/           Content, design decisions, runbook, ADRs
-plan/           These documents
+docs/adr/       Architecture decision records — one file per decision
+docs/plan/      These documents
+docs/           Content, design tokens, runbook
 ```
 
 Details in [01 · Repo Architecture](./01-repo-architecture.md).

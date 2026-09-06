@@ -17,7 +17,7 @@ You can start Phases 0, 1 and 3 without writing a word. Phase 4 needs this done.
 - [ ] Social links: GitHub, LinkedIn, Stack Overflow, Medium, X
 - [ ] Contact email to display
 
-> Your current GitHub profile says "passionate frontend developer" — worth deciding whether that's
+> Your GitHub profile currently reads as frontend-focused — worth deciding whether that is
 > still how you want to be positioned, given the backend-heavy stack you just chose.
 
 ## 2 · About — 1 hour

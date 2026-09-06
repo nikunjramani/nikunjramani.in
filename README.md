@@ -3,7 +3,7 @@
 Source for my personal site — portfolio, projects and writing.
 Live at **[nikunjramani.in](https://nikunjramani.in)** *(not deployed yet)*.
 
-> 📋 Full architecture and build plan: **[plan/](./plan/README.md)**
+> 📋 Full architecture and build plan: **[docs/plan/](./docs/plan/README.md)**
 
 ---
 
@@ -28,7 +28,8 @@ architecture/   JSON Schemas — the single source of truth for every model
 frontend/       Next.js app (public site + /admin)
 backend/        Python Firebase Functions (API, triggers, scheduled jobs)
 infra/          Terraform for Firebase/GCP + security rules
-docs/           Content, design decisions, runbook, ADRs
+docs/plan/      The build plan, per phase
+docs/adr/       Architecture decision records
 ```
 
 ### Schema-first
@@ -58,9 +59,17 @@ make deploy  # terraform apply + deploy functions
 
 **Prerequisites:** Node 22+, Python 3.13, Terraform 1.9+, Firebase CLI, gcloud CLI.
 
+## Documentation
+
+| | |
+|---|---|
+| [docs/plan/](./docs/plan/README.md) | The build plan — architecture, data model, security, and nine phase docs |
+| [docs/adr/](./docs/adr/README.md) | Architecture decision records — what was decided and why |
+| [CLAUDE.md](./CLAUDE.md) | Development context and the project's non-negotiable rules |
+
 ## Status
 
-Pre-development. See [plan/](./plan/README.md) for the phase breakdown.
+Pre-development. See [docs/plan/](./docs/plan/README.md) for the phase breakdown.
 
 - [x] Architecture and build plan
 - [ ] Phase 0 — Foundation & infra
