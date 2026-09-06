@@ -12,7 +12,8 @@ with a Python API owning every write.
 employer names, client names, or anything from a private engagement. Reach for a placeholder and
 say so.
 
-**Status:** pre-development. Plan is written; Phase 0 not started.
+**Status:** Phase 0 scaffold done, Phase 1 in progress. Billing is deferred, so development runs
+entirely against the **Firebase emulators** — that works for everything up to Phase 6.
 Full plan: [`docs/plan/`](./docs/plan/README.md) · Decisions: [`docs/adr/`](./docs/adr/README.md)
 
 ## Stack

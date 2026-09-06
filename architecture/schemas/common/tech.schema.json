@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "common/tech.schema.json",
+  "title": "Tech",
+  "description": "A technology used on a project. `primary` marks the few worth showing on a card.",
+  "type": "object",
+  "properties": {
+    "name": { "type": "string", "minLength": 1, "maxLength": 40 },
+    "category": { "$ref": "../enums/skill-category.json" },
+    "primary": { "type": "boolean", "default": false }
+  },
+  "required": ["name"],
+  "additionalProperties": false
+}

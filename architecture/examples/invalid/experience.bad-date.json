@@ -1,0 +1,2 @@
+{ "$schema": "experience", "_why": "Dates are YYYY-MM, not free text.",
+  "company": "X", "role": "Y", "startDate": "June 2021", "current": true, "visibility": "public" }

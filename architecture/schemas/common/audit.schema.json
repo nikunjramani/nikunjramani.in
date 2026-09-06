@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "common/audit.schema.json",
+  "title": "Audit",
+  "description": "Timestamps every record carries. ISO 8601 strings in the schema; the repository layer converts to and from Firestore Timestamp in exactly one place.",
+  "type": "object",
+  "properties": {
+    "createdAt": { "type": "string", "format": "date-time" },
+    "updatedAt": { "type": "string", "format": "date-time" },
+    "publishedAt": { "type": ["string", "null"], "format": "date-time" },
+    "createdBy": { "type": "string", "maxLength": 128, "description": "Firebase Auth uid." }
+  },
+  "additionalProperties": false
+}

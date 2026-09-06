@@ -1,0 +1,370 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "project.schema.json",
+  "title": "Project",
+  "description": "A portfolio project. Six required fields; everything else optional and rendered only when filled. A project with three fields must look intentional, not broken. See ADR 0008.",
+  "x-version": "1.0.0",
+  "x-firestore": {
+    "collection": "projects",
+    "publicRead": true,
+    "indexes": [
+      [
+        "visibility",
+        "order"
+      ],
+      [
+        "visibility",
+        "featured",
+        "order"
+      ],
+      [
+        "visibility",
+        "kind",
+        "order"
+      ]
+    ]
+  },
+  "type": "object",
+  "properties": {
+    "slug": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+      "minLength": 2,
+      "maxLength": 80,
+      "description": "URL segment. Unique across the collection \u2014 enforced by the service, not the schema."
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 100
+    },
+    "subtitle": {
+      "type": "string",
+      "maxLength": 140
+    },
+    "summary": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 280,
+      "description": "One or two lines. This is the card text and the fallback meta description."
+    },
+    "kind": {
+      "$ref": "enums/project-kind.json"
+    },
+    "status": {
+      "$ref": "enums/project-status.json"
+    },
+    "visibility": {
+      "$ref": "enums/visibility.json"
+    },
+    "timeline": {
+      "$ref": "common/timeline.schema.json"
+    },
+    "content": {
+      "type": "object",
+      "description": "The story. Every block is optional and renders only when present.",
+      "properties": {
+        "overview": {
+          "type": "string",
+          "maxLength": 4000
+        },
+        "problem": {
+          "type": "string",
+          "maxLength": 4000,
+          "description": "What was broken, and who it hurt."
+        },
+        "approach": {
+          "type": "string",
+          "maxLength": 4000,
+          "description": "What you built, and why that way."
+        },
+        "architecture": {
+          "type": "object",
+          "properties": {
+            "description": {
+              "type": "string",
+              "maxLength": 4000
+            },
+            "diagram": {
+              "$ref": "common/media.schema.json"
+            },
+            "components": {
+              "type": "array",
+              "maxItems": 20,
+              "items": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 60
+                  },
+                  "role": {
+                    "type": "string",
+                    "maxLength": 200
+                  },
+                  "tech": {
+                    "type": "string",
+                    "maxLength": 60
+                  }
+                },
+                "required": [
+                  "name"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        "challenges": {
+          "type": "array",
+          "maxItems": 10,
+          "items": {
+            "type": "object",
+            "properties": {
+              "title": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 120
+              },
+              "detail": {
+                "type": "string",
+                "maxLength": 2000
+              }
+            },
+            "required": [
+              "title"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "outcomes": {
+          "type": "array",
+          "maxItems": 10,
+          "items": {
+            "$ref": "common/metric.schema.json"
+          },
+          "description": "Before/after figures. The part a recruiter actually reads."
+        },
+        "learnings": {
+          "type": "array",
+          "maxItems": 10,
+          "items": {
+            "type": "string",
+            "maxLength": 500
+          }
+        },
+        "futureWork": {
+          "type": "array",
+          "maxItems": 10,
+          "items": {
+            "type": "string",
+            "maxLength": 500
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "stack": {
+      "type": "array",
+      "maxItems": 30,
+      "items": {
+        "$ref": "common/tech.schema.json"
+      }
+    },
+    "tags": {
+      "type": "array",
+      "maxItems": 15,
+      "items": {
+        "type": "string",
+        "maxLength": 40
+      }
+    },
+    "role": {
+      "type": "string",
+      "maxLength": 80
+    },
+    "team": {
+      "type": "object",
+      "properties": {
+        "size": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000
+        },
+        "myScope": {
+          "type": "string",
+          "maxLength": 300
+        }
+      },
+      "additionalProperties": false
+    },
+    "client": {
+      "type": "object",
+      "description": "When confidential is true the name is stripped server-side in lib/data/ and never reaches the browser. Filtering in a component would still ship it in the RSC payload.",
+      "properties": {
+        "name": {
+          "type": "string",
+          "maxLength": 100
+        },
+        "logoUrl": {
+          "type": "string",
+          "format": "uri"
+        },
+        "confidential": {
+          "type": "boolean",
+          "default": false
+        },
+        "publicLabel": {
+          "type": "string",
+          "maxLength": 100,
+          "description": "Shown instead of the name when confidential, e.g. 'a logistics client'."
+        }
+      },
+      "additionalProperties": false
+    },
+    "cover": {
+      "$ref": "common/media.schema.json"
+    },
+    "gallery": {
+      "type": "array",
+      "maxItems": 20,
+      "items": {
+        "$ref": "common/media.schema.json"
+      }
+    },
+    "links": {
+      "type": "array",
+      "maxItems": 12,
+      "items": {
+        "$ref": "common/link.schema.json"
+      }
+    },
+    "testimonial": {
+      "type": "object",
+      "properties": {
+        "quote": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 600
+        },
+        "author": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "role": {
+          "type": "string",
+          "maxLength": 100
+        },
+        "avatarUrl": {
+          "type": "string",
+          "format": "uri"
+        }
+      },
+      "required": [
+        "quote",
+        "author"
+      ],
+      "additionalProperties": false
+    },
+    "metrics": {
+      "type": "array",
+      "maxItems": 8,
+      "items": {
+        "$ref": "common/metric.schema.json"
+      }
+    },
+    "awards": {
+      "type": "array",
+      "maxItems": 8,
+      "items": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          },
+          "issuer": {
+            "type": "string",
+            "maxLength": 100
+          },
+          "year": {
+            "type": "integer",
+            "minimum": 1990,
+            "maximum": 2100
+          },
+          "url": {
+            "type": "string",
+            "format": "uri"
+          }
+        },
+        "required": [
+          "title"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "collaborators": {
+      "type": "array",
+      "maxItems": 15,
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          },
+          "role": {
+            "type": "string",
+            "maxLength": 80
+          },
+          "url": {
+            "type": "string",
+            "format": "uri"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "featured": {
+      "type": "boolean",
+      "default": false
+    },
+    "pinned": {
+      "type": "boolean",
+      "default": false
+    },
+    "order": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 0
+    },
+    "readingMinutes": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 60
+    },
+    "seo": {
+      "$ref": "common/seo.schema.json"
+    },
+    "audit": {
+      "$ref": "common/audit.schema.json"
+    }
+  },
+  "required": [
+    "slug",
+    "title",
+    "summary",
+    "kind",
+    "status",
+    "visibility"
+  ],
+  "additionalProperties": false
+}

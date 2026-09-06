@@ -1,0 +1,2 @@
+{ "$schema": "project", "_why": "additionalProperties is false — typos must not silently persist.",
+  "slug": "ok", "title": "x", "summary": "y", "kind": "personal", "status": "shipped", "visibility": "public", "titel": "typo" }

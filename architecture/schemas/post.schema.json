@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "post.schema.json",
+  "title": "Post",
+  "description": "Blog post. Schema exists from Phase 1 so the shape is settled; the UI ships in Phase 8 behind the showBlog flag.",
+  "x-version": "1.0.0",
+  "x-firestore": {
+    "collection": "posts",
+    "publicRead": true,
+    "indexes": [["visibility", "publishedAt"], ["visibility", "tags", "publishedAt"]]
+  },
+  "type": "object",
+  "properties": {
+    "slug": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$", "minLength": 2, "maxLength": 80 },
+    "title": { "type": "string", "minLength": 1, "maxLength": 140 },
+    "excerpt": { "type": "string", "maxLength": 300 },
+    "contentMd": { "type": "string", "maxLength": 100000 },
+    "cover": { "$ref": "common/media.schema.json" },
+    "tags": { "type": "array", "maxItems": 10, "items": { "type": "string", "maxLength": 40 } },
+    "readingMinutes": { "type": "integer", "minimum": 1, "maximum": 120 },
+    "featured": { "type": "boolean", "default": false },
+    "visibility": { "$ref": "enums/visibility.json" },
+    "seo": { "$ref": "common/seo.schema.json" },
+    "audit": { "$ref": "common/audit.schema.json" }
+  },
+  "required": ["slug", "title", "visibility"],
+  "additionalProperties": false
+}

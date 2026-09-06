@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "common/metric.schema.json",
+  "title": "Metric",
+  "description": "A measurable outcome. 'Cut p95 from 800ms to 120ms' is what a reader remembers; 'improved performance' is not.",
+  "type": "object",
+  "properties": {
+    "label": { "type": "string", "minLength": 1, "maxLength": 80 },
+    "value": { "type": "string", "maxLength": 40, "description": "Standalone figure, when there is no before/after." },
+    "before": { "type": "string", "maxLength": 40 },
+    "after": { "type": "string", "maxLength": 40 },
+    "delta": { "type": "string", "maxLength": 40, "description": "e.g. '-85%'." },
+    "icon": { "type": "string", "maxLength": 40 },
+    "highlight": { "type": "boolean", "default": false }
+  },
+  "required": ["label"],
+  "additionalProperties": false
+}

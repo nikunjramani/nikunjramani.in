@@ -1,0 +1,2 @@
+{ "$schema": "profile", "_why": "The singleton trap: without visibility the rule denies the read and the site renders empty with no useful error.",
+  "name": "Example", "headline": "Engineer" }

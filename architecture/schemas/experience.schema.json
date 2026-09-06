@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "experience.schema.json",
+  "title": "Experience",
+  "description": "A role. Unlike projects, jobs genuinely have a start and an end, so real dates are kept here — see ADR 0008.",
+  "x-version": "1.0.0",
+  "x-firestore": {
+    "collection": "experience",
+    "publicRead": true,
+    "indexes": [["visibility", "order"], ["visibility", "current", "order"]]
+  },
+  "type": "object",
+  "properties": {
+    "company": { "type": "string", "minLength": 1, "maxLength": 100 },
+    "role": { "type": "string", "minLength": 1, "maxLength": 100 },
+    "employmentType": { "$ref": "enums/employment-type.json" },
+    "location": { "type": "string", "maxLength": 80 },
+    "remote": { "type": "boolean", "default": false },
+    "startDate": { "type": "string", "pattern": "^\\d{4}-\\d{2}$", "description": "YYYY-MM." },
+    "endDate": { "type": ["string", "null"], "pattern": "^\\d{4}-\\d{2}$" },
+    "current": { "type": "boolean", "default": false },
+    "summary": { "type": "string", "maxLength": 600 },
+    "highlights": {
+      "type": "array",
+      "maxItems": 8,
+      "items": { "type": "string", "minLength": 1, "maxLength": 400 },
+      "description": "Achievements with numbers, not duties. 'Cut API p95 from 800ms to 120ms' beats 'worked on APIs'."
+    },
+    "stack": { "type": "array", "maxItems": 25, "items": { "$ref": "common/tech.schema.json" } },
+    "companyLogo": { "$ref": "common/media.schema.json" },
+    "companyUrl": { "type": "string", "format": "uri" },
+    "promotions": {
+      "type": "array",
+      "maxItems": 6,
+      "items": {
+        "type": "object",
+        "properties": {
+          "role": { "type": "string", "minLength": 1, "maxLength": 100 },
+          "date": { "type": "string", "pattern": "^\\d{4}-\\d{2}$" }
+        },
+        "required": ["role", "date"],
+        "additionalProperties": false
+      }
+    },
+    "teamSize": { "type": "integer", "minimum": 1, "maximum": 10000 },
+    "order": { "type": "integer", "minimum": 0, "default": 0 },
+    "visibility": { "$ref": "enums/visibility.json" },
+    "audit": { "$ref": "common/audit.schema.json" }
+  },
+  "required": ["company", "role", "startDate", "current", "visibility"],
+  "additionalProperties": false
+}

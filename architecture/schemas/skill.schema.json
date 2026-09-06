@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "skill.schema.json",
+  "title": "Skill",
+  "x-version": "1.0.0",
+  "x-firestore": {
+    "collection": "skills",
+    "publicRead": true,
+    "indexes": [["visibility", "order"], ["visibility", "category", "order"]]
+  },
+  "type": "object",
+  "properties": {
+    "name": { "type": "string", "minLength": 1, "maxLength": 40 },
+    "category": { "$ref": "enums/skill-category.json" },
+    "level": { "type": "integer", "minimum": 1, "maximum": 5, "description": "5 means you are the person others ask. Be honest with the 5s." },
+    "yearsOfExperience": { "type": "number", "minimum": 0, "maximum": 60 },
+    "icon": { "type": "string", "maxLength": 40 },
+    "blurb": { "type": "string", "maxLength": 300 },
+    "projectSlugs": { "type": "array", "maxItems": 10, "items": { "type": "string", "maxLength": 80 }, "description": "Projects that used this skill. Rendered as links." },
+    "certificationUrl": { "type": "string", "format": "uri" },
+    "featured": { "type": "boolean", "default": false },
+    "order": { "type": "integer", "minimum": 0, "default": 0 },
+    "visibility": { "$ref": "enums/visibility.json" },
+    "audit": { "$ref": "common/audit.schema.json" }
+  },
+  "required": ["name", "category", "level", "visibility"],
+  "additionalProperties": false
+}

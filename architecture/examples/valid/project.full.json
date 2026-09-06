@@ -1,0 +1,50 @@
+{
+  "$schema": "project",
+  "slug": "inventory-sync",
+  "title": "Realtime Inventory Sync",
+  "subtitle": "Event-driven stock reconciliation",
+  "summary": "Kept warehouse stock counts consistent across three regions.",
+  "kind": "professional",
+  "status": "shipped",
+  "visibility": "public",
+  "timeline": { "displayLabel": "2025 · 4 months", "year": 2025, "durationMonths": 4, "ongoing": false },
+  "content": {
+    "overview": "A pipeline reconciling stock movements across regional warehouses.",
+    "problem": "Counts drifted between regions, so oversells reached customers.",
+    "approach": "Event-sourced ledger with idempotent consumers and a nightly reconciler.",
+    "architecture": {
+      "description": "Three services behind a queue.",
+      "components": [{ "name": "Ingest worker", "role": "Normalises supplier feeds", "tech": "Python" }]
+    },
+    "challenges": [{ "title": "Clock skew across regions", "detail": "Wall-clock ordering was unreliable." }],
+    "outcomes": [
+      { "label": "p95 latency", "before": "800ms", "after": "120ms", "delta": "-85%", "highlight": true },
+      { "label": "Oversells per month", "before": "40", "after": "0" }
+    ],
+    "learnings": ["Idempotency keys belong in the contract, not the consumer."],
+    "futureWork": ["Backfill historical movements."]
+  },
+  "stack": [
+    { "name": "Python", "category": "backend", "primary": true },
+    { "name": "PostgreSQL", "category": "data" }
+  ],
+  "tags": ["realtime", "distributed-systems"],
+  "role": "Backend lead",
+  "team": { "size": 4, "myScope": "API design and the data pipeline" },
+  "client": { "confidential": true, "publicLabel": "a logistics client" },
+  "cover": { "url": "https://example.com/cover.webp", "alt": "Dashboard showing stock levels", "width": 1600, "height": 900 },
+  "gallery": [{ "url": "https://example.com/1.webp", "alt": "Reconciliation report" }],
+  "links": [
+    { "type": "repo", "label": "Source", "url": "https://example.com/repo", "primary": true },
+    { "type": "case-study", "url": "https://example.com/case" }
+  ],
+  "testimonial": { "quote": "Stock finally matched reality.", "author": "Ops Manager", "role": "Logistics" },
+  "metrics": [{ "label": "warehouses", "value": "12" }],
+  "awards": [{ "title": "Internal engineering award", "issuer": "Employer", "year": 2025 }],
+  "collaborators": [{ "name": "A. Colleague", "role": "Data engineer" }],
+  "featured": true,
+  "order": 1,
+  "readingMinutes": 5,
+  "seo": { "metaTitle": "Realtime Inventory Sync", "metaDescription": "Event-driven stock reconciliation." },
+  "audit": { "createdAt": "2026-01-05T10:00:00Z", "updatedAt": "2026-02-01T09:30:00Z", "publishedAt": null }
+}

@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "common/seo.schema.json",
+  "title": "Seo",
+  "description": "Per-record SEO overrides. All optional — sensible values are derived from title and summary when absent.",
+  "type": "object",
+  "properties": {
+    "metaTitle": { "type": "string", "maxLength": 70, "description": "Google truncates past ~60 characters." },
+    "metaDescription": { "type": "string", "maxLength": 160 },
+    "ogImageUrl": { "type": "string", "format": "uri" },
+    "keywords": { "type": "array", "items": { "type": "string", "maxLength": 40 }, "maxItems": 12 },
+    "noIndex": { "type": "boolean", "default": false }
+  },
+  "additionalProperties": false
+}

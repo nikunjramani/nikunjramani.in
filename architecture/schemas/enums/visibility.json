@@ -1,0 +1,8 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "enums/visibility.json",
+  "title": "Visibility",
+  "description": "public renders on the site. unlisted is reachable by URL but absent from indexes and sitemaps. draft is admin-only.",
+  "type": "string",
+  "enum": ["public", "unlisted", "draft"]
+}

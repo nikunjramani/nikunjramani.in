@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "common/media.schema.json",
+  "title": "Media",
+  "description": "An image or video. Dimensions are stored so the frontend can reserve space and avoid layout shift; blurhash gives a placeholder while the real file loads.",
+  "type": "object",
+  "properties": {
+    "url": { "type": "string", "format": "uri" },
+    "alt": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200,
+      "description": "Required on every image. The admin panel will not let one be used without it."
+    },
+    "caption": { "type": "string", "maxLength": 300 },
+    "type": { "$ref": "../enums/media-type.json", "default": "image" },
+    "width": { "type": "integer", "minimum": 1 },
+    "height": { "type": "integer", "minimum": 1 },
+    "blurhash": { "type": "string", "maxLength": 64 }
+  },
+  "required": ["url", "alt"],
+  "additionalProperties": false
+}

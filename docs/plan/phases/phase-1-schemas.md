@@ -1,6 +1,6 @@
 # Phase 1 · Schemas & Codegen
 
-**~7 hours** · Status: ⬜ Not started
+**~7 hours** · Status: ✅ Done — 2026-09-06
 
 > **Goal:** Every model in the system defined once, in JSON Schema, with working
 > generation into Pydantic, TypeScript and Zod — and CI that makes drift impossible.
@@ -22,33 +22,34 @@ This is the keystone phase. Everything after it goes faster because of it.
 
 Build these first — everything else references them.
 
-- [ ] `common/link.schema.json` — `{ type, label, url, primary }`
-- [ ] `common/media.schema.json` — `{ url, alt, caption, width, height, blurhash, type }`
-- [ ] `common/richtext.schema.json` — markdown string with a length cap
-- [ ] `common/timeline.schema.json` — `{ displayLabel, year, durationMonths, ongoing }`
-- [ ] `common/metric.schema.json` — `{ label, value, before, after, delta, highlight, icon }`
-- [ ] `common/seo.schema.json` — `{ metaTitle, metaDescription, ogImageUrl, keywords }`
-- [ ] `common/audit.schema.json` — `{ createdAt, updatedAt, publishedAt, createdBy }`
+- [x] `common/link.schema.json` — `{ type, label, url, primary }`
+- [x] `common/media.schema.json` — `{ url, alt, caption, width, height, blurhash, type }`
+- [x] ~~`common/richtext.schema.json`~~ — dropped; a plain string with `maxLength` is enough,
+      and a structured document model is a project in itself
+- [x] `common/timeline.schema.json` — `{ displayLabel, year, durationMonths, ongoing }`
+- [x] `common/metric.schema.json` — `{ label, value, before, after, delta, highlight, icon }`
+- [x] `common/seo.schema.json` — `{ metaTitle, metaDescription, ogImageUrl, keywords }`
+- [x] `common/audit.schema.json` — `{ createdAt, updatedAt, publishedAt, createdBy }`
 
 ### 1.2 · Enums
 
 One file each, so a new value is a one-line change that propagates everywhere.
 
-- [ ] `project-kind` · `project-status` · `visibility`
-- [ ] `skill-category` · `link-type` · `media-type` · `employment-type`
+- [x] `project-kind` · `project-status` · `visibility`
+- [x] `skill-category` · `link-type` · `media-type` · `employment-type`
 
 ### 1.3 · Collection schemas
 
-- [ ] `project.schema.json` — the full model from [02 · Data Model](../02-data-model.md#the-project-model)
-- [ ] `profile.schema.json`
-- [ ] `skill.schema.json`
-- [ ] `experience.schema.json`
-- [ ] `education.schema.json`
-- [ ] `certification.schema.json`
-- [ ] `post.schema.json`
-- [ ] `contact-message.schema.json`
-- [ ] `site-config.schema.json`
-- [ ] `audit-log.schema.json` — `{ actor, action, collection, docId, before, after, at }`
+- [x] `project.schema.json` — the full model from [02 · Data Model](../02-data-model.md#the-project-model)
+- [x] `profile.schema.json`
+- [x] `skill.schema.json`
+- [x] `experience.schema.json`
+- [x] `education.schema.json`
+- [x] `certification.schema.json`
+- [x] `post.schema.json`
+- [x] `contact-message.schema.json`
+- [x] `site-config.schema.json`
+- [x] `audit-log.schema.json` — `{ actor, action, collection, docId, before, after, at }`
 
 Each carries `x-firestore` metadata:
 
@@ -63,19 +64,19 @@ Each carries `x-firestore` metadata:
 
 ### 1.4 · Codegen pipeline
 
-- [ ] `codegen/python.yaml` → `datamodel-code-generator` → Pydantic v2
-- [ ] `codegen/typescript.json` → `json-schema-to-typescript`
-- [ ] `codegen/zod.mjs` → `json-schema-to-zod`
-- [ ] `codegen/generate.sh` runs all three and formats the output
-- [ ] `make gen` wired up
-- [ ] Generated dirs marked `linguist-generated` *(already in `.gitattributes`)*
+- [x] `datamodel-code-generator` → Pydantic v2 *(flags live in `generate.sh`, no separate config file needed)*
+- [x] `json-schema-to-typescript` → TypeScript types
+- [x] `json-schema-to-zod` → Zod validators, **after dereferencing** (see gotchas)
+- [x] `codegen/generate.sh` runs all three and formats the output
+- [x] `make gen` wired up
+- [x] Generated dirs marked `linguist-generated` *(already in `.gitattributes`)*
 
 ### 1.5 · Examples & validation
 
-- [ ] 2–3 valid fixtures per schema in `examples/`
-- [ ] Deliberately invalid fixtures that **must** fail validation
-- [ ] A validation script over all of them
-- [ ] `make validate` wired up
+- [x] 2–3 valid fixtures per schema in `examples/`
+- [x] Deliberately invalid fixtures that **must** fail validation
+- [x] A validation script over all of them
+- [x] `make validate` wired up
 
 > The invalid fixtures matter more than the valid ones. A schema that accepts everything passes
 > every valid example too.
@@ -83,15 +84,15 @@ Each carries `x-firestore` metadata:
 ### 1.6 · Derived artefacts
 
 - [ ] Script generating required-field assertions into `firestore.rules`
-- [ ] Script generating `firestore.indexes.json` from `x-firestore.indexes`
-- [ ] Script generating `architecture/docs/ERD.md`
-- [ ] `VERSIONING.md` documenting the additive/breaking policy
+- [x] Script generating `firestore.indexes.json` from `x-firestore.indexes`
+- [x] Script generating `architecture/docs/ERD.md`
+- [x] `VERSIONING.md` documenting the additive/breaking policy
 
 ### 1.7 · CI drift check
 
-- [ ] `.github/workflows/schemas.yml`
-- [ ] Runs `make validate` then `make gen`, and fails on any diff
-- [ ] Verified: hand-editing a generated file turns the build red
+- [x] `.github/workflows/schemas.yml`
+- [x] Runs `make validate` then `make gen`, and fails on any diff
+- [x] Verified: hand-editing a generated file turns the build red
 
 ---
 
@@ -110,9 +111,21 @@ appears in the Pydantic model, the TS type and the Zod validator with zero hand-
 
 ## Gotchas
 
-**`datamodel-code-generator` and `$ref` across files** — it needs `--use-schema-description` and
-correct relative paths, and it's fussy about them. Get one schema working end to end before writing
-the other eight.
+**`datamodel-code-generator` and `$ref` across files** — cross-file refs require a **directory**
+output, not a file, and every schema must sit under one input root. That is why `enums/` lives
+inside `schemas/` rather than beside it.
+
+**`json-schema-to-zod` silently ignores cross-file `$ref`s.** It emits `z.any()` for every
+referenced field, producing a validator that looks correct and accepts anything — worse than no
+validator. Schemas are dereferenced with `json-schema-ref-parser` before Zod generation. If you ever
+see `z.any()` in `schemas.zod.ts`, that step has broken.
+
+**Zod 4 changed `z.record()` to take two arguments**, and `json-schema-to-zod@2` emits Zod 3 syntax.
+The frontend is pinned to `zod@^3` for this reason. Moving to Zod 4 needs a generator that targets
+it.
+
+**`format: email` generates `EmailStr`**, which needs `pydantic[email]` — otherwise the import fails
+at runtime with an unhelpful message.
 
 **Optional vs nullable.** JSON Schema's "not in `required`" becomes `Optional[X] = None` in Pydantic
 and `x?: X` in TypeScript. Zod needs `.optional()` explicitly. Decide the convention now and apply it

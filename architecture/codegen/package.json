@@ -1,0 +1,12 @@
+{
+  "name": "codegen",
+  "private": true,
+  "type": "module",
+  "description": "Pinned codegen toolchain. Versions are exact on purpose: the CI drift check compares generated output byte-for-byte, so a floating dependency would produce spurious failures. NOTE: json-schema-to-zod@2 emits Zod 3 syntax (z.record takes one argument), so the frontend is pinned to zod@^3. Moving to Zod 4 needs a generator that targets it.",
+  "devDependencies": {
+    "@apidevtools/json-schema-ref-parser": "11.7.2",
+    "json-schema-to-typescript": "15.0.4",
+    "json-schema-to-zod": "2.6.1",
+    "prettier": "3.6.2"
+  }
+}

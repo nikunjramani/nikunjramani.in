@@ -1,0 +1,3 @@
+{ "$schema": "project", "_why": "Every image needs alt text — accessibility is not optional.",
+  "slug": "ok", "title": "x", "summary": "y", "kind": "personal", "status": "shipped", "visibility": "public",
+  "cover": { "url": "https://example.com/a.webp" } }

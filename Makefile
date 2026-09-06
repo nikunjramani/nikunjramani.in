@@ -41,7 +41,7 @@ gen: ## Regenerate all models from architecture/schemas
 	./architecture/codegen/generate.sh
 
 validate: ## Validate schemas and example fixtures
-	$(PYTHON) architecture/codegen/validate.py
+	uv run --quiet --with jsonschema --with referencing python architecture/codegen/validate.py
 
 # ── quality ─────────────────────────────────────────────────────────
 lint: lint-backend lint-frontend lint-infra ## Lint everything

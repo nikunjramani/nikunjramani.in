@@ -1,0 +1,48 @@
+name: schemas
+
+# This workflow is what makes the schema-first approach real rather than aspirational.
+# Without the drift check, someone edits a Pydantic model by hand one afternoon and the
+# schemas quietly stop being the source of truth. See ADR 0006.
+
+on:
+  pull_request:
+    paths:
+      - "architecture/**"
+      - "backend/functions/shared/generated/**"
+      - "frontend/src/generated/**"
+      - ".github/workflows/schemas.yml"
+  push:
+    branches: [main]
+
+jobs:
+  validate:
+    name: validate + drift check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: architecture/codegen/package-lock.json
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Install codegen toolchain
+        run: npm ci --prefix architecture/codegen
+
+      - name: Validate schemas and fixtures
+        run: make validate
+
+      - name: Regenerate
+        run: make gen
+
+      - name: Fail if generated code is stale
+        run: |
+          if ! git diff --exit-code; then
+            echo "::error::Generated code is out of date. Run 'make gen' and commit the result."
+            exit 1
+          fi

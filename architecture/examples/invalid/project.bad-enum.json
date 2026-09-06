@@ -1,0 +1,2 @@
+{ "$schema": "project", "_why": "kind is not one of the allowed values.",
+  "slug": "ok", "title": "x", "summary": "y", "kind": "side-hustle", "status": "shipped", "visibility": "public" }

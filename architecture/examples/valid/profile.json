@@ -1,0 +1,10 @@
+{
+  "$schema": "profile",
+  "name": "Example Name",
+  "headline": "Backend engineer building data-heavy systems",
+  "tagline": "I build the parts nobody sees.",
+  "location": "India",
+  "availableForWork": true,
+  "visibility": "public",
+  "socials": [{ "platform": "github", "url": "https://github.com/example" }]
+}
