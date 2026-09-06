@@ -147,7 +147,7 @@ you've filled it in.** An empty project is still a valid project; a fully-filled
 
 **`client.confidential: true`** renders "a logistics client" instead of the name, and the name is
 never sent to the browser — it's stripped server-side, not hidden with CSS. This is what lets you
-show Cybage work without leaking anything.
+show employer work without leaking anything.
 
 **`links` is an array, not an object.** A fixed `{ live, repo, demo }` object needs a schema change
 every time a new kind of link comes along. An array of `{ type, label, url }` doesn't.

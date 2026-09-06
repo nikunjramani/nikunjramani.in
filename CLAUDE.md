@@ -1,0 +1,128 @@
+# CLAUDE.md
+
+Context for working on this repository.
+
+## What this is
+
+The personal website at **nikunjramani.in** — portfolio, projects, writing. A server-rendered
+Next.js site whose content lives in Firestore, edited through an admin panel on the site itself,
+with a Python API owning every write.
+
+**This repository is public.** Never commit secrets, credentials, personal contact details,
+employer names, client names, or anything from a private engagement. Reach for a placeholder and
+say so.
+
+**Status:** pre-development. Plan is written; Phase 0 not started.
+Full plan: [`docs/plan/`](./docs/plan/README.md) · Decisions: [`docs/adr/`](./docs/adr/README.md)
+
+## Stack
+
+| | |
+|---|---|
+| Frontend | Next.js 16 App Router · TypeScript strict · Tailwind v4 · shadcn/ui |
+| Backend | Python 3.13 · FastAPI on Cloud Functions for Firebase (2nd gen) |
+| Data | Cloud Firestore · Firebase Storage · Firebase Auth |
+| Hosting | Firebase App Hosting |
+| Infra | Terraform (`google` + `google-beta`) |
+
+## Layout
+
+```
+architecture/   JSON Schemas — the single source of truth for every model
+frontend/       Next.js app: (site) public + (admin) private
+backend/        Python Firebase Functions: api, triggers, scheduled
+infra/          Terraform modules + Firestore/Storage rules
+docs/plan/      The build plan, per phase
+docs/adr/       Architecture decision records
+```
+
+## Commands
+
+```bash
+make setup   # install both sides
+make dev     # Next.js dev server + Firebase emulators
+make gen     # regenerate models from architecture/schemas  ← after ANY schema edit
+make lint    # eslint + ruff + mypy --strict + terraform fmt
+make test    # vitest + pytest
+make deploy  # terraform apply + firebase deploy
+```
+
+CI runs these exact targets. If it passes locally it passes in CI.
+
+---
+
+## The seven rules
+
+These are load-bearing. Each has an ADR behind it — read it before proposing a change.
+
+**1 · Never hand-edit generated code.**
+`frontend/src/generated/` and `backend/functions/generated/` come from `architecture/schemas/`.
+Edit the schema, run `make gen`. CI fails on drift. → [ADR 0006](./docs/adr/0006-json-schema-source-of-truth.md)
+
+**2 · Reads never touch Python.**
+Next.js Server Components read Firestore directly via the Admin SDK. Python handles writes only.
+Never propose routing page data through the API — cold starts would sit on the read path.
+→ [ADR 0005](./docs/adr/0005-reads-bypass-python.md)
+
+**3 · Clients never write to Firestore.**
+Rules deny all client writes, including admin. Every mutation goes through the Python API so
+validation, rate limiting and audit logging can't be bypassed.
+→ [ADR 0007](./docs/adr/0007-deny-all-client-writes.md)
+
+**4 · The Admin SDK is server-only.**
+Every file touching it starts with `import "server-only"`. Without that guard the failure mode is a
+leaked credential, not a build error.
+
+**5 · `"use client"` goes as deep in the tree as possible.**
+A client `<ThemeToggle>` inside a server `<Nav>`, never a client `<Nav>`. One misplaced directive
+pulls the whole subtree into the browser bundle.
+
+**6 · Backend layering is one-way.**
+`router → service → repository → Firestore`. Routers do HTTP only. Services hold business rules and
+don't know what HTTP is. Repositories are the only code importing the Firestore SDK.
+
+**7 · Architectural changes get an ADR.**
+Anything a stranger would ask "why is it like this?" about. Copy `docs/adr/TEMPLATE.md`, add an
+index row, commit it with the change. ADRs are immutable — supersede, never edit.
+
+---
+
+## Conventions
+
+**Optional fields render conditionally.** The project model is ~6 required fields and ~30 optional
+ones. A section appears only when its data exists — no empty headings, no `null` placeholders, no
+"coming soon". This applies to the public page and the admin form alike.
+→ [ADR 0008](./docs/adr/0008-projects-drop-start-end-dates.md)
+
+**Confidential data is stripped server-side.** `client.confidential: true` means the name must never
+reach the browser. Filter it in `lib/data/`, not in a component — component-level filtering still
+ships the value in the RSC payload.
+
+**Every content collection has `visibility` and `order`.** Public queries filter
+`visibility == "public"` and sort by `order`.
+
+**Timestamps** are ISO strings in schemas, Firestore `Timestamp` in the database. Conversion happens
+in the repository layer, in exactly one place.
+
+**Secrets** live in Secret Manager, injected by Terraform. Never in `.env` files, never in git.
+`NEXT_PUBLIC_*` Firebase config is public by design — the security is in the rules, not in hiding it.
+
+## Gotchas
+
+- **System Python is 3.9.** `python3` resolves to `/usr/bin/python3`. Use the Homebrew 3.13
+  explicitly, or `uv` silently builds against 3.9 and it fails at deploy time.
+- **Firebase resources need the `google-beta` provider.** A 404 on the standard provider usually
+  means this, not a bug.
+- **Firestore composite queries need composite indexes.** Generated from `x-firestore.indexes` —
+  add the index when you add the query.
+- **Cold starts scale with top-level imports.** Keep `main.py` thin; import heavy things inside the
+  function that needs them.
+- **Localhost Lighthouse scores lie.** Only production numbers count.
+
+## Working style
+
+- Read the relevant `docs/plan/phases/` doc before starting a phase — each has prerequisites, a
+  definition of done, and a gotchas list written in advance.
+- Tick the checkboxes as work completes; update the status table in `docs/plan/README.md`.
+- Prefer finishing a phase to starting the next one.
+- When a plan doc turns out to be wrong, fix the doc in the same commit as the code.

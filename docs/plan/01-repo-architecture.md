@@ -13,8 +13,12 @@ nikunjramani.in/
 ├── frontend/         # Next.js 16
 ├── backend/          # Python 3.13 Firebase Functions
 ├── infra/            # Terraform + security rules
-├── docs/             # CONTENT.md · DESIGN.md · RUNBOOK.md · ADR/
-├── plan/             # these documents
+├── docs/
+│   ├── adr/          # architecture decision records — one file per decision
+│   ├── plan/         # these documents
+│   ├── CONTENT.md    # the site's actual copy
+│   ├── DESIGN.md     # design tokens and rules
+│   └── RUNBOOK.md    # deploy, rollback, rotate secrets, restore
 └── .github/workflows/
 ```
 
