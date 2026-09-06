@@ -14,7 +14,7 @@ Designed now so the repo structure supports it; wired up in
 | `ci-backend.yml` | PR touching `backend/` | ruff, `mypy --strict`, pytest against the Firebase emulator |
 | `infra-plan.yml` | PR touching `infra/` | `terraform fmt -check`, `validate`, `plan` → posted as a PR comment |
 | `preview.yml` | PR | App Hosting preview channel + a comment with the URL |
-| `deploy.yml` | push to `main` | `terraform apply` → deploy rules → deploy functions → App Hosting auto-builds |
+| `deploy.yml` | push to `main` | `terraform apply` → deploy rules → deploy **changed** function domains → App Hosting auto-builds |
 | `backup-verify.yml` | nightly cron | Confirm the Firestore export actually landed |
 
 ---
@@ -69,6 +69,19 @@ on:
 
 `architecture/**` appears in both frontend and backend filters on purpose: a schema change affects
 generated code on both sides, so both suites must run.
+
+### Deploying only what changed
+
+Functions are split by domain ([ADR 0011](../adr/0011-domain-wise-separate-functions.md)), so the
+deploy can be narrowed to the domains a PR actually touched:
+
+```bash
+firebase deploy --only functions:api_projects,functions:api_media
+```
+
+A change under `backend/functions/shared/` touches everything, so it deploys everything. A change
+under `backend/functions/src/projects/` deploys one function. Worth doing — it turns a multi-minute
+deploy into a seconds-long one for the common case.
 
 ---
 
