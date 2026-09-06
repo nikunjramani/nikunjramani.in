@@ -157,14 +157,22 @@ from .routes import router
 api_projects = make_function(router, name="api_projects")
 ```
 
-Firebase Hosting rewrites keep the API surface unified, so the frontend sees one base URL:
+**Next.js rewrites** keep the API surface unified, so the frontend sees one base URL:
 
-```jsonc
-"rewrites": [
-  { "source": "/api/v1/projects/**", "function": "api_projects" },
-  { "source": "/api/v1/contact/**",  "function": "api_contact"  }
-]
+```ts
+// frontend/next.config.ts
+async rewrites() {
+  return DOMAINS.map((domain) => ({
+    source: `/api/v1/${domain}/:path*`,
+    destination: `${FUNCTIONS_BASE}/api_${domain}/:path*`,
+  }));
+}
 ```
+
+> Not Firebase Hosting rewrites — App Hosting is a different product and has none. Doing it in
+> Next.js means the browser only ever talks to one origin, so there is no CORS preflight on any API
+> call. See the implementation note in
+> [ADR 0011](../adr/0011-domain-wise-separate-functions.md).
 
 ⚠️ **Adding a domain means adding a rewrite.** Forgetting produces a 404 that looks like a routing
 bug.

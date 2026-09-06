@@ -30,7 +30,7 @@
 
 - [ ] Secrets populated in Secret Manager (Resend, Turnstile)
 - [ ] `firebase deploy --only functions` — confirm **every** domain deployed, none silently skipped
-- [ ] Hosting rewrites resolve for every domain — a missing one 404s like a routing bug
+- [ ] `next.config.ts` rewrites resolve for every domain — a missing one 404s like a routing bug
 - [ ] `/health` responds on the deployed URL, via the rewrite
 - [ ] A real contact submission delivers an email
 - [ ] Scheduled backup job registered and manually triggered once

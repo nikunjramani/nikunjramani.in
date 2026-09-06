@@ -50,7 +50,7 @@ exercises every layer.
 - [ ] `src/contact/__init__.py` — exports `api_contact`
 - [ ] `src/contact/triggers.py` — `on_contact_created` → email via Resend
 - [ ] `src/contact/tests/`
-- [ ] Registered in `main.py`, Hosting rewrite added
+- [ ] Registered in `main.py`, rewrite added to `frontend/next.config.ts`
 - [ ] **Deployed to the emulator and verified end to end**
 
 > Don't proceed until this one works. Every remaining domain is this shape repeated, so a mistake
@@ -81,11 +81,13 @@ Every admin route carries `Depends(require_admin)`. No exceptions.
 ### 3.5 · Wiring
 
 - [ ] `main.py` imports and re-exports every function
-- [ ] Hosting rewrites for **every** domain — a missing one is a 404 that looks like a routing bug
+- [ ] `next.config.ts` rewrites for **every** domain — a missing one is a 404 that looks like a routing bug
 - [ ] CORS restricted to the real origins + localhost
 - [ ] `/docs` reachable in dev, disabled in prod
 - [ ] Per-domain `max_instances` and memory set in Terraform
 - [ ] Import-linter rule in `make lint`: no `shared/ → src/`, no cross-domain imports
+- [ ] Each new domain added to the `importlinter` independence contract in `pyproject.toml` —
+      a domain missing from that list is silently unchecked
 
 ### 3.6 · Tests
 
@@ -118,8 +120,8 @@ Every admin route carries `Depends(require_admin)`. No exceptions.
 Get `make_function()` working with one trivial route through the emulator *before* building
 fourteen domains on top of it.
 
-**A missing Hosting rewrite is a silent 404.** The function deploys fine and looks healthy; the
-frontend just can't reach it. Check the rewrite whenever a new domain 404s.
+**A missing rewrite is a silent 404.** The function deploys fine and looks healthy; the frontend
+just can't reach it. Check `next.config.ts` whenever a new domain 404s.
 
 **Cross-domain imports are seductive.** `projects` will want something from `media`. Put it in
 `shared/` or fire an event — the moment domains import each other, the boundary is gone and so is

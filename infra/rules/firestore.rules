@@ -1,0 +1,35 @@
+rules_version = '2';
+
+// Security posture, in one screen. See docs/plan/03-security.md and ADR 0007.
+//
+// Clients may read published content and may write NOTHING — not even the admin.
+// Every mutation goes through the Python API, so validation, rate limiting and audit
+// logging cannot be bypassed.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isPublicCollection(col) {
+      return col in ['profile', 'projects', 'skills', 'experience', 'education',
+                     'certifications', 'posts', 'site_config'];
+    }
+
+    // Every publicly-readable document must carry `visibility`, including the
+    // singletons profile/main and site_config/main. On a document missing the field
+    // this evaluates to null, the read is denied, and the site renders empty with no
+    // useful error anywhere. The schemas make it required for exactly this reason.
+    function isPublished() {
+      return resource.data.visibility == 'public';
+    }
+
+    match /{col}/{id} {
+      allow read: if isPublicCollection(col) && isPublished();
+      allow write: if false;
+    }
+
+    // contact_messages and audit_log are absent by design. Anything not named in
+    // isPublicCollection falls through to default-deny, so a new collection is private
+    // until someone consciously exposes it — rather than public until someone remembers
+    // to deny it.
+  }
+}

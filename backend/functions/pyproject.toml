@@ -1,0 +1,67 @@
+[project]
+name = "nikunjramani-functions"
+version = "0.1.0"
+description = "Cloud Functions for Firebase — nikunjramani.in"
+requires-python = ">=3.13"
+dependencies = [
+    "firebase-functions>=0.4.2",
+    "firebase-admin>=6.5.0",
+    "fastapi>=0.115.0",
+    "pydantic>=2.9.0",
+    "pydantic-settings>=2.5.0",
+    "a2wsgi>=1.10.0",
+    "httpx>=0.27.0",
+    "python-slugify>=8.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3.0",
+    "pytest-asyncio>=0.24.0",
+    "pytest-cov>=5.0.0",
+    "ruff>=0.6.0",
+    "mypy>=1.11.0",
+    "import-linter>=2.0",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+exclude = ["shared/generated"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "UP", "B", "A", "C4", "SIM", "RUF"]
+
+[tool.mypy]
+python_version = "3.13"
+strict = true
+warn_unreachable = true
+exclude = ["shared/generated", "\\.venv"]
+
+[[tool.mypy.overrides]]
+module = ["firebase_functions.*", "firebase_admin.*", "a2wsgi.*"]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["src", "tests"]
+addopts = "-q --cov=src --cov=shared --cov-report=term-missing"
+asyncio_mode = "auto"
+
+# ── Domain boundaries — see ADR 0011 ────────────────────────────────
+# These two rules are load-bearing. `make lint` runs them.
+[tool.importlinter]
+root_packages = ["shared", "src"]
+
+[[tool.importlinter.contracts]]
+name = "shared/ must never import from src/"
+type = "forbidden"
+source_modules = ["shared"]
+forbidden_modules = ["src"]
+
+# ⚠️ Every new domain must be added to this list, or it is silently unchecked.
+[[tool.importlinter.contracts]]
+name = "domains must not import each other"
+type = "independence"
+modules = [
+    "src.system",
+]
