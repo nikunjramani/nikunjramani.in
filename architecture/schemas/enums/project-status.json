@@ -1,0 +1,7 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "enums/project-status.json",
+  "title": "ProjectStatus",
+  "type": "string",
+  "enum": ["concept", "in-progress", "shipped", "maintained", "archived"]
+}

@@ -1,6 +1,7 @@
 # Phase 0 · Foundation & Infrastructure
 
-**~6 hours** · Status: 🟡 In progress — local scaffold done, cloud steps blocked on billing
+**~6 hours** · Status: 🟡 Local scaffold done. Cloud steps deferred with billing — they are not
+needed until Phase 6, so this does not block Phases 1–5.
 
 > **Goal:** A working local development environment and a fully provisioned Firebase/GCP
 > project, with infrastructure defined as code from the very first commit.

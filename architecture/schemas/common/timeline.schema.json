@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "common/timeline.schema.json",
+  "title": "Timeline",
+  "description": "Replaces start/end dates for projects, which have fuzzy edges: 'a weekend', 'on and off through 2024-25', 'still maintained'. displayLabel is what renders; year and durationMonths exist only for sorting and filtering. See ADR 0008.",
+  "type": "object",
+  "properties": {
+    "displayLabel": {
+      "type": "string",
+      "maxLength": 60,
+      "description": "Free text, e.g. '2025 · 4 months'. Wins over everything else for display."
+    },
+    "year": { "type": "integer", "minimum": 1990, "maximum": 2100 },
+    "durationMonths": { "type": "integer", "minimum": 1, "maximum": 600 },
+    "ongoing": { "type": "boolean", "default": false }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "common/link.schema.json",
+  "title": "Link",
+  "description": "An outbound link. Links are stored as an array of these rather than a fixed object, so a new kind of link needs no schema change.",
+  "type": "object",
+  "properties": {
+    "type": { "$ref": "../enums/link-type.json" },
+    "label": { "type": "string", "minLength": 1, "maxLength": 60 },
+    "url": { "type": "string", "format": "uri", "maxLength": 2048 },
+    "primary": {
+      "type": "boolean",
+      "default": false,
+      "description": "At most one per record. Rendered as the main call to action."
+    }
+  },
+  "required": ["type", "url"],
+  "additionalProperties": false
+}

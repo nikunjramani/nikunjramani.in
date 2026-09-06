@@ -1,0 +1,7 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "enums/skill-category.json",
+  "title": "SkillCategory",
+  "type": "string",
+  "enum": ["backend", "frontend", "cloud-devops", "data", "mobile", "tools"]
+}

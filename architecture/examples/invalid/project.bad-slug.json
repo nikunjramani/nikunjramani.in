@@ -1,0 +1,2 @@
+{ "$schema": "project", "_why": "Slug has spaces and capitals — must fail the pattern.",
+  "slug": "Not A Slug", "title": "x", "summary": "y", "kind": "personal", "status": "shipped", "visibility": "public" }

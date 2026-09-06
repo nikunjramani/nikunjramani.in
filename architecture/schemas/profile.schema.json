@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "profile.schema.json",
+  "title": "Profile",
+  "description": "Singleton at profile/main. Note `visibility` is required even though drafting a profile is not a thing you would want: the security rule reads resource.data.visibility, and on a document missing the field that evaluates to null, the read is denied, and the site renders empty with no useful error.",
+  "x-version": "1.0.0",
+  "x-firestore": { "collection": "profile", "publicRead": true, "singleton": "main", "indexes": [] },
+  "type": "object",
+  "properties": {
+    "name": { "type": "string", "minLength": 1, "maxLength": 80 },
+    "headline": { "type": "string", "minLength": 1, "maxLength": 120, "description": "One line, what you do. 'Backend engineer building data-heavy systems', not 'passionate developer'." },
+    "tagline": { "type": "string", "maxLength": 300 },
+    "bio": { "type": "string", "maxLength": 6000, "description": "Markdown. Three paragraphs: what you do, how you got here, who you are outside work." },
+    "location": { "type": "string", "maxLength": 80 },
+    "email": { "type": "string", "format": "email", "maxLength": 200 },
+    "avatar": { "$ref": "common/media.schema.json" },
+    "ogImage": { "$ref": "common/media.schema.json" },
+    "resumeUrl": { "type": "string", "format": "uri" },
+    "availableForWork": { "type": "boolean", "default": false },
+    "socials": {
+      "type": "array",
+      "maxItems": 12,
+      "items": {
+        "type": "object",
+        "properties": {
+          "platform": { "$ref": "enums/social-platform.json" },
+          "label": { "type": "string", "maxLength": 40 },
+          "url": { "type": "string", "format": "uri" }
+        },
+        "required": ["platform", "url"],
+        "additionalProperties": false
+      }
+    },
+    "visibility": { "$ref": "enums/visibility.json" },
+    "seo": { "$ref": "common/seo.schema.json" },
+    "audit": { "$ref": "common/audit.schema.json" }
+  },
+  "required": ["name", "headline", "visibility"],
+  "additionalProperties": false
+}

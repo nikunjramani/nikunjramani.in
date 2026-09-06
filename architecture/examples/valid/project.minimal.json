@@ -1,0 +1,9 @@
+{
+  "$schema": "project",
+  "slug": "inventory-sync",
+  "title": "Realtime Inventory Sync",
+  "summary": "Kept warehouse stock counts consistent across three regions.",
+  "kind": "professional",
+  "status": "shipped",
+  "visibility": "public"
+}

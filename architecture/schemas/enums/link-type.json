@@ -1,0 +1,8 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "enums/link-type.json",
+  "title": "LinkType",
+  "description": "An open-ended list on purpose — links are an array so new kinds need no schema change.",
+  "type": "string",
+  "enum": ["live", "repo", "docs", "case-study", "demo", "paper", "store", "article", "video", "other"]
+}

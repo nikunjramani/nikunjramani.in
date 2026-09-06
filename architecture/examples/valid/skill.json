@@ -1,0 +1,1 @@
+{ "$schema": "skill", "name": "Python", "category": "backend", "level": 5, "yearsOfExperience": 6, "visibility": "public", "featured": true, "order": 1 }

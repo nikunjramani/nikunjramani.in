@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "contact-message.schema.json",
+  "title": "ContactMessage",
+  "description": "Never client-readable or client-writable. Created only by the API after Turnstile, honeypot and rate-limit checks pass. Server-set fields are marked below.",
+  "x-version": "1.0.0",
+  "x-firestore": {
+    "collection": "contact_messages",
+    "publicRead": false,
+    "ttlField": "expiresAt",
+    "indexes": [["read", "createdAt"]]
+  },
+  "type": "object",
+  "properties": {
+    "name": { "type": "string", "minLength": 1, "maxLength": 100 },
+    "email": { "type": "string", "format": "email", "maxLength": 200 },
+    "subject": { "type": "string", "maxLength": 200 },
+    "message": { "type": "string", "minLength": 1, "maxLength": 5000 },
+    "ip": { "type": "string", "maxLength": 45, "description": "Server-set." },
+    "userAgent": { "type": "string", "maxLength": 500, "description": "Server-set." },
+    "spamScore": { "type": "number", "minimum": 0, "maximum": 1, "description": "Server-set by the on_contact_created trigger. Flags rather than deletes." },
+    "read": { "type": "boolean", "default": false },
+    "replied": { "type": "boolean", "default": false },
+    "createdAt": { "type": "string", "format": "date-time" },
+    "expiresAt": { "type": "string", "format": "date-time", "description": "TTL field. Firestore deletes the document after this." }
+  },
+  "required": ["name", "email", "message"],
+  "additionalProperties": false
+}

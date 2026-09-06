@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "audit-log.schema.json",
+  "title": "AuditLog",
+  "description": "Who changed what, when. Written by the API on every admin mutation. Never client-readable.",
+  "x-version": "1.0.0",
+  "x-firestore": {
+    "collection": "audit_log",
+    "publicRead": false,
+    "indexes": [["collection", "at"], ["actor", "at"]]
+  },
+  "type": "object",
+  "properties": {
+    "actor": { "type": "string", "minLength": 1, "maxLength": 128, "description": "Firebase Auth uid." },
+    "actorEmail": { "type": "string", "format": "email", "maxLength": 200 },
+    "action": { "type": "string", "enum": ["create", "update", "delete", "publish", "unpublish", "reorder"] },
+    "collection": { "type": "string", "minLength": 1, "maxLength": 60 },
+    "docId": { "type": "string", "maxLength": 128 },
+    "before": { "type": ["object", "null"], "additionalProperties": true },
+    "after": { "type": ["object", "null"], "additionalProperties": true },
+    "at": { "type": "string", "format": "date-time" }
+  },
+  "required": ["actor", "action", "collection", "at"],
+  "additionalProperties": false
+}

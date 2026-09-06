@@ -1,0 +1,2 @@
+{ "$schema": "project", "_why": "visibility is required — without it the security rule denies the read.",
+  "slug": "ok", "title": "x", "summary": "y", "kind": "personal", "status": "shipped" }

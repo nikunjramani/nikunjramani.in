@@ -5,6 +5,9 @@
 > **Goal:** nikunjramani.in live on your domain, over HTTPS, indexed by Google,
 > with link previews that look right.
 
+⛔ **This is the phase that needs Blaze billing.** Everything before it runs on the emulators.
+See [Decisions](../decisions.md#-billing-is-deferred--and-that-is-fine-until-phase-6).
+
 ---
 
 ## Prerequisites

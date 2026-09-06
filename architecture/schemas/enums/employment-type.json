@@ -1,0 +1,7 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "enums/employment-type.json",
+  "title": "EmploymentType",
+  "type": "string",
+  "enum": ["full-time", "part-time", "contract", "internship", "freelance"]
+}

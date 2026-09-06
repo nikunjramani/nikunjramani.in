@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "certification.schema.json",
+  "title": "Certification",
+  "x-version": "1.0.0",
+  "x-firestore": { "collection": "certifications", "publicRead": true, "indexes": [["visibility", "order"]] },
+  "type": "object",
+  "properties": {
+    "title": { "type": "string", "minLength": 1, "maxLength": 150 },
+    "issuer": { "type": "string", "minLength": 1, "maxLength": 100 },
+    "issuedOn": { "type": "string", "pattern": "^\\d{4}-\\d{2}$" },
+    "expiresOn": { "type": ["string", "null"], "pattern": "^\\d{4}-\\d{2}$" },
+    "credentialId": { "type": "string", "maxLength": 100 },
+    "credentialUrl": { "type": "string", "format": "uri" },
+    "logo": { "$ref": "common/media.schema.json" },
+    "order": { "type": "integer", "minimum": 0, "default": 0 },
+    "visibility": { "$ref": "enums/visibility.json" },
+    "audit": { "$ref": "common/audit.schema.json" }
+  },
+  "required": ["title", "issuer", "visibility"],
+  "additionalProperties": false
+}

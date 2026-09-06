@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "site-config.schema.json",
+  "title": "SiteConfig",
+  "description": "Singleton at site_config/main. Requires `visibility` for the same reason Profile does.",
+  "x-version": "1.0.0",
+  "x-firestore": { "collection": "site_config", "publicRead": true, "singleton": "main", "indexes": [] },
+  "type": "object",
+  "properties": {
+    "showBlog": { "type": "boolean", "default": false },
+    "showTestimonials": { "type": "boolean", "default": false },
+    "maintenanceMode": { "type": "boolean", "default": false },
+    "announcement": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean", "default": false },
+        "message": { "type": "string", "maxLength": 200 },
+        "url": { "type": "string", "format": "uri" }
+      },
+      "additionalProperties": false
+    },
+    "defaultSeo": { "$ref": "common/seo.schema.json" },
+    "visibility": { "$ref": "enums/visibility.json" },
+    "audit": { "$ref": "common/audit.schema.json" }
+  },
+  "required": ["visibility"],
+  "additionalProperties": false
+}

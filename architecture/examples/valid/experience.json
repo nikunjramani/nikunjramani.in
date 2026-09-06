@@ -1,0 +1,12 @@
+{
+  "$schema": "experience",
+  "company": "Example Corp",
+  "role": "Senior Engineer",
+  "employmentType": "full-time",
+  "startDate": "2021-06",
+  "endDate": null,
+  "current": true,
+  "visibility": "public",
+  "highlights": ["Cut API p95 from 800ms to 120ms", "Reduced oversells from 40/month to zero"],
+  "stack": [{ "name": "Python", "category": "backend", "primary": true }]
+}

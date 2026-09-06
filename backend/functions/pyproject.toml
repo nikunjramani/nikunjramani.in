@@ -7,7 +7,7 @@ dependencies = [
     "firebase-functions>=0.4.2",
     "firebase-admin>=6.5.0",
     "fastapi>=0.115.0",
-    "pydantic>=2.9.0",
+    "pydantic[email]>=2.9.0",
     "pydantic-settings>=2.5.0",
     "a2wsgi>=1.10.0",
     "httpx>=0.27.0",
@@ -45,6 +45,10 @@ ignore_missing_imports = true
 [tool.pytest.ini_options]
 testpaths = ["src", "tests"]
 addopts = "-q --cov=src --cov=shared --cov-report=term-missing"
+
+[tool.coverage.run]
+# Generated models are not our code to test — the schemas and fixtures cover them.
+omit = ["shared/generated/*", "*/tests/*"]
 asyncio_mode = "auto"
 
 # ── Domain boundaries — see ADR 0011 ────────────────────────────────

@@ -1,0 +1,7 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "enums/project-kind.json",
+  "title": "ProjectKind",
+  "type": "string",
+  "enum": ["professional", "personal", "open-source", "academic", "freelance", "experiment"]
+}
