@@ -109,31 +109,65 @@ Firebase client SDK never ship to a visitor reading a project page.
 
 ```
 backend/functions/
-├── main.py                        # entrypoint: exports every function
-├── api/
-│   ├── app.py                     # FastAPI app factory
-│   ├── deps.py                    # auth, pagination, rate-limit dependencies
-│   └── routers/
-│       ├── public/{contact,resume,health}.py
-│       └── admin/{projects,skills,experience,education,certifications,
-│                  posts,profile,media,messages,settings}.py
-├── triggers/
-│   ├── on_contact_created.py      # → Resend email + spam score
-│   ├── on_media_uploaded.py       # → WebP + thumbnails + blurhash
-│   └── on_content_published.py    # → revalidate Next.js cache
-├── scheduled/
-│   ├── nightly_backup.py          # Firestore → Storage JSON
-│   └── weekly_digest.py           # optional
-├── core/
-│   ├── config.py                  # pydantic-settings
-│   ├── firebase.py  security.py  errors.py  logging.py
-│   └── rate_limit.py
-├── services/                      # firestore · storage · email · image · seo
-├── repositories/                  # one per collection + a generic base
-├── generated/models/              # ⚠ codegen output — never hand-edit
-├── tests/{unit,integration}/
-└── pyproject.toml  requirements.txt  .env.example
+├── main.py                        # imports + re-exports every function
+│
+├── shared/                        # imported by every domain; owns nothing itself
+│   ├── core/
+│   │   ├── config.py              # pydantic-settings
+│   │   ├── firebase.py  security.py  errors.py  logging.py
+│   │   └── rate_limit.py
+│   ├── api.py                     # make_function(): FastAPI + a2wsgi wrapper, written once
+│   ├── repositories/base.py       # BaseRepository[T]
+│   ├── services/                  # storage · email · image · audit
+│   └── generated/models/          # ⚠ codegen output — never hand-edit
+│
+└── src/                           # one directory per domain = one deployed function
+    ├── contact/
+    │   ├── __init__.py            # exports api_contact
+    │   ├── routes.py              # FastAPI router
+    │   ├── service.py             # business rules
+    │   ├── repository.py          # Firestore access
+    │   ├── triggers.py            # on_contact_created → email
+    │   └── tests/
+    ├── projects/                  # routes · service · repository · triggers · tests
+    ├── skills/
+    ├── experience/
+    ├── education/
+    ├── certifications/
+    ├── posts/
+    ├── profile/
+    ├── media/                     # + on_media_uploaded → WebP, thumbs, blurhash
+    ├── messages/
+    ├── settings/
+    └── system/                    # health · resume · sitemap · nightly_backup
 ```
+
+Every domain has the identical shape, so adding one is copy, rename, register.
+→ [ADR 0011](../adr/0011-domain-wise-separate-functions.md)
+
+### One function per domain
+
+Each domain exports a single deployed function through a shared wrapper:
+
+```python
+# src/projects/__init__.py
+from shared.api import make_function
+from .routes import router
+
+api_projects = make_function(router, name="api_projects")
+```
+
+Firebase Hosting rewrites keep the API surface unified, so the frontend sees one base URL:
+
+```jsonc
+"rewrites": [
+  { "source": "/api/v1/projects/**", "function": "api_projects" },
+  { "source": "/api/v1/contact/**",  "function": "api_contact"  }
+]
+```
+
+⚠️ **Adding a domain means adding a rewrite.** Forgetting produces a 404 that looks like a routing
+bug.
 
 ---
 
@@ -157,6 +191,16 @@ router  →  service  →  repository  →  Firestore
 collection is a subclass and a schema — not a new file of boilerplate.
 
 **No hand-written models, ever.** They come from `architecture/`.
+
+### Domain boundaries
+
+Two import rules, both non-negotiable:
+
+- **`shared/` may never import from `src/`.** That's a circular dependency and it will bite.
+- **No domain may import another domain's `service` or `repository`.** Cross-domain work goes
+  through an event or through `shared/`.
+
+Enforced in review and by an import-linter rule in `make lint`.
 
 ### Frontend
 

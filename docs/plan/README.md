@@ -18,7 +18,8 @@ The plan lives here, split by topic and phase. Start with the
 | 06 | [Content Checklist](./06-content-checklist.md) | **What you actually need to write** |
 | 07 | [Domain Setup](./07-domain-setup.md) | GoDaddy → Firebase DNS, step by step |
 | 08 | [Costs & Risks](./08-costs-and-risks.md) | Free-tier maths, guardrails, honest risk list |
-| — | [Decisions](./decisions.md) | Open questions + the ADR log |
+| — | [Decisions](./decisions.md) | The ten opening questions, answered |
+| — | [ADRs](../adr/README.md) | Architecture decision records — eleven and counting |
 
 ## Phases — work these in order
 

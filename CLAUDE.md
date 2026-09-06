@@ -30,7 +30,7 @@ Full plan: [`docs/plan/`](./docs/plan/README.md) · Decisions: [`docs/adr/`](./d
 ```
 architecture/   JSON Schemas — the single source of truth for every model
 frontend/       Next.js app: (site) public + (admin) private
-backend/        Python Firebase Functions: api, triggers, scheduled
+backend/        Python Firebase Functions — shared/ + one domain per function
 infra/          Terraform modules + Firestore/Storage rules
 docs/plan/      The build plan, per phase
 docs/adr/       Architecture decision records
@@ -77,9 +77,14 @@ leaked credential, not a build error.
 A client `<ThemeToggle>` inside a server `<Nav>`, never a client `<Nav>`. One misplaced directive
 pulls the whole subtree into the browser bundle.
 
-**6 · Backend layering is one-way.**
+**6 · Backend layering is one-way, and domains don't cross.**
 `router → service → repository → Firestore`. Routers do HTTP only. Services hold business rules and
 don't know what HTTP is. Repositories are the only code importing the Firestore SDK.
+
+One deployed function per domain, each owning its routes, service, repository, triggers and tests
+in `backend/functions/src/<domain>/`. `shared/` may never import from `src/`, and no domain may
+import another domain's service or repository — use `shared/` or an event.
+→ [ADR 0011](./docs/adr/0011-domain-wise-separate-functions.md)
 
 **7 · Architectural changes get an ADR.**
 Anything a stranger would ask "why is it like this?" about. Copy `docs/adr/TEMPLATE.md`, add an
@@ -117,6 +122,8 @@ in the repository layer, in exactly one place.
   add the index when you add the query.
 - **Cold starts scale with top-level imports.** Keep `main.py` thin; import heavy things inside the
   function that needs them.
+- **A new domain needs a Firebase Hosting rewrite.** Without it the function deploys fine and looks
+  healthy, but the frontend gets a 404 that reads like a routing bug.
 - **Localhost Lighthouse scores lie.** Only production numbers count.
 
 ## Working style

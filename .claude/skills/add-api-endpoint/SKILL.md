@@ -5,6 +5,31 @@ description: Add or modify an endpoint in the Python Firebase Functions backend.
 
 # Adding a backend endpoint
 
+## First: which domain?
+
+One deployed function per domain. Everything about a domain lives in
+`backend/functions/src/<domain>/`. → [ADR 0011](../../../docs/adr/0011-domain-wise-separate-functions.md)
+
+```
+src/<domain>/
+├── __init__.py     # exports api_<domain> via shared.api.make_function
+├── routes.py       # FastAPI router
+├── service.py      # business rules
+├── repository.py   # Firestore access
+├── triggers.py     # Firestore/Storage triggers for this domain
+└── tests/
+```
+
+If the endpoint fits an existing domain, add it there. A **new** domain needs four extra steps —
+see "Adding a new domain" below.
+
+### Two import rules, both non-negotiable
+
+- ❌ `shared/` importing from `src/` — circular dependency
+- ❌ one domain importing another domain's `service` or `repository`
+
+Cross-domain work goes through `shared/` or an event. `make lint` enforces both.
+
 ## Layering — one way only
 
 ```
@@ -41,7 +66,7 @@ collection-specific query.
 transitions, reorder transactions, cache busting. Raise domain exceptions from `core/errors.py`,
 never HTTP ones.
 
-**4 · Router** — `backend/functions/api/routers/`. Public under `public/`, admin under `admin/`.
+**4 · Router** — `src/<domain>/routes.py`.
 
 ```python
 @router.post("/projects", response_model=Project, status_code=201)
@@ -73,15 +98,45 @@ via the `on_content_published` trigger. Without this, edits don't appear until I
 
 ## Triggers and scheduled jobs
 
-Separate discrete functions, not FastAPI routes — `backend/functions/triggers/` and `scheduled/`.
+Discrete functions, not FastAPI routes — `src/<domain>/triggers.py`, living with the domain they
+belong to. `on_media_uploaded` goes in `src/media/`, not a global triggers directory.
+
 Import heavy dependencies *inside* the handler; every top-level import runs on every cold start.
+
+## Adding a new domain
+
+Four steps, and forgetting any of them fails in a confusing way:
+
+1. `mkdir src/<domain>/` with the shape above
+2. Export the function:
+   ```python
+   # src/<domain>/__init__.py
+   from shared.api import make_function
+   from .routes import router
+
+   api_<domain> = make_function(router, name="api_<domain>")
+   ```
+3. Import and re-export it in `backend/functions/main.py`
+4. **Add the Firebase Hosting rewrite** — without it the function deploys fine and looks healthy,
+   but the frontend gets a 404 that reads like a routing bug
+   ```jsonc
+   { "source": "/api/v1/<domain>/**", "function": "api_<domain>" }
+   ```
+
+Then add the domain to the Terraform `domains` map with its memory and `max_instances`.
 
 ## Verify
 
 ```bash
-make lint    # ruff + mypy --strict, both must be clean
+make lint    # ruff + mypy --strict + import boundaries, all must be clean
 make test    # ≥80% coverage on services and repositories
-make dev     # then check /docs shows the route with correct models
+make dev     # then check the domain's /docs shows the route with correct models
+```
+
+Deploy just the domain you changed:
+
+```bash
+firebase deploy --only functions:api_<domain>
 ```
 
 ## Gotchas
@@ -91,3 +146,4 @@ make dev     # then check /docs shows the route with correct models
 - **Firestore `in` queries cap at 30 values.**
 - **Composite queries need composite indexes** — add to `x-firestore.indexes` in the schema.
 - **`/docs` must be disabled in production.**
+- **A change under `shared/` redeploys every domain.** Worth knowing before refactoring it casually.

@@ -1,6 +1,10 @@
 # 0003 · FastAPI inside a single HTTP function
 
-**Status:** ✅ Accepted · **Date:** 2026-09-06
+**Status:** 🔄 Superseded by [0011](./0011-domain-wise-separate-functions.md) · **Date:** 2026-09-06
+
+> Superseded on 2026-09-06. The FastAPI-and-`a2wsgi` choice below still stands; what changed is
+> that it now applies **per domain** rather than to one global function. See
+> [ADR 0011](./0011-domain-wise-separate-functions.md).
 
 ---
 

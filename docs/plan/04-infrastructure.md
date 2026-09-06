@@ -14,7 +14,7 @@ infra/
 │   │   ├── project/       # APIs enabled, labels, budget alert
 │   │   ├── firestore/     # database, indexes, rules release, TTL policies
 │   │   ├── storage/       # buckets, rules, CORS, lifecycle
-│   │   ├── functions/     # 2nd-gen functions, runtime SA, min/max instances
+│   │   ├── functions/     # per-domain functions via for_each, runtime SA, limits
 │   │   ├── app-hosting/   # Next.js backend, GitHub link, env vars
 │   │   ├── iam/           # least-privilege SAs + WIF pool for GitHub
 │   │   ├── secrets/       # Secret Manager entries + accessor bindings
@@ -61,7 +61,7 @@ These exist so a mistake costs nothing:
 
 | Guardrail | Value | Why |
 |---|---|---|
-| Function `max_instances` | 3 | A runaway loop can't scale into a bill |
+| Function `max_instances` | 3 **per domain** | A runaway loop can't scale into a bill |
 | Function `min_instances` | 0 | Scale to zero; cold start is fine on the write path |
 | Budget alert | ₹500, notify at 50/90/100% | Early warning, not a surprise invoice |
 | Storage lifecycle | Backups deleted after 30 days | Bounded growth |
@@ -114,8 +114,24 @@ Dependencies run in one direction, so this order is not optional:
 6. DNS                   see 07 · Domain Setup
 ```
 
-Rollback: `firebase functions:rollback` for the API, App Hosting keeps previous releases one click
-away, and Terraform state is versioned in the bucket.
+Rollback: `firebase functions:rollback` — and because functions are split by domain
+([ADR 0011](../adr/0011-domain-wise-separate-functions.md)), a single domain can be rolled back
+without touching the rest. App Hosting keeps previous releases one click away, and Terraform state
+is versioned in the bucket.
+
+### Per-domain configuration
+
+The functions module takes a map, so each domain gets limits matched to its actual use rather than
+to the worst case across all of them:
+
+```hcl
+domains = {
+  api_contact  = { memory = "256Mi", max_instances = 3 }
+  api_projects = { memory = "512Mi", max_instances = 3 }
+  api_media    = { memory = "1Gi",   max_instances = 2 }   # image processing
+  # …
+}
+```
 
 ---
 

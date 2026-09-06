@@ -38,11 +38,17 @@ Three principles drive every decision below:
                              │                      ▼
   you ─▶ /admin ─ ID token ─▶┌──────────────────────────────────┐
   visitor ─▶ contact form ──▶│  Firebase Functions · Python 3.13│
-                             │  api          FastAPI, all CRUD  │
-                             │  on_contact   → email you        │
-                             │  on_upload    → thumbs + OG img  │
-                             │  nightly      → Firestore backup │
-                             │  revalidate   → bust Next cache  │
+       via Hosting rewrites  │  one function per domain         │
+                             │                                  │
+                             │  api_contact   api_projects      │
+                             │  api_media     api_skills        │
+                             │  api_messages  api_experience    │
+                             │  api_settings  api_profile  …    │
+                             │                                  │
+                             │  triggers:  on_contact_created   │
+                             │             on_media_uploaded    │
+                             │             on_content_published │
+                             │  scheduled: nightly_backup       │
                              └──────────────────────────────────┘
 
               ┌───────────────────────────────────────────────┐
@@ -68,7 +74,7 @@ Three principles drive every decision below:
 | Forms | **react-hook-form** + **Zod** | latest | Zod schemas are generated |
 | Icons | **lucide-react** | latest | |
 | Backend | **Cloud Functions for Firebase**, 2nd gen | `python313` | Verified newest supported runtime |
-| API | **FastAPI** via `a2wsgi` in one HTTP function | latest | Pydantic validation + free OpenAPI; portable to plain Cloud Run later |
+| API | **FastAPI** per domain, one deployed function each | latest | Pydantic validation + OpenAPI, with per-domain isolation · [ADR 0011](../adr/0011-domain-wise-separate-functions.md) |
 | Pkg manager (py) | **uv** | latest | Fast, lockfile-based |
 | Lint (py) | **ruff** + **mypy --strict** | latest | |
 | DB | **Cloud Firestore** | | |

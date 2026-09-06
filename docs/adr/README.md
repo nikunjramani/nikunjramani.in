@@ -14,7 +14,7 @@ reader would reasonably ask "why on earth is it like this?", belongs here.
 |---|---|---|---|
 | [0001](./0001-nextjs-instead-of-flutter-web.md) | Next.js instead of Flutter Web | ✅ Accepted | 2026-09-06 |
 | [0002](./0002-firebase-functions-instead-of-cloud-run.md) | Firebase Functions instead of standalone Cloud Run | ✅ Accepted | 2026-09-06 |
-| [0003](./0003-fastapi-in-a-single-function.md) | FastAPI inside a single HTTP function | ✅ Accepted | 2026-09-06 |
+| [0003](./0003-fastapi-in-a-single-function.md) | FastAPI inside a single HTTP function | 🔄 Superseded by 0011 | 2026-09-06 |
 | [0004](./0004-python-313.md) | Python 3.13 as the runtime | ✅ Accepted | 2026-09-06 |
 | [0005](./0005-reads-bypass-python.md) | Reads bypass Python entirely | ✅ Accepted | 2026-09-06 |
 | [0006](./0006-json-schema-source-of-truth.md) | JSON Schema as the single source of truth | ✅ Accepted | 2026-09-06 |
@@ -22,6 +22,7 @@ reader would reasonably ask "why on earth is it like this?", belongs here.
 | [0008](./0008-projects-drop-start-end-dates.md) | Projects drop start/end dates | ✅ Accepted | 2026-09-06 |
 | [0009](./0009-admin-panel-is-launch-scope.md) | Admin panel is launch scope | ✅ Accepted | 2026-09-06 |
 | [0010](./0010-no-monorepo-tooling.md) | No monorepo tooling | ✅ Accepted | 2026-09-06 |
+| [0011](./0011-domain-wise-separate-functions.md) | Domain-wise separate Firebase Functions | ✅ Accepted | 2026-09-06 |
 
 **Status:** 🟡 Proposed · ✅ Accepted · ⛔ Rejected · 🔄 Superseded · ⚠️ Deprecated
 
