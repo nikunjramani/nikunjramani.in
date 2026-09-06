@@ -1,495 +1,608 @@
-# nikunjramani.in — Build Plan
+# nikunjramani.in — Build Plan (v2)
 
-> **Status:** Draft for approval · **Date:** 2026-09-06 · **Owner:** Nikunj Ramani
-> Nothing has been built yet. Read this, mark decisions in §14, and I'll start Phase 0.
+> **Status:** Draft for approval · **Updated:** 2026-09-06 · **Owner:** Nikunj Ramani
+> v2 supersedes v1. Changes: Flutter dropped → Next.js · Cloud Run → Firebase Functions ·
+> schema-first `architecture/` folder · Terraform `infra/` folder · admin panel now launch scope ·
+> much richer project model. Read, mark decisions in §16, and I'll start Phase 0.
 
 ---
 
-## 1. The decision, up front
+## 1. What changed from v1, and why
 
-**Recommendation: build it with a backend — but keep the backend off the critical path.**
+| # | You said | Decision |
+|---|---|---|
+| 1 | "use firebase functions for apis" | ✅ Python 3.13 on **Cloud Functions for Firebase (2nd gen)**. Note these *are* Cloud Run underneath — same infra, managed by the Firebase toolchain instead of separately. You lose nothing. |
+| 2 | "drop flutter web if its bad for seo, choose whatever is best, i will learn it" | ✅ **Next.js 16 (App Router) + TypeScript**. Server-rendered HTML = perfect SEO, which was the whole problem with Flutter. |
+| 3 | "use latest python versions" | ✅ **Python 3.13** — verified as supported *and the default runtime* for Firebase Functions. |
+| 4 | "proper architecture, cicd later so keep it in mind" | ✅ Layered structure both sides + §13 CI/CD designed now, wired in Phase 7. |
+| 5 | "project details too little, start/end dates make no sense, more fields, optional so it shows only if added" | ✅ Rebuilt in §6 — story blocks, outcomes with metrics, flexible timeline, ~10 optional sections that render only when filled. |
+| 6 | "architecture folder with json schema, generate models from there" | ✅ **This is the best idea in your list** and it becomes the keystone of the build. §5. |
+| 7 | "terraform folder for firebase/gcp security" | ✅ `infra/terraform/` — §8. |
+| 8 | "admin should login on the site and edit everything" | ✅ `/admin` in the site itself, Google sign-in + admin claim. Promoted to **launch scope**. §10. |
 
-You asked whether to go static or backed. For a personal site the honest answer is that a static
-site would work. But you want (a) to update projects/skills without redeploying, (b) to actually
-use your Python skills, and (c) a contact form. That justifies a backend. The trick is *where* you
-put it:
+### Why Next.js is the right replacement
 
-- **Reads** (visitor loads your site) → Flutter talks **straight to Firestore**. No Python in the
-  path. Fast, cached, free, and it can't go down because your API is cold-starting.
-- **Writes + secrets + SEO** (contact form, admin edits, sitemap, email) → **Python/FastAPI**.
-  This is where your Python lives, and nobody waiting on a page load ever hits it.
-
-This gives you a real backend without the classic "my personal site is slow because my free-tier
-API sleeps" problem.
+You need to be found on Google. Next.js renders real HTML on the server, so crawlers, LinkedIn
+previews and WhatsApp cards all see actual content — the exact thing Flutter's canvas couldn't do.
+It also has first-class **Firebase App Hosting** support (GA since April 2025) so we stay entirely
+inside Firebase, and it's the single most employable frontend skill you could pick up. The learning
+curve is real but React + TypeScript will serve you far beyond this site.
 
 ### Architecture
 
 ```
-                        ┌──────────────────────────────┐
-   visitor  ─────────▶  │  Firebase Hosting (CDN)      │
-                        │  Flutter Web build           │
-                        └──────────────┬───────────────┘
-                                       │ read-only SDK
-                                       ▼
-                        ┌──────────────────────────────┐
-                        │  Cloud Firestore             │  ◀── public read, no write
-                        │  projects · skills · exp     │
-                        └──────────────┬───────────────┘
-                                       ▲ admin writes
-                                       │
-   you ─────▶ admin UI ────────────────┤
-   visitor ─▶ contact form ───────────▶│
-                        ┌──────────────┴───────────────┐
-                        │  FastAPI on Cloud Run        │
-                        │  (Python 3.13)               │
-                        │  · POST /contact  + email    │
-                        │  · admin CRUD (auth'd)       │
-                        │  · sitemap.xml / SEO pages   │
-                        │  · Firebase Storage uploads  │
-                        └──────────────────────────────┘
+                    ┌───────────────────────────────────────────┐
+  visitor ────────▶ │  Firebase App Hosting                     │
+                    │  Next.js 16 · Server Components           │
+                    │  → real HTML, ISR-cached at the CDN       │
+                    └──────────────┬────────────────────────────┘
+                                   │ Admin SDK, server-side only
+                                   ▼
+                    ┌───────────────────────────────────────────┐
+                    │  Cloud Firestore                          │
+                    │  projects · skills · experience · posts   │
+                    └────────▲──────────────────────┬───────────┘
+                             │ writes               │ triggers
+                             │                      ▼
+  you ─▶ /admin ─ ID token ─▶┌──────────────────────────────────┐
+  visitor ─▶ contact form ──▶│  Firebase Functions · Python 3.13│
+                             │  api          FastAPI, all CRUD  │
+                             │  on_contact   → email you        │
+                             │  on_upload    → thumbs + OG img  │
+                             │  nightly      → Firestore backup │
+                             │  revalidate   → bust Next cache  │
+                             └──────────────────────────────────┘
+
+              ┌───────────────────────────────────────────────┐
+              │  architecture/*.schema.json  ← SOURCE OF TRUTH│
+              │        ├─▶ Pydantic v2 models   (backend)     │
+              │        ├─▶ TypeScript types     (frontend)    │
+              │        ├─▶ Zod validators       (admin forms) │
+              │        └─▶ Firestore rules assertions         │
+              └───────────────────────────────────────────────┘
 ```
 
----
-
-## 2. One concern you should hear before approving
-
-**Flutter Web is bad for SEO.** This is the single real cost of the stack you picked, and for a
-personal site — whose whole job is "a recruiter googles my name and finds me" — it matters.
-
-Flutter 3.47 renders to a `<canvas>` via CanvasKit. The HTML renderer is gone. A crawler that
-doesn't execute JS sees an effectively empty page. Google *can* render JS, but it does so on a
-delayed second pass and inconsistently; LinkedIn/X/WhatsApp link previews and most other bots
-don't render at all. Secondary cost: a Flutter web app ships ~1.5–2.5 MB before first paint.
-
-I'm not going to talk you out of Flutter — you know Dart, the design ceiling is high, and the
-mitigations below are genuinely good enough for a personal site. But go in with eyes open:
-
-**Mitigations (all included in the plan):**
-
-| # | Mitigation | Phase |
-|---|-----------|-------|
-| 1 | Full `<meta>` + Open Graph + Twitter card tags baked into `web/index.html` | 2 |
-| 2 | **JSON-LD `Person` + `ItemList` schema** in the HTML head — Google reads this without rendering, and it drives the knowledge panel | 2 |
-| 3 | A **static HTML skeleton inside `<body>`** (your name, role, bio, project titles) that Flutter paints over on boot — crawlers and no-JS users see real content | 2 |
-| 4 | FastAPI serves **server-rendered HTML mirror pages** at `/p/{slug}` for each project, with `<link rel="canonical">` back to the app route | 5 |
-| 5 | `sitemap.xml` + `robots.txt` generated from Firestore by the backend | 5 |
-| 6 | Deferred CanvasKit load + skeleton splash so first paint isn't a blank white screen | 3 |
-
-If, after seeing this, SEO ranking is your #1 goal, the alternative is Astro or Next.js (static
-HTML, perfect SEO) with the same Firebase + FastAPI backend — the backend plan below is unchanged.
-Say the word in §14 and I'll swap the frontend. **Otherwise the plan proceeds with Flutter Web.**
+**Reads never touch Python.** Next.js Server Components read Firestore directly with the Admin SDK
+and cache the result at the CDN. Python owns every write. Nobody waiting on a page load ever waits
+on a cold start.
 
 ---
 
-## 3. Stack
+## 2. Stack
 
-| Layer | Choice | Why |
-|---|---|---|
-| Frontend | **Flutter 3.47 Web** (Dart 3.13) | Your call; installed and ready |
-| Routing | `go_router` | Real URLs (`/projects/foo`), deep links, browser back button |
-| State | `flutter_riverpod` | Async data from Firestore maps cleanly onto providers |
-| Animation | `flutter_animate` | Declarative, tiny, no boilerplate |
-| Fonts | **Bundled locally**, not `google_fonts` | `google_fonts` fetches at runtime = flash of wrong font + a 3rd-party request |
-| Backend | **FastAPI** + Uvicorn, **Python 3.13** | Your strong suit. (Note: your system Python is 3.9 — we'll use the Homebrew 3.13 in a venv) |
-| Pkg manager | `uv` | Fast, lockfile-based, modern replacement for pip/poetry |
-| DB | **Cloud Firestore** | Free tier, real-time, direct SDK read from Flutter |
-| Files | **Firebase Storage** | Resume PDF, project screenshots, OG images |
-| Auth | **Firebase Auth** (Google sign-in, admin custom claim) | Only you ever log in |
-| Hosting (web) | **Firebase Hosting** | Free CDN, free SSL, easy custom domain |
-| Hosting (API) | **Cloud Run** | Scales to zero, same GCP project, generous free tier |
-| Email | **Resend** (free 3k/mo) | Contact form → your inbox. Simpler than SendGrid |
-| CI/CD | GitHub Actions | Push to `main` → deploy both |
-| Analytics | Firebase Analytics or Umami | Decide later, Phase 6 |
+| Layer | Choice | Version | Why |
+|---|---|---|---|
+| Framework | **Next.js**, App Router | 16.3.x | SSR/SSG = real HTML = SEO. App Hosting native |
+| Language (FE) | **TypeScript** | 5.x, strict | Types generated from your schemas |
+| Styling | **Tailwind CSS** | v4 | Fast, no CSS files to maintain |
+| Components | **shadcn/ui** + Radix | latest | Accessible primitives you own and can restyle |
+| Animation | **Motion** (ex Framer Motion) | latest | Scroll reveals, page transitions |
+| Forms | **react-hook-form** + **Zod** | latest | Zod schemas generated from JSON Schema |
+| Icons | **lucide-react** | latest | |
+| Content | **MDX** (blog, phase 8) | | |
+| Backend | **Cloud Functions for Firebase, 2nd gen** | `python313` | Your ask; verified newest runtime |
+| API | **FastAPI** via `a2wsgi` in one HTTP function | latest | Pydantic validation + free OpenAPI docs, and portable to plain Cloud Run later |
+| Pkg manager (py) | **uv** | latest | Fast, lockfile-based |
+| Lint/format (py) | **ruff** + **mypy --strict** | latest | |
+| DB | **Cloud Firestore** | | |
+| Files | **Firebase Storage** | | |
+| Auth | **Firebase Auth**, Google provider + `admin` claim | | Only you log in |
+| Hosting | **Firebase App Hosting** | GA | Git-based Next.js SSR deploys — half our CI/CD for free |
+| IaC | **Terraform** + `google` / `google-beta` | | §8 |
+| Email | **Resend** | free 3k/mo | |
+| CI | **GitHub Actions** + Workload Identity Federation | | No long-lived keys |
+
+> Monorepo tooling: deliberately **none**. A `Makefile` at the root (`make dev`, `make gen`,
+> `make deploy`) is enough. Turborepo/pnpm workspaces would be ceremony for a two-app repo.
 
 ---
 
-## 4. Repository structure
+## 3. Repository structure
 
 ```
 nikunjramani.in/
-├── PLAN.md                     ← this file
-├── README.md
-├── .gitignore
-├── .github/workflows/
-│   ├── frontend.yml            # build + deploy Flutter → Firebase Hosting
-│   └── backend.yml             # build + deploy FastAPI → Cloud Run
+├── PLAN.md · README.md · Makefile · .gitignore · .editorconfig
 │
-├── frontend/                   # ── FLUTTER WEB ──────────────────
-│   ├── lib/
-│   │   ├── main.dart
-│   │   ├── app.dart                    # MaterialApp.router, theme wiring
-│   │   ├── core/
-│   │   │   ├── theme/                  # colors, typography, spacing, motion
-│   │   │   ├── router/                 # go_router config
-│   │   │   ├── responsive/             # breakpoints, adaptive layout helper
-│   │   │   └── constants/
-│   │   ├── data/
-│   │   │   ├── models/                 # Project, Skill, Experience, Profile…
-│   │   │   ├── repositories/           # FirestoreRepository per collection
-│   │   │   └── providers/              # Riverpod providers
-│   │   ├── features/
-│   │   │   ├── home/                   # hero, about, highlights
-│   │   │   ├── projects/               # grid + detail page
-│   │   │   ├── skills/
-│   │   │   ├── experience/
-│   │   │   ├── blog/                   # phase 6
-│   │   │   ├── contact/
-│   │   │   └── admin/                  # phase 5, auth-gated
-│   │   └── shared/widgets/             # buttons, cards, section headers, nav
-│   ├── assets/{fonts,images,icons}/
-│   ├── web/index.html                  # SEO head + static skeleton (§2)
-│   └── pubspec.yaml
+├── architecture/                 # ══ SOURCE OF TRUTH — §5 ══
+│   ├── schemas/                  # JSON Schema draft 2020-12
+│   ├── enums/  examples/  codegen/  docs/
+│   └── VERSIONING.md
 │
-├── backend/                    # ── PYTHON / FASTAPI ─────────────
-│   ├── app/
-│   │   ├── main.py
-│   │   ├── config.py                   # pydantic-settings, env-driven
-│   │   ├── api/v1/
-│   │   │   ├── contact.py  projects.py  skills.py
-│   │   │   ├── experience.py  upload.py  seo.py
-│   │   ├── core/
-│   │   │   ├── firebase.py             # admin SDK init
-│   │   │   ├── security.py             # verify Firebase ID token + admin claim
-│   │   │   ├── rate_limit.py
-│   │   │   └── exceptions.py
-│   │   ├── models/                     # pydantic schemas (source of truth)
-│   │   ├── services/                   # firestore_service, email_service, storage_service
-│   │   └── templates/                  # Jinja2 SEO mirror pages
-│   ├── scripts/
-│   │   ├── seed_content.py             # push your initial content into Firestore
-│   │   ├── set_admin_claim.py          # grant yourself admin
-│   │   └── export_backup.py            # nightly Firestore → JSON
-│   ├── tests/
-│   ├── Dockerfile
-│   ├── pyproject.toml
-│   └── .env.example
+├── frontend/                     # ══ NEXT.JS 16 ══
+│   ├── src/
+│   │   ├── app/
+│   │   │   ├── (site)/                    # public, server-rendered
+│   │   │   │   ├── page.tsx               # /
+│   │   │   │   ├── projects/page.tsx
+│   │   │   │   ├── projects/[slug]/page.tsx
+│   │   │   │   ├── about/  experience/  contact/  blog/
+│   │   │   │   └── layout.tsx             # nav + footer
+│   │   │   ├── (admin)/admin/             # private, client-side — §10
+│   │   │   │   ├── layout.tsx             # auth guard
+│   │   │   │   ├── page.tsx               # dashboard
+│   │   │   │   ├── projects/[id]/page.tsx
+│   │   │   │   ├── skills/  experience/  media/  messages/  settings/
+│   │   │   ├── api/revalidate/route.ts    # on-demand ISR bust
+│   │   │   ├── sitemap.ts  robots.ts  opengraph-image.tsx
+│   │   │   └── layout.tsx  not-found.tsx
+│   │   ├── components/
+│   │   │   ├── ui/                        # shadcn primitives
+│   │   │   ├── site/                      # Hero, ProjectCard, Timeline, SkillGrid…
+│   │   │   ├── admin/                     # SchemaForm, MediaPicker, ReorderList…
+│   │   │   └── seo/                       # JsonLd, MetaTags
+│   │   ├── lib/
+│   │   │   ├── firebase/{admin.ts,client.ts,auth.ts}
+│   │   │   ├── data/                      # one query module per collection
+│   │   │   ├── api/                       # typed client for the Python API
+│   │   │   └── utils/
+│   │   ├── generated/                     # ⚠ codegen output — never hand-edit
+│   │   │   ├── types.ts  schemas.zod.ts
+│   │   ├── hooks/  styles/  config/
+│   ├── public/
+│   ├── next.config.ts  tailwind.config.ts  tsconfig.json
+│   └── apphosting.yaml                    # App Hosting build + env config
 │
-├── infra/                      # ── FIREBASE / GCP ───────────────
-│   ├── firebase.json
-│   ├── firestore.rules
-│   ├── firestore.indexes.json
-│   ├── storage.rules
-│   └── deploy.sh
+├── backend/                      # ══ PYTHON 3.13 FUNCTIONS ══
+│   └── functions/
+│       ├── main.py                        # entrypoint: exports every function
+│       ├── api/
+│       │   ├── app.py                     # FastAPI app factory
+│       │   ├── deps.py                    # auth, pagination, rate-limit deps
+│       │   └── routers/
+│       │       ├── public/{contact,resume,health}.py
+│       │       └── admin/{projects,skills,experience,education,
+│       │                  certifications,posts,profile,media,
+│       │                  messages,settings}.py
+│       ├── triggers/
+│       │   ├── on_contact_created.py      # → Resend email + spam score
+│       │   ├── on_media_uploaded.py       # → WebP + thumbnails + blurhash
+│       │   └── on_content_published.py    # → revalidate Next.js cache
+│       ├── scheduled/
+│       │   ├── nightly_backup.py          # Firestore → Storage JSON
+│       │   └── weekly_digest.py           # optional
+│       ├── core/
+│       │   ├── config.py                  # pydantic-settings
+│       │   ├── firebase.py  security.py  errors.py  logging.py
+│       │   └── rate_limit.py
+│       ├── services/                      # firestore, storage, email, image, seo
+│       ├── repositories/                  # one per collection, generic base
+│       ├── generated/models/              # ⚠ codegen output — never hand-edit
+│       ├── tests/{unit,integration}/
+│       ├── pyproject.toml  requirements.txt  .env.example
 │
-└── docs/
-    ├── CONTENT.md              # your actual copy, written before we design
-    ├── DESIGN.md               # design system decisions
-    └── RUNBOOK.md              # deploy, rollback, DNS, secrets
+├── infra/                        # ══ TERRAFORM — §8 ══
+│   ├── terraform/{modules,envs}/
+│   ├── rules/{firestore.rules,firestore.indexes.json,storage.rules}
+│   └── scripts/bootstrap.sh
+│
+├── docs/  CONTENT.md · DESIGN.md · RUNBOOK.md · ADR/
+└── .github/workflows/            # §13
 ```
 
 ---
 
-## 5. Firestore data model
+## 4. Layering rules (so this stays clean)
 
-All content lives in Firestore so you can edit without a redeploy. Collections:
-
-### `profile/main` (single doc)
-```jsonc
-{
-  "name": "Nikunj Ramani",
-  "headline": "Software Engineer",          // one line under your name
-  "tagline": "I build ...",                 // hero sub-line
-  "bio": "markdown string",
-  "location": "Pune, India",
-  "email": "hello@nikunjramani.in",
-  "avatarUrl": "...", "ogImageUrl": "...", "resumeUrl": "...",
-  "socials": [{ "label": "GitHub", "url": "...", "icon": "github" }],
-  "availableForWork": true,
-  "updatedAt": "<timestamp>"
-}
+**Backend — strict one-way dependency:**
 ```
-
-### `projects/{id}`
-```jsonc
-{
-  "slug": "unique-url-safe",              // → /projects/unique-url-safe
-  "title": "...", "summary": "1–2 lines for the card",
-  "description": "markdown, long form",
-  "problem": "...", "solution": "...", "impact": "...",   // the story that matters
-  "techStack": ["Python", "FastAPI", "Flutter"],
-  "role": "...", "teamSize": 1,
-  "coverUrl": "...", "gallery": ["..."],
-  "links": { "live": "...", "repo": "...", "caseStudy": "..." },
-  "startDate": "2025-01", "endDate": "2025-06",   // null endDate = ongoing
-  "featured": true, "published": true, "order": 1
-}
+router → service → repository → Firestore
+   ↑         ↑          ↑
+   └── generated Pydantic models (shared by all three)
 ```
+- Routers do HTTP only: parse, authorize, delegate, serialize. No business logic, no Firestore.
+- Services hold the rules (slug uniqueness, publish transitions, reordering, cache busting).
+- Repositories are the only code that touches the Firestore SDK. A generic `BaseRepository[T]`
+  gives every collection CRUD + pagination for free.
+- **No hand-written models, ever.** They come from `architecture/`.
 
-### `skills/{id}`
-```jsonc
-{
-  "name": "Python", "category": "Backend",   // Backend | Frontend | Cloud | Data | Tools
-  "level": 4,                                // 1–5, drives the visual
-  "yearsOfExperience": 5, "icon": "python",
-  "featured": true, "order": 1
-}
+**Frontend:**
 ```
-
-### `experience/{id}`
-```jsonc
-{
-  "company": "Cybage Software", "role": "...", "employmentType": "Full-time",
-  "location": "...", "startDate": "2021-06", "endDate": null,
-  "current": true,
-  "highlights": ["shipped X, cut Y by Z%"],   // achievements, not duties
-  "techStack": ["..."], "logoUrl": "...", "order": 1
-}
+page (server) → lib/data/* → Firebase Admin SDK     ← reads
+page (client) → lib/api/*  → Python API             ← writes
 ```
-
-### `education/{id}`, `certifications/{id}`
-Standard fields — institution/issuer, title, dates, credential URL, `order`.
-
-### `posts/{id}` — Phase 6, optional
-`slug, title, excerpt, contentMd, coverUrl, tags[], readingMinutes, publishedAt, published`
-
-### `contact_messages/{id}` — write-only from the world
-`name, email, subject, message, createdAt, ip, userAgent, read, replied, spamScore`
-
-### `site_config/main`
-Feature flags + toggles: `showBlog`, `showTestimonials`, `maintenanceMode`, `theme`,
-`announcementBanner`.
-
-> **Rule:** every collection carries `published` and `order`. The frontend queries
-> `where published == true, orderBy order` — so you can draft content live without it showing.
+- Server Components fetch; Client Components only handle interaction. `"use client"` as deep in the
+  tree as possible.
+- `lib/data/` is the *only* place Firestore is queried. Components never import the SDK.
+- Nothing in `(site)/` may import from `(admin)/` — the admin bundle must never ship to visitors.
 
 ---
 
-## 6. Security rules
+## 5. `architecture/` — schema-first (the keystone)
+
+You were right that this is the correct backbone. One JSON Schema edit propagates to five places,
+so backend, frontend, forms, validation and docs can never drift apart.
 
 ```
-// firestore.rules — the whole security posture in one screen
-match /databases/{db}/documents {
-  function isAdmin() { return request.auth != null && request.auth.token.admin == true; }
-
-  // world reads published content; only admin writes
-  match /{col}/{doc} where col in ['profile','projects','skills','experience',
-                                   'education','certifications','posts','site_config'] {
-    allow read:  if resource.data.published != false;
-    allow write: if isAdmin();
-  }
-
-  // the world can send you a message but can never read the inbox
-  match /contact_messages/{id} {
-    allow create: if false;   // ← forced through FastAPI, which rate-limits + spam-checks
-    allow read, update, delete: if isAdmin();
-  }
-}
+architecture/
+├── schemas/
+│   ├── common/               # $defs reused everywhere
+│   │   ├── link.schema.json          media.schema.json
+│   │   ├── richtext.schema.json      timeline.schema.json
+│   │   ├── metric.schema.json        seo.schema.json
+│   │   └── audit.schema.json         # createdAt/updatedAt/createdBy
+│   ├── profile.schema.json           project.schema.json
+│   ├── skill.schema.json             experience.schema.json
+│   ├── education.schema.json         certification.schema.json
+│   ├── post.schema.json              contact-message.schema.json
+│   └── site-config.schema.json
+├── enums/                    # one file per enum, imported by schemas
+│   ├── project-kind.json  project-status.json  skill-category.json
+│   ├── link-type.json     visibility.json      media-type.json
+├── examples/                 # valid + intentionally-invalid fixtures
+├── codegen/
+│   ├── generate.sh                   # `make gen`
+│   ├── python.yaml                   # datamodel-code-generator → Pydantic v2
+│   ├── typescript.json               # json-schema-to-typescript
+│   └── zod.mjs                       # json-schema-to-zod → admin forms
+├── docs/ERD.md               # generated collection diagram
+└── VERSIONING.md
 ```
-Storage rules: public read on `/public/**`, admin-only write everywhere.
 
-Contact writes are deliberately blocked at the DB and routed through Python — that's your spam
-gate. Without it, a bot with your public Firebase config can fill Firestore in an afternoon.
+### The pipeline
 
----
-
-## 7. Backend API surface
-
-**Public**
-| Method | Path | Notes |
+| Target | Tool | Output |
 |---|---|---|
-| `GET` | `/health` | Cloud Run liveness |
-| `POST` | `/api/v1/contact` | Rate-limited 3/hr/IP, honeypot + Turnstile, → Resend email |
-| `GET` | `/api/v1/resume` | 302 to signed Storage URL, counts downloads |
-| `GET` | `/sitemap.xml`, `/robots.txt` | Generated from Firestore |
-| `GET` | `/p/{slug}` | Server-rendered SEO mirror of a project (§2) |
+| Pydantic v2 models | `datamodel-code-generator` | `backend/functions/generated/models/` |
+| TypeScript types | `json-schema-to-typescript` | `frontend/src/generated/types.ts` |
+| Zod validators | `json-schema-to-zod` | `frontend/src/generated/schemas.zod.ts` |
+| **Admin form fields** | custom renderer reading the schema | forms build themselves — §10 |
+| Firestore rules asserts | small script | required-field checks in `firestore.rules` |
+| ERD / field docs | script | `architecture/docs/` |
 
-**Admin — requires Firebase ID token with `admin: true`**
-| Method | Path |
-|---|---|
-| `GET/POST/PATCH/DELETE` | `/api/v1/admin/projects[/{id}]` |
-| `GET/POST/PATCH/DELETE` | `/api/v1/admin/skills[/{id}]` |
-| `GET/POST/PATCH/DELETE` | `/api/v1/admin/experience[/{id}]` |
-| `PATCH` | `/api/v1/admin/profile` |
-| `POST` | `/api/v1/admin/upload` → signed Storage upload URL |
-| `GET/PATCH` | `/api/v1/admin/messages[/{id}]` |
-| `POST` | `/api/v1/admin/reorder` — bulk `order` update |
+**Rules of the road**
+1. `architecture/` is the only place a field is ever defined.
+2. `generated/` is committed but never hand-edited — CI runs `make gen` and fails on any diff.
+3. Every schema carries `x-firestore` metadata (collection name, indexes, whether public-readable).
+4. Every schema is versioned; breaking changes get a migration script in `backend/migrations/`.
+5. `examples/` are validated in CI, so the schemas stay honest.
 
-Pydantic models are the contract; FastAPI auto-generates `/docs`. Dart models mirror them.
-
----
-
-## 8. Frontend pages
-
-| Route | Contents |
-|---|---|
-| `/` | Hero → About → Featured skills → Featured projects → Experience snapshot → Contact CTA |
-| `/projects` | Filterable grid (by tech / category) |
-| `/projects/{slug}` | Case study: problem → solution → impact → stack → gallery → links |
-| `/about` | Long bio, full skill matrix, education, certifications, résumé download |
-| `/experience` | Vertical timeline |
-| `/contact` | Form + socials + availability status |
-| `/blog`, `/blog/{slug}` | Phase 6, behind `showBlog` flag |
-| `/admin/*` | Auth-gated editor, Phase 5 |
-| `404` | Custom |
-
-**Design system** (locked in Phase 1, `docs/DESIGN.md`): dark-first with a light toggle, one
-accent colour, 8pt spacing scale, 3 breakpoints (mobile <600, tablet 600–1024, desktop >1024),
-scroll-reveal + hover motion, WCAG AA contrast, keyboard-navigable, `prefers-reduced-motion`
-respected. I'll present **3 visual directions to choose from** at the start of Phase 3 rather than
-picking for you.
+**The payoff:** adding "Podcast link" to projects = edit one JSON file, run `make gen`. The Python
+API validates it, TypeScript knows about it, the admin form grows the field, and the detail page can
+render it. That's the whole reason to do this.
 
 ---
 
-## 9. Content — the part that actually blocks us
+## 6. The project model, rebuilt
 
-You said you're not sure what to put on it. That's normal, and it's the real bottleneck: design and
-code are fast, writing is slow. So Phase 1 is a content phase, and here's exactly what to collect
-into `docs/CONTENT.md`. **You don't need it all before we start — but the site can't launch without §9.1–9.5.**
+You were right — `startDate`/`endDate` was wrong for projects, and the model was thin. New design:
+**6 required fields, everything else optional, and the UI renders a section only when you've filled
+it in.** An empty project is still a valid project; a fully-filled one is a case study.
 
-**9.1 Identity (30 min)** — Your name as you want it shown. A one-line headline ("Backend engineer
-building X"). A 2-sentence tagline. Where you're based. Whether you're open to work.
+```jsonc
+{
+  // ─── required (6) ───────────────────────────────────────────
+  "slug": "realtime-inventory-sync",
+  "title": "Realtime Inventory Sync",
+  "summary": "One or two lines. This is the card text.",
+  "kind": "professional",        // professional | personal | open-source
+                                 // academic | freelance | experiment
+  "status": "shipped",           // concept | in-progress | shipped
+                                 // maintained | archived
+  "visibility": "public",        // public | unlisted | draft
 
-**9.2 About (1 hr)** — 3 paragraphs: what you do and what you're good at; how you got here; what
-you're into outside work. Written like you talk, not like a résumé.
+  // ─── timeline — replaces start/end dates ────────────────────
+  "timeline": {
+    "displayLabel": "2025 · 4 months",   // free text; wins over everything
+    "year": 2025, "durationMonths": 4, "ongoing": false
+  },
 
-**9.3 Skills (30 min)** — Every tech you'd defend in an interview, grouped as Backend / Frontend /
-Cloud & DevOps / Data / Tools, each rated 1–5. Be honest with the 5s.
+  // ─── the story. every block optional, renders if present ────
+  "content": {
+    "overview":  "richtext",
+    "problem":   "what was broken, and who it hurt",
+    "approach":  "what you built and why that way",
+    "architecture": {
+      "description": "...",
+      "diagramUrl": "...",
+      "components": [{ "name": "Ingest worker", "role": "...", "tech": "Python" }]
+    },
+    "challenges": [{ "title": "Clock skew across regions", "detail": "..." }],
+    "outcomes":   [{ "label": "p95 latency", "before": "800ms",
+                     "after": "120ms", "delta": "-85%", "highlight": true }],
+    "learnings":  ["..."],
+    "futureWork": ["..."]
+  },
 
-**9.4 Experience (1 hr)** — For each role: company, title, dates, and **3 bullets of achievements
-with numbers**, not job duties. "Cut API p95 from 800ms to 120ms" beats "worked on APIs".
+  // ─── tech ───────────────────────────────────────────────────
+  "stack": [{ "name": "FastAPI", "category": "backend", "primary": true }],
+  "tags":  ["realtime", "distributed-systems"],
 
-**9.5 Projects — 3 to 6 (2–3 hrs)** — The centrepiece. For each: title, one-line summary, the
-problem, what you built, the measurable impact, the stack, screenshots, and links. **Work projects
-count** — describe them without leaking anything confidential to your employer. Side projects,
-college projects, and things you built to learn all count too.
+  // ─── context ────────────────────────────────────────────────
+  "role":  "Backend lead",
+  "team":  { "size": 4, "myScope": "API design + data pipeline" },
+  "client":{ "name": "…", "logoUrl": "…", "confidential": true },
+           // confidential:true → renders "a logistics client", name never sent to the browser
 
-**9.6 Assets** — Résumé PDF, a decent headshot, project screenshots, favicon, company/tech logos.
+  // ─── media ──────────────────────────────────────────────────
+  "cover":   { "url": "…", "alt": "…", "blurhash": "…", "width": 1600, "height": 900 },
+  "gallery": [{ "url": "…", "alt": "…", "caption": "…", "type": "image" }],
+  "video":   { "url": "…", "provider": "youtube", "thumbnailUrl": "…" },
 
-**9.7 Later (not launch-blocking)** — Education, certifications, blog posts, testimonials.
+  // ─── links: an array, so new kinds need no schema change ────
+  "links": [{ "type": "repo", "label": "Source", "url": "…", "primary": true }],
+           // live | repo | docs | case-study | demo | paper | store | article | video
 
----
+  // ─── social proof ───────────────────────────────────────────
+  "testimonial": { "quote": "…", "author": "…", "role": "…", "avatarUrl": "…" },
+  "metrics":     [{ "label": "monthly users", "value": "12k", "icon": "users" }],
+  "awards":      [{ "title": "…", "issuer": "…", "year": 2025, "url": "…" }],
+  "collaborators": [{ "name": "…", "role": "…", "url": "…" }],
 
-## 10. Phases
+  // ─── publishing ─────────────────────────────────────────────
+  "featured": true, "order": 1, "pinned": false,
+  "seo": { "metaTitle": "…", "metaDescription": "…",
+           "ogImageUrl": "…", "keywords": ["…"] },
+  "readingMinutes": 4,
+  "createdAt": "…", "updatedAt": "…", "publishedAt": "…"
+}
+```
 
-Estimates are focused working hours, not calendar time.
+**Progressive disclosure in the UI:** the detail page walks the object and renders only the blocks
+that exist. Three filled fields → a clean short page. Twenty → a full case study. No empty headings,
+no `null` placeholders. The admin form does the same: core fields up top, the rest in collapsible
+"add a section" panels so it never feels like a 40-field wall.
 
-### Phase 0 — Foundation · ~3h
-- [ ] `git init`, repo scaffold, `.gitignore`, README
-- [ ] Create Firebase project `nikunjramani-in`; enable Firestore, Storage, Auth, Hosting
-- [ ] Enable Blaze billing + **₹500 budget alert** (see §12 — real cost is ~₹0, but Storage and Cloud Run require billing enabled)
-- [ ] `flutter create` in `frontend/`, deps installed, boots on `flutter run -d chrome`
-- [ ] FastAPI skeleton in `backend/` with `uv`, `/health` responding locally
-- [ ] Firestore + Storage rules written and deployed
-- [ ] Grant yourself the admin claim (`scripts/set_admin_claim.py`)
-- **Done when:** both apps run locally and the Firebase project is live.
-
-### Phase 1 — Content + design direction · ~4h (mostly you)
-- [ ] You fill in `docs/CONTENT.md` §9.1–9.5
-- [ ] I present 3 visual directions; you pick one
-- [ ] Design system locked into `docs/DESIGN.md` and coded as Flutter theme
-- **Done when:** real copy exists and the palette/type/spacing are decided.
-
-### Phase 2 — Data layer + SEO shell · ~5h
-- [ ] Pydantic models ↔ Dart models, generated and matching
-- [ ] Firestore repositories + Riverpod providers, loading/error/empty states
-- [ ] `seed_content.py` pushes your real content up
-- [ ] `web/index.html`: meta, OG, Twitter, JSON-LD, static skeleton (§2 items 1–3)
-- **Done when:** your real content is in Firestore and readable from Flutter.
-
-### Phase 3 — Frontend build · ~16h
-- [ ] Shared shell: nav, footer, page transitions, theme toggle
-- [ ] Home (hero → about → skills → featured projects → experience → CTA)
-- [ ] Projects grid + filters, project detail page
-- [ ] About, Experience, Contact, 404
-- [ ] Responsive pass at all 3 breakpoints; a11y pass; loading skeletons
-- **Done when:** every page renders real data and looks right on a phone.
-
-### Phase 4 — Backend build · ~8h
-- [ ] Contact endpoint: validation, rate limit, honeypot, Turnstile, Resend email
-- [ ] Admin CRUD routers + Firebase token auth dependency
-- [ ] Signed-URL upload endpoint
-- [ ] pytest suite, ruff + black, Dockerfile
-- **Done when:** contact form delivers to your inbox and `/docs` shows a clean API.
-
-### Phase 5 — Deploy · ~5h
-- [ ] Deploy Flutter → Firebase Hosting; FastAPI → Cloud Run
-- [ ] **GoDaddy DNS → Firebase** (§11); `api.nikunjramani.in` → Cloud Run
-- [ ] SEO mirror pages + `sitemap.xml`; submit to Google Search Console
-- [ ] GitHub Actions: push to `main` deploys both
-- [ ] Lighthouse pass; OG preview tested on LinkedIn/WhatsApp
-- **Done when:** https://nikunjramani.in is live with a valid cert. **← LAUNCH**
-
-### Phase 6 — After launch (optional, pick what you want)
-Admin editor UI · Blog with markdown rendering · Analytics dashboard · Testimonials ·
-Dynamic OG image generation · Nightly Firestore backup job · Dark/light polish · i18n
-
-**Total to launch: ~40h of build + ~4h of your writing.**
-
----
-
-## 11. Domain setup (GoDaddy → Firebase)
-
-1. Firebase Console → Hosting → **Add custom domain** → `nikunjramani.in`, and again for `www`.
-2. Firebase gives you a **TXT** record for ownership and **two A records**. Use exactly what the
-   console shows — don't copy IPs from a blog post, they change.
-3. GoDaddy → My Products → Domain → **DNS → Manage Zones**:
-   - `TXT` `@` → *(verification value from Firebase)*
-   - `A` `@` → *(Firebase IP #1)*, TTL 600
-   - `A` `@` → *(Firebase IP #2)*, TTL 600
-   - `CNAME` `www` → `nikunjramani.in`
-   - `CNAME` `api` → *(Cloud Run domain mapping target)*
-4. Delete GoDaddy's default parking/forwarding records or they'll fight yours.
-5. Wait for propagation (usually <1h, allow 48h). Firebase provisions SSL automatically.
-6. **Email** (optional): `hello@nikunjramani.in` via Zoho Mail free tier or Cloudflare Email
-   Routing — both free, both need MX records here.
+`skill`, `experience` and `education` get the same treatment — a small required core plus optional
+extras (`endorsements`, `projectsUsedIn`, `certificationUrl`, `highlights`, `techStack`,
+`companyLogo`, `promotions[]`). Full definitions land in `architecture/schemas/` in Phase 1.
 
 ---
 
-## 12. Cost
+## 7. Security model
 
-| Service | Free tier | Our expected use | Cost |
-|---|---|---|---|
-| Firebase Hosting | 10 GB storage, 360 MB/day transfer | Way under | ₹0 |
-| Firestore | 50k reads, 20k writes, 1 GiB/day | Way under | ₹0 |
-| Firebase Storage | 5 GB, 1 GB/day download | Way under | ₹0 |
-| Firebase Auth | Unlimited for our use | 1 user (you) | ₹0 |
-| Cloud Run | 2M requests, 360k GB-s/mo | Way under | ₹0 |
-| Resend | 3,000 emails/mo | ~10 | ₹0 |
-| Domain | — | Already bought | paid |
+Three layers, each independently sufficient:
 
-**Realistic monthly cost: ₹0.** Two caveats worth knowing:
+1. **Firestore rules** — public gets read on published docs; **client writes are denied entirely**,
+   including for you. Everything mutating goes through Python.
+2. **API auth** — every `/admin/*` route requires a Firebase ID token with a custom `admin: true`
+   claim, verified server-side by the Admin SDK. Signing in is not enough; you must hold the claim.
+3. **Next.js middleware** — `/admin/*` checks a session cookie before rendering. Convenience, not
+   the real gate.
 
-- Firebase **Storage and Cloud Run require the Blaze (pay-as-you-go) plan** — a card on file even
-  though you stay inside the free allowances. That's why Phase 0 sets a **budget alert**.
-- Set Firestore/Cloud Run **max-instances = 2** so a runaway loop or a bot can't generate a bill.
+```
+// firestore.rules
+function isPublished() { return resource.data.visibility == 'public'; }
+
+match /{col}/{id} where col in ['profile','projects','skills','experience',
+                                'education','certifications','posts','site_config'] {
+  allow read:  if isPublished();
+  allow write: if false;              // ← Python API only, no exceptions
+}
+match /contact_messages/{id} { allow read, write: if false; }
+```
+
+Storage: public read on `/public/**` only; all writes via signed URLs the API issues.
+Secrets (Resend key, Turnstile secret) live in **Secret Manager**, injected into functions by
+Terraform — never in `.env` files in git.
+
+Contact form defences: honeypot field + Cloudflare Turnstile + 3/hour/IP + body size cap + a spam
+score computed in the Firestore trigger.
 
 ---
 
-## 13. Risks
+## 8. `infra/` — Terraform
 
-| Risk | Impact | Mitigation |
+```
+infra/terraform/
+├── modules/
+│   ├── project/       # APIs enabled, labels, budget
+│   ├── firestore/     # database, indexes, rules release, TTL policies
+│   ├── storage/       # buckets, rules, CORS, lifecycle rules
+│   ├── functions/     # 2nd-gen functions, runtime SA, min/max instances
+│   ├── app-hosting/   # Next.js backend, GitHub repo link, env vars
+│   ├── iam/           # least-privilege service accounts + WIF for GitHub
+│   ├── secrets/       # Secret Manager entries + accessor bindings
+│   └── monitoring/    # budget alert, uptime check, error-rate alert
+├── envs/
+│   ├── prod/          # nikunjramani-in
+│   └── staging/       # optional, same modules, cheaper knobs
+└── backend.tf         # GCS remote state + locking
+```
+
+**Being straight about the limits:** Terraform can't do 100% of it. These stay manual, once, ~20 min
+in Phase 0 — and I'll script what's scriptable in `infra/scripts/bootstrap.sh`:
+
+- Creating the GCP project + attaching billing
+- Adding Firebase to the project (`firebase projects:addfirebase`)
+- OAuth consent screen + enabling the Google auth provider
+- Authorising the GitHub connection for App Hosting
+- The GCS bucket that holds Terraform's own state (chicken-and-egg)
+
+Everything after that is `terraform apply`, reviewable in a PR diff. Firebase resources need the
+`google-beta` provider — that's expected, not a workaround.
+
+**Guardrails Terraform will enforce:** functions `max_instances = 3`, a budget alert at ₹500 with a
+100% hard notification, uptime check on `/health`, and least-privilege SAs (the functions SA gets
+Firestore + Storage + Secret accessor; nothing else).
+
+---
+
+## 9. Public site
+
+| Route | Rendering | Contents |
 |---|---|---|
-| Flutter Web SEO | Recruiters don't find you | §2 — 6 mitigations; Astro fallback available |
-| 2 MB initial bundle | Slow first load on mobile data | Deferred loading, skeleton splash, compressed assets, `--wasm` evaluated |
-| Public Firebase config abused | Junk data / bill | Strict rules, contact writes forced through API, rate limits, budget cap |
-| Contact form spam | Inbox noise | Honeypot + Cloudflare Turnstile + 3/hr IP limit |
-| Content never gets written | Site stalls at 90% | Phase 1 is explicitly a content phase with a checklist |
-| Cloud Run cold start (~2s) | Slow contact submit | Not on the read path; min-instances=0 is fine, submit shows a spinner |
+| `/` | ISR 1h | Hero → About → Skills → Featured projects → Experience → CTA |
+| `/projects` | ISR 1h | Filterable grid: kind, tech, status |
+| `/projects/[slug]` | SSG + on-demand revalidate | The case study — §6 progressive disclosure |
+| `/about` | ISR | Long bio, full skill matrix, education, certifications, résumé |
+| `/experience` | ISR | Timeline with achievements |
+| `/contact` | static | Form → Python API, plus socials + availability |
+| `/blog`, `/blog/[slug]` | ISR | Phase 8, behind a flag |
+| `/sitemap.xml`, `/robots.txt`, `/og/*` | dynamic | Generated from Firestore |
+
+**SEO, now actually solved:** per-page `generateMetadata`, JSON-LD (`Person`, `WebSite`,
+`BreadcrumbList`, `CreativeWork` per project), dynamic OG images via `opengraph-image.tsx`, canonical
+URLs, generated sitemap, and a Core Web Vitals budget (LCP < 2.0s, CLS < 0.05, INP < 200ms) checked
+by Lighthouse CI.
+
+**Design:** dark-first with a light toggle, one accent colour, 4pt spacing scale, fluid type,
+Tailwind v4 tokens, WCAG AA, full keyboard nav, `prefers-reduced-motion` honoured. I'll show you
+**3 visual directions** at the start of Phase 4 rather than picking for you.
 
 ---
 
-## 14. Decisions I need from you
+## 10. Admin panel — exactly what you described
+
+Go to `nikunjramani.in/admin`, sign in with Google, edit everything. No console, no redeploy.
+
+| Route | What it does |
+|---|---|
+| `/admin/login` | Google sign-in; rejects anyone without the `admin` claim |
+| `/admin` | Dashboard: content counts, unread messages, recent edits, quick actions |
+| `/admin/projects` | Table: search, filter by visibility/kind, **drag to reorder**, duplicate, delete |
+| `/admin/projects/[id]` | The big one — §6 editor. Core fields, then collapsible optional sections |
+| `/admin/skills` | Inline-editable grid, drag to reorder, category grouping |
+| `/admin/experience` · `/education` · `/certifications` | Same pattern |
+| `/admin/posts` | MDX editor with live preview (Phase 8) |
+| `/admin/profile` | Bio, headline, socials, résumé upload, availability toggle |
+| `/admin/media` | Upload, browse, alt text, copy URL, delete. Auto WebP + thumbnails |
+| `/admin/messages` | Contact inbox: read/unread, replied, spam, export |
+| `/admin/settings` | Feature flags, announcement banner, maintenance mode |
+
+**Schema-driven forms.** The editor doesn't hard-code fields — a `<SchemaForm>` component reads the
+JSON Schema and renders the right control per field (text, richtext, array-of-objects, media picker,
+enum select), validated by the generated Zod schema. Add a field to `architecture/`, run `make gen`,
+and it appears in the form. This is the compounding payoff of your architecture-folder idea.
+
+Also: draft/publish with **preview-before-publish**, autosave to localStorage, optimistic UI,
+"unsaved changes" guard, and every write stamped with `updatedAt` + an audit trail.
+
+---
+
+## 11. Content — still the real bottleneck
+
+Design and code are the fast part; writing is slow. Fill `docs/CONTENT.md`:
+
+- **11.1 Identity** (30m) — name, one-line headline, tagline, location, open-to-work?
+- **11.2 About** (1h) — 3 paragraphs: what you're good at · how you got here · who you are outside work
+- **11.3 Skills** (30m) — everything you'd defend in an interview, grouped, rated 1–5. Be honest with the 5s
+- **11.4 Experience** (1h) — per role: 3 bullets of **achievements with numbers**, not duties
+- **11.5 Projects, 3–6** (2–3h) — the centrepiece. Use §6 as the questionnaire: problem, approach, outcomes with real metrics, stack, screenshots, links. Work projects count — set `client.confidential: true` and describe them without naming names
+- **11.6 Assets** — résumé PDF, headshot, screenshots, favicon
+- **11.7 Later** — education, certifications, blog, testimonials
+
+§11.1–11.5 are launch-blocking. You can start Phase 0–1 before writing a word.
+
+---
+
+## 12. Phases
+
+Focused working hours, not calendar time.
+
+**Phase 0 — Foundation & infra · ~6h**
+`git init` · repo skeleton · GCP project + Firebase + billing + budget alert · Terraform state bucket
+· `terraform apply` for Firestore, Storage, IAM, Secret Manager · rules deployed · admin claim granted
+to your account · Next.js and Functions both booting locally.
+→ *Done when `make dev` runs both apps and `terraform plan` is clean.*
+
+**Phase 1 — Architecture & codegen · ~7h**
+Every JSON Schema written · enums · examples · `make gen` producing Pydantic + TS + Zod · CI drift check
+· ERD generated.
+→ *Done when one schema edit updates all three targets with zero hand-editing.*
+
+**Phase 2 — Content & design direction · ~5h (mostly you)**
+You write §11.1–11.5 · I present 3 visual directions · design tokens locked into Tailwind ·
+`docs/DESIGN.md`.
+
+**Phase 3 — Backend · ~12h**
+FastAPI app + `a2wsgi` wrapper · auth dependency · `BaseRepository` + per-collection repos · services ·
+all admin CRUD routers · contact endpoint with Turnstile + rate limit · Firestore/Storage/scheduled
+triggers · pytest with the emulator suite · ruff + mypy clean.
+→ *Done when `/docs` shows the full API and the emulator test suite passes.*
+
+**Phase 4 — Public site · ~16h**
+Layout shell · nav/footer · theme toggle · Home · Projects grid + filters · the §6 case-study page ·
+About · Experience · Contact · 404 · responsive at 3 breakpoints · a11y pass · SEO metadata + JSON-LD
++ OG images · Lighthouse ≥ 95.
+
+**Phase 5 — Admin panel · ~14h**
+Auth guard + middleware · dashboard · `<SchemaForm>` renderer · project editor with optional-section
+panels · media library with upload + processing · drag-reorder · messages inbox · settings · preview
+before publish.
+
+**Phase 6 — Deploy & DNS · ~5h**
+App Hosting backend live · functions deployed · **GoDaddy DNS → Firebase** (§14) · SSL · Search Console
++ sitemap submitted · OG previews verified on LinkedIn/WhatsApp · smoke tests. **← LAUNCH**
+
+**Phase 7 — CI/CD hardening · ~5h**
+The workflows in §13, Workload Identity Federation, PR previews, Lighthouse CI, branch protection.
+
+**Phase 8 — After launch**
+Blog + MDX · analytics dashboard · testimonials · view counts · RSS · i18n · dark/light polish.
+
+**To launch: ~65h build + ~5h of your writing.**
+
+---
+
+## 13. CI/CD (designed now, wired in Phase 7)
+
+| Workflow | Trigger | Does |
+|---|---|---|
+| `schemas.yml` | PR touching `architecture/` | Validate schemas, validate examples, `make gen`, **fail on any diff** |
+| `ci-frontend.yml` | PR | `tsc --noEmit`, eslint, vitest, `next build`, Lighthouse CI budget |
+| `ci-backend.yml` | PR | ruff, `mypy --strict`, pytest against the Firebase emulator |
+| `infra-plan.yml` | PR touching `infra/` | `terraform fmt -check`, `validate`, `plan` → posted as a PR comment |
+| `deploy.yml` | push to `main` | `terraform apply` → deploy functions → App Hosting auto-builds from git |
+| `preview.yml` | PR | App Hosting preview channel + a comment with the URL |
+| `backup.yml` | nightly cron | Verify the Firestore export ran |
+
+Auth via **Workload Identity Federation** — no service-account JSON keys in GitHub secrets.
+Structure that supports this from day one: independent `frontend/` `backend/` `infra/` roots, path
+filters so unrelated changes don't rebuild everything, and `make` targets that CI reuses verbatim.
+
+---
+
+## 14. Domain (GoDaddy → Firebase)
+
+1. App Hosting → Add custom domain → `nikunjramani.in`, then `www`.
+2. Use the **exact** TXT + A records the console shows you — never IPs from a blog post.
+3. GoDaddy → DNS → Manage Zones: add the TXT, the A records (TTL 600), `CNAME www → nikunjramani.in`.
+4. **Delete GoDaddy's default parking/forwarding records** or they will fight yours.
+5. Propagation usually < 1h. SSL is automatic.
+6. Optional email `hello@nikunjramani.in` — Zoho Mail free tier or Cloudflare Email Routing.
+
+---
+
+## 15. Cost & risk
+
+Everything sits inside free tiers: Firestore 50k reads/day, Storage 5 GB, Functions 2M calls/mo,
+App Hosting on Cloud Run's free tier, Resend 3k emails/mo. **Realistic monthly cost: ₹0** — but
+Blaze (card on file) is required for Storage, Functions and App Hosting, which is why Phase 0 sets a
+₹500 budget alert and caps `max_instances`.
+
+| Risk | Mitigation |
+|---|---|
+| Next.js/React learning curve | Phases are ordered so you learn on the public site before the harder admin work; I'll comment generously and write `docs/ADR/` for the non-obvious calls |
+| Schema churn early on | Versioning + migration scripts from Phase 1; churn is cheap *because* it's centralised |
+| Function cold start (~1–3s, Python) | Write path only. Never blocks a page load |
+| Terraform partial coverage | §8 lists the manual steps honestly; `bootstrap.sh` scripts what it can |
+| Admin panel scope creep | Phase 5 has a fixed route list. Extras go to Phase 8 |
+| Content never gets written | Phase 2 is explicitly a content phase with a checklist |
+
+---
+
+## 16. Decisions I need from you
 
 | # | Question | My recommendation |
 |---|---|---|
-| 1 | Backend or pure static? | **Backend**, structured as §1 |
-| 2 | Flutter Web despite the SEO cost (§2)? | **Yes, proceed** — mitigations are enough for a personal site |
-| 3 | Firebase project name | `nikunjramani-in` |
-| 4 | Enable Blaze billing with a ₹500 alert? | **Yes** — required for Storage + Cloud Run, real cost ₹0 |
-| 5 | Blog at launch? | **No** — Phase 6. Ship without it |
-| 6 | Admin UI at launch? | **No** — edit via Firebase Console + seed script until Phase 6 |
-| 7 | Dark-first, light toggle? | **Yes** |
-| 8 | Contact email destination | `nikunjr@cybage.com` for now, → `hello@nikunjramani.in` later? |
-| 9 | GitHub repo: public or private? | **Public** — it's a portfolio piece in itself |
-| 10 | Anything in §9 you already have written? | Send it and we skip ahead |
+| 1 | Next.js 16 + TypeScript as the frontend? | **Yes** — solves SEO, most transferable skill |
+| 2 | FastAPI-inside-one-Function, or many small plain Functions? | **FastAPI in one** — validation + OpenAPI + portable off Firebase later |
+| 3 | Firebase project id | `nikunjramani-in` |
+| 4 | Staging environment too, or prod only? | **Prod only** now; Terraform modules make staging a 1-day add later |
+| 5 | Enable Blaze + ₹500 budget alert? | **Yes** — required; real cost ₹0 |
+| 6 | Admin panel at launch (Phase 5)? | **Yes** — you asked for it, and it's what makes the site maintainable |
+| 7 | Blog at launch? | **No** — Phase 8 |
+| 8 | Contact email destination | `nikunjr@cybage.com` now → `hello@nikunjramani.in` later? |
+| 9 | GitHub repo public or private? | **Public** — it's a portfolio piece in itself |
+| 10 | Anything from §11 already written? | Send it and we skip ahead |
 
 ---
 
-## 15. What happens when you approve
+## 17. On approval
 
-I start **Phase 0** immediately: git init, the `frontend/` + `backend/` scaffold, Firebase project
-setup instructions for the console steps only you can do, security rules, and both apps booting
-locally. Then Phase 1, where I show you 3 design directions and you write §9 content.
+I start **Phase 0**: repo skeleton, `Makefile`, Terraform modules, and a checklist of the handful of
+console clicks only you can do (§8). Then **Phase 1**, where the schemas get written and the codegen
+pipeline goes live — after which every later phase gets faster.
 
-Reply with your answers to §14 — or just **"approved, defaults are fine"** and I'll take every
-recommendation in the right-hand column and go.
+Reply with §16, or just **"approved, defaults are fine"** and I'll take every recommendation in the
+right-hand column and go.
