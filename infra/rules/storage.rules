@@ -1,0 +1,18 @@
+rules_version = '2';
+
+// Public assets are world-readable. Nothing is client-writable: uploads happen through
+// signed URLs issued by the API after it checks the admin claim, content type and size.
+
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    match /public/{allPaths=**} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

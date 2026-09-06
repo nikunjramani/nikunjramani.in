@@ -123,8 +123,10 @@ in the repository layer, in exactly one place.
   add the index when you add the query.
 - **Cold starts scale with top-level imports.** Keep `main.py` thin; import heavy things inside the
   function that needs them.
-- **A new domain needs a Firebase Hosting rewrite.** Without it the function deploys fine and looks
-  healthy, but the frontend gets a 404 that reads like a routing bug.
+- **A new domain needs a rewrite in `frontend/next.config.ts`** (not Firebase Hosting — App Hosting
+  has no rewrites). Without it the function deploys fine and looks healthy, but the frontend gets a
+  404 that reads like a routing bug. It also needs adding to the `importlinter` contract in
+  `backend/functions/pyproject.toml`, or its boundaries go unchecked.
 - **Localhost Lighthouse scores lie.** Only production numbers count.
 
 ## Working style

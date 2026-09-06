@@ -25,7 +25,7 @@ The plan lives here, split by topic and phase. Start with the
 
 | Phase | Doc | Hours | Status |
 |---|---|---|---|
-| 0 | [Foundation & Infra](./phases/phase-0-foundation.md) | ~6h | ⬜ Not started |
+| 0 | [Foundation & Infra](./phases/phase-0-foundation.md) | ~6h | 🟡 In progress |
 | 1 | [Schemas & Codegen](./phases/phase-1-schemas.md) | ~7h | ⬜ Not started |
 | 2 | [Content & Design](./phases/phase-2-content-design.md) | ~5h | ⬜ Not started |
 | 3 | [Backend](./phases/phase-3-backend.md) | ~14h | ⬜ Not started |

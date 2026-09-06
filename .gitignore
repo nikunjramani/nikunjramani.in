@@ -73,3 +73,9 @@ Thumbs.db
 .cache/
 tmp/
 .claude/settings.local.json
+
+# Firebase emulator state
+.emulator-data/
+
+# Rules test deps
+infra/rules/tests/node_modules/

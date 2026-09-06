@@ -65,7 +65,8 @@ api_projects = make_function(router, name="api_projects")
 OpenAPI were the reason for choosing it in 0003, and neither depends on there being only one
 function.
 
-**Firebase Hosting rewrites keep the API surface unified**, so the frontend still sees one base URL:
+**Rewrites keep the API surface unified**, so the frontend still sees one base URL
+(see the implementation note at the end — the mechanism is Next.js, not Firebase Hosting):
 
 ```jsonc
 "rewrites": [
@@ -97,7 +98,7 @@ function.
   of first-use latency per screen, for a single user. Judged acceptable; a `min_instances` bump on
   the busiest domain is available if it grates
 - **OpenAPI docs fragment** across functions — one spec per domain rather than one for the API
-- **Hosting rewrites become load-bearing.** Adding a domain means adding a rewrite, and forgetting
+- **Rewrites become load-bearing.** Adding a domain means adding a rewrite, and forgetting
   produces a 404 that looks like a routing bug
 - Shared code needs real discipline. `shared/` may never import from `src/`
 
@@ -129,3 +130,36 @@ while only fixing the cosmetic complaint.
 - Cold starts across multiple domains make the admin panel genuinely unpleasant to use
 - Deploy time for ~14 functions becomes a bottleneck
 - Two domains turn out to be so coupled that splitting them was artificial
+
+---
+
+## Implementation note — added 2026-09-06, during Phase 0
+
+**The unification mechanism above is wrong.** Firebase **App Hosting does not support
+`firebase.json` rewrites** — that is classic Firebase Hosting, a separate product. App
+Hosting serves the framework backend through a load balancer and offers no rewrite config;
+routing to Functions has to happen inside the application.
+
+The decision itself is unaffected: one function per domain still stands, and the API
+surface is still unified. The mechanism is **Next.js rewrites** in `next.config.ts`:
+
+```ts
+async rewrites() {
+  return DOMAINS.map((domain) => ({
+    source: `/api/v1/${domain}/:path*`,
+    destination: `${FUNCTIONS_BASE}/api_${domain}/:path*`,
+  }));
+}
+```
+
+This turns out to be better than the original plan. The browser only ever talks to one
+origin, so there is **no CORS preflight on any API call** and cookies need no special
+handling. The cost is one extra hop through the already-warm Next server — acceptable on a
+write-only path used by one admin and the occasional contact form.
+
+If that hop ever matters, the escape hatch is calling the per-domain function URLs
+directly, with CORS configured — which `shared/api.py` already does.
+
+*Recorded as an implementation note rather than a new ADR: the decision did not change,
+only a factual assumption about how the platform works.*
+

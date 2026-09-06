@@ -1,6 +1,6 @@
 # Phase 0 · Foundation & Infrastructure
 
-**~6 hours** · Status: ⬜ Not started
+**~6 hours** · Status: 🟡 In progress — local scaffold done, cloud steps blocked on billing
 
 > **Goal:** A working local development environment and a fully provisioned Firebase/GCP
 > project, with infrastructure defined as code from the very first commit.
@@ -11,7 +11,7 @@
 
 - [ ] [Decisions](../decisions.md) answered — especially the project id and Blaze
 - [ ] Repo pushed to GitHub
-- [ ] A Google account for the Firebase project *(personal, not the work account)*
+- [x] A Google account for the Firebase project *(personal, not the work account)*
 
 **Tools** — all already installed and verified:
 
@@ -21,8 +21,8 @@
 | Python | 3.13 | 3.13 via Homebrew ✅ *(system 3.9 — use the Homebrew one)* |
 | Firebase CLI | 14+ | 14.20.0 ✅ |
 | gcloud | latest | 543.0.0 ✅ |
-| Terraform | 1.9+ | ⬜ `brew install terraform` |
-| uv | latest | ⬜ `brew install uv` |
+| Terraform | 1.9+ | 1.16.0 ✅ *(needs the `hashicorp/tap` — it was removed from homebrew-core)* |
+| uv | latest | 0.9.3 ✅ |
 
 ---
 
@@ -32,9 +32,9 @@
 
 These can't be Terraformed. See [04 · Infrastructure](../04-infrastructure.md#what-terraform-cant-do).
 
-- [ ] Create the GCP project `nikunjramani-in`
+- [x] Create the GCP project `nikunjramani-in`
 - [ ] Attach a billing account (**Blaze**)
-- [ ] Add Firebase to the project
+- [x] Add Firebase to the project
 - [ ] Set the budget alert to ₹500 with 50/90/100% notifications
 - [ ] Configure the OAuth consent screen (External, your email as support contact)
 - [ ] Enable the **Google** sign-in provider in Firebase Auth
@@ -45,21 +45,21 @@ checklist as it runs.
 
 ### 0.2 · Repo scaffold
 
-- [ ] Root `Makefile` with all targets ([01 · Repo Architecture](../01-repo-architecture.md#the-makefile))
-- [ ] `architecture/`, `frontend/`, `backend/`, `infra/`, `docs/` directory trees
-- [ ] `docs/RUNBOOK.md`, `docs/ADR/` seeded
-- [ ] `.nvmrc` (22) and `.python-version` (3.13)
+- [x] Root `Makefile` with all targets ([01 · Repo Architecture](../01-repo-architecture.md#the-makefile))
+- [x] `architecture/`, `frontend/`, `backend/`, `infra/`, `docs/` directory trees
+- [x] `docs/RUNBOOK.md`, `docs/ADR/` seeded
+- [x] `.nvmrc` (22) and `.python-version` (3.13)
 
 ### 0.3 · Terraform
 
-- [ ] `backend.tf` — GCS remote state with locking
-- [ ] `modules/project` — enable APIs, labels, budget
-- [ ] `modules/iam` — least-privilege service accounts
-- [ ] `modules/firestore` — database, indexes, rules release
-- [ ] `modules/storage` — buckets, CORS, lifecycle
-- [ ] `modules/secrets` — Secret Manager entries
-- [ ] `modules/monitoring` — uptime check, error alert
-- [ ] `envs/prod/main.tf` wiring them together
+- [x] `backend.tf` — GCS remote state with locking
+- [x] `modules/project` — enable APIs, labels, budget
+- [x] `modules/iam` — least-privilege service accounts
+- [x] `modules/firestore` — database, indexes, rules release
+- [x] `modules/storage` — buckets, CORS, lifecycle
+- [x] `modules/secrets` — Secret Manager entries
+- [x] `modules/monitoring` — uptime check, error alert
+- [x] `envs/prod/main.tf` wiring them together
 - [ ] `terraform init && terraform plan` reviewed, then applied
 
 > `modules/functions` and `modules/app-hosting` are stubbed now, filled in Phases 3 and 6 — there's
@@ -67,9 +67,9 @@ checklist as it runs.
 
 ### 0.4 · Security rules
 
-- [ ] `infra/rules/firestore.rules` per [03 · Security](../03-security.md)
-- [ ] `infra/rules/storage.rules`
-- [ ] `infra/rules/firestore.indexes.json` (empty to start)
+- [x] `infra/rules/firestore.rules` per [03 · Security](../03-security.md)
+- [x] `infra/rules/storage.rules`
+- [x] `infra/rules/firestore.indexes.json` (empty to start)
 - [ ] Deployed and verified: an anonymous client read succeeds, a write fails
 
 ### 0.5 · Admin claim
@@ -80,23 +80,23 @@ checklist as it runs.
 
 ### 0.6 · Frontend skeleton
 
-- [ ] `create-next-app` — TypeScript, App Router, Tailwind v4, ESLint
-- [ ] `shadcn/ui` initialised
-- [ ] Firebase Admin SDK + client SDK wired in `lib/firebase/`
-- [ ] `tsconfig.json` strict, path aliases (`@/…`)
-- [ ] ESLint boundary rule: `(site)` may not import from `(admin)`
-- [ ] `npm run dev` renders a placeholder page
+- [x] `create-next-app` — TypeScript, App Router, Tailwind v4, ESLint
+- [ ] `shadcn/ui` initialised *(deferred to Phase 2, with the design tokens)*
+- [x] Firebase Admin SDK + client SDK wired in `lib/firebase/`
+- [x] `tsconfig.json` strict, path aliases (`@/…`)
+- [x] ESLint boundary rule: `(site)` may not import from `(admin)`
+- [x] `npm run dev` renders a placeholder page
 
 ### 0.7 · Backend skeleton
 
-- [ ] `backend/functions/` with `uv` and `pyproject.toml`, Python 3.13
-- [ ] `firebase.json` with `"runtime": "python313"`
-- [ ] `shared/` skeleton — `core/`, `api.py`, `repositories/`
-- [ ] `shared/api.py` — `make_function()`, the FastAPI + `a2wsgi` wrapper
-- [ ] **One proof-of-concept domain**: `src/system/` exporting `api_system` with `/health`
-- [ ] `main.py` importing and re-exporting it
-- [ ] Hosting rewrite for it in `firebase.json`
-- [ ] `ruff` + `mypy --strict` + `import-linter` configured and clean
+- [x] `backend/functions/` with `uv` and `pyproject.toml`, Python 3.13
+- [x] `firebase.json` with `"runtime": "python313"`
+- [x] `shared/` skeleton — `core/`, `api.py`, `repositories/`
+- [x] `shared/api.py` — `make_function()`, the FastAPI + `a2wsgi` wrapper
+- [x] **One proof-of-concept domain**: `src/system/` exporting `api_system` with `/health`
+- [x] `main.py` importing and re-exporting it
+- [x] Rewrite for it in `frontend/next.config.ts`
+- [x] `ruff` + `mypy --strict` + `import-linter` configured and clean
 - [ ] Firebase emulators (Firestore, Auth, Storage, Functions) start
 - [ ] `/health` responds through the emulator **via the rewrite**, not the raw function URL
 
@@ -104,8 +104,8 @@ checklist as it runs.
 
 - [ ] `make setup` installs both sides from scratch
 - [ ] `make dev` runs Next.js + emulators together
-- [ ] `make lint` and `make test` pass on the empty projects
-- [ ] `docs/RUNBOOK.md` documents local setup end to end
+- [x] `make lint` and `make test` pass on the empty projects
+- [x] `docs/RUNBOOK.md` documents local setup end to end
 
 ---
 

@@ -1,0 +1,35 @@
+{
+  "functions": [
+    {
+      "source": "backend/functions",
+      "codebase": "default",
+      "runtime": "python313",
+      "ignore": [
+        ".venv",
+        "venv",
+        ".git",
+        "**/__pycache__/**",
+        "**/.pytest_cache/**",
+        "**/.mypy_cache/**",
+        "**/.ruff_cache/**",
+        "**/tests/**",
+        ".env"
+      ]
+    }
+  ],
+  "firestore": {
+    "rules": "infra/rules/firestore.rules",
+    "indexes": "infra/rules/firestore.indexes.json"
+  },
+  "storage": {
+    "rules": "infra/rules/storage.rules"
+  },
+  "emulators": {
+    "auth": { "port": 9099 },
+    "functions": { "port": 5001 },
+    "firestore": { "port": 8080 },
+    "storage": { "port": 9199 },
+    "ui": { "enabled": true, "port": 4000 },
+    "singleProjectMode": true
+  }
+}

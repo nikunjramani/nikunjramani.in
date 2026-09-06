@@ -117,11 +117,15 @@ Four steps, and forgetting any of them fails in a confusing way:
    api_<domain> = make_function(router, name="api_<domain>")
    ```
 3. Import and re-export it in `backend/functions/main.py`
-4. **Add the Firebase Hosting rewrite** — without it the function deploys fine and looks healthy,
-   but the frontend gets a 404 that reads like a routing bug
-   ```jsonc
-   { "source": "/api/v1/<domain>/**", "function": "api_<domain>" }
+4. **Add the rewrite** in `frontend/next.config.ts` — without it the function deploys fine and
+   looks healthy, but the frontend gets a 404 that reads like a routing bug. Add the domain to the
+   `DOMAINS` array:
+   ```ts
+   const DOMAINS = ["system", "contact", "<domain>"] as const;
    ```
+   (Firebase Hosting rewrites don't apply — App Hosting is a different product and has none.)
+5. **Add it to the import-linter contract** in `backend/functions/pyproject.toml`, or the domain's
+   boundaries are silently unchecked.
 
 Then add the domain to the Terraform `domains` map with its memory and `max_instances`.
 
