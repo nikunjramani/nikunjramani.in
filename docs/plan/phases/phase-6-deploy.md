@@ -19,7 +19,8 @@
 
 ### 6.1 · Infrastructure
 
-- [ ] Fill in `modules/functions` — runtime, memory, `max_instances = 3`, secrets bound
+- [ ] Fill in `modules/functions` — `for_each` over the domain map, per-domain memory and
+      `max_instances = 3`, secrets bound
 - [ ] Fill in `modules/app-hosting` — backend, GitHub connection, env vars
 - [ ] `terraform plan` reviewed
 - [ ] `terraform apply`
@@ -28,8 +29,9 @@
 ### 6.2 · Backend deploy
 
 - [ ] Secrets populated in Secret Manager (Resend, Turnstile)
-- [ ] `firebase deploy --only functions`
-- [ ] `/health` responds on the deployed URL
+- [ ] `firebase deploy --only functions` — confirm **every** domain deployed, none silently skipped
+- [ ] Hosting rewrites resolve for every domain — a missing one 404s like a routing bug
+- [ ] `/health` responds on the deployed URL, via the rewrite
 - [ ] A real contact submission delivers an email
 - [ ] Scheduled backup job registered and manually triggered once
 - [ ] `/docs` confirmed **disabled** in production

@@ -50,11 +50,13 @@ by hand — CI regenerates and fails on any diff.
 > Scaffolding lands in Phase 0 — these commands don't exist yet.
 
 ```bash
-make setup   # install frontend + backend deps
-make dev     # Next.js + Firebase emulators
-make gen     # regenerate models from architecture/schemas
-make test    # frontend + backend test suites
-make deploy  # terraform apply + deploy functions
+make setup     # install frontend + backend deps
+make dev       # Next.js + Firebase emulators
+make gen       # regenerate models from architecture/schemas
+make validate  # validate schemas + example fixtures
+make lint      # eslint + ruff + mypy + import-linter
+make test      # frontend + backend test suites
+make deploy    # terraform apply + deploy functions
 ```
 
 **Prerequisites:** Node 22+, Python 3.13, Terraform 1.9+, Firebase CLI, gcloud CLI.

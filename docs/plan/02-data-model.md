@@ -59,6 +59,12 @@ that same change is four edits in four languages that drift apart the first time
 Every content collection carries `visibility` and `order`. Public queries filter
 `visibility == "public"` and sort by `order`, so you can draft live without anything showing.
 
+> ⚠️ **The singletons need `visibility` too.** `profile/main` and `site_config/main` are the easy
+> ones to forget, since "drafting your profile" isn't a thing you'd naturally want. But the security
+> rule reads `resource.data.visibility`, and on a document missing the field that evaluates to
+> `null` — the read is denied and the site renders empty with no useful error. Both schemas mark it
+> required.
+
 ---
 
 ## The project model

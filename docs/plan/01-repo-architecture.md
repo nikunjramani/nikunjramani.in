@@ -226,7 +226,8 @@ one less cause.
 make setup     # install frontend + backend dependencies
 make dev       # Next.js dev server + Firebase emulators
 make gen       # regenerate all models from architecture/schemas
-make lint      # eslint + ruff + mypy + terraform fmt
+make validate  # validate schemas + example fixtures
+make lint      # eslint + ruff + mypy + import-linter + terraform fmt
 make test      # vitest + pytest
 make build     # production build of both
 make deploy    # terraform apply + firebase deploy

@@ -27,24 +27,42 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    function isPublicCollection(col) {
+      return col in ['profile', 'projects', 'skills', 'experience', 'education',
+                     'certifications', 'posts', 'site_config'];
+    }
+
     function isPublished() {
       return resource.data.visibility == 'public';
     }
 
     // Content: world-readable when published, never client-writable
-    match /{col}/{id}
-      where col in ['profile','projects','skills','experience','education',
-                    'certifications','posts','site_config'] {
-      allow read:  if isPublished();
+    match /{col}/{id} {
+      allow read:  if isPublicCollection(col) && isPublished();
       allow write: if false;          // ← Python API only, no exceptions
     }
 
-    // The inbox and the audit log are invisible to the client entirely
-    match /contact_messages/{id} { allow read, write: if false; }
-    match /audit_log/{id}        { allow read, write: if false; }
+    // contact_messages and audit_log fall through to the default: no access.
+    // They are never readable or writable by any client.
   }
 }
 ```
+
+> ⚠️ Two things that are easy to get wrong here.
+>
+> **Match statements have no `where` clause.** The collection wildcard is bound as a variable
+> (`col`) and filtered *inside the condition* — there's no way to restrict the match path itself to
+> a list. Writing `match /{col}/{id} where col in [...]` doesn't compile.
+>
+> **A default-deny fallthrough is safer than an explicit deny.** Any collection not named in
+> `isPublicCollection` is inaccessible because nothing grants access to it, not because a rule
+> denies it. That means a new collection is private by default — you have to consciously add it to
+> the list to expose it, rather than remembering to write a deny rule for it.
+
+**Every publicly-readable document must carry `visibility`** — including the singletons
+`profile/main` and `site_config/main`. `resource.data.visibility` on a document that lacks the field
+evaluates to `null`, the read is denied, and the site renders empty with no error anywhere useful.
+The schemas make the field required for exactly this reason.
 
 **Why deny writes even for the admin?** Because a client-side write path means the browser holds
 credentials capable of mutating the database, and every XSS bug then becomes a data-integrity bug.

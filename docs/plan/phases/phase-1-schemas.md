@@ -48,6 +48,7 @@ One file each, so a new value is a one-line change that propagates everywhere.
 - [ ] `post.schema.json`
 - [ ] `contact-message.schema.json`
 - [ ] `site-config.schema.json`
+- [ ] `audit-log.schema.json` — `{ actor, action, collection, docId, before, after, at }`
 
 Each carries `x-firestore` metadata:
 
