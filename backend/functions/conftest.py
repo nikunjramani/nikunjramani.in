@@ -1,8 +1,11 @@
 """Fixtures shared across integration tests that hit the Firestore emulator.
 
 Requires `firebase emulators:start --only firestore` running separately — these are
-integration tests, not unit tests, and are skipped automatically if the emulator is not
-reachable so `make test` still works offline.
+integration tests, not unit tests. Any test that requests `db` (directly, or via
+`clean_collection`, which depends on it) skips automatically when the emulator is not
+reachable, so `make test` still works offline with no marker needed in the test file
+itself. Lives at the project root, not under shared/, so every domain's tests can use it
+— pytest only shares a conftest's fixtures within its own directory subtree.
 """
 
 from __future__ import annotations
@@ -27,14 +30,10 @@ def _emulator_reachable() -> bool:
         return False
 
 
-requires_emulator = pytest.mark.skipif(
-    not _emulator_reachable(),
-    reason="Firestore emulator not reachable on FIRESTORE_EMULATOR_HOST",
-)
-
-
 @pytest.fixture
 def db() -> Client:
+    if not _emulator_reachable():
+        pytest.skip("Firestore emulator not reachable on FIRESTORE_EMULATOR_HOST")
     from shared.core.firebase import get_db
 
     return get_db()

@@ -12,9 +12,6 @@ from google.cloud.firestore_v1 import Client
 from shared.core.errors import NotFoundError
 from shared.generated import Skill
 from shared.repositories.base import BaseRepository
-from shared.repositories.tests.conftest import requires_emulator
-
-pytestmark = requires_emulator
 
 
 class SkillRepository(BaseRepository[Skill]):

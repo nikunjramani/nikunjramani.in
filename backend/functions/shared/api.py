@@ -2,20 +2,24 @@
 
 Every domain calls this to export exactly one deployed function. See ADR 0011.
 
-Two non-obvious details are load-bearing here:
+Three non-obvious details are load-bearing here:
 
 1. The Firebase SDK derives the *deployed* function name from the handler's ``__name__``,
    read at decoration time. So ``__name__`` is set before ``on_request`` is applied —
    otherwise every domain would deploy as "handler" and collide.
-2. ``Response.from_app`` runs a WSGI app against the incoming request environ and returns a
-   real Response. That is the bridge from Firebase's Flask-shaped handler to FastAPI's ASGI.
-3. ``https_fn.Request``/``Response`` are re-exports of Flask's, but are not declared as public
+2. ``https_fn.Request``/``Response`` are re-exports of Flask's, but are not declared as public
    exports, so they are imported from Flask directly to keep ``mypy --strict`` happy.
+3. The WSGI bridge is `shared.wsgi_bridge`, not `a2wsgi.ASGIMiddleware` directly.
+   `ASGIMiddleware` spins up a persistent background thread at construction time, and a
+   forked child process — which is exactly what Werkzeug's dev-server reloader and Cloud
+   Functions' own worker model both do — inherits a dead copy of that thread. Waiting on
+   it then hangs forever, reproduced directly with `os.fork()` in development. See
+   `shared/wsgi_bridge.py` for the full account and the fix (a fresh `asyncio.run()` per
+   call, no persistent thread to survive a fork).
 """
 
 from typing import Any, cast
 
-from a2wsgi import ASGIMiddleware
 from fastapi import APIRouter, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -26,6 +30,7 @@ from flask import Response as FlaskResponse
 from shared.core.config import get_settings
 from shared.core.errors import DomainError
 from shared.core.logging import configure_logging, get_logger
+from shared.wsgi_bridge import wsgi_from_asgi
 
 log = get_logger(__name__)
 
@@ -74,9 +79,7 @@ def make_function(
     region: str = DEFAULT_REGION,
 ) -> Any:
     """Wrap a FastAPI router as one deployed Firebase HTTP function named ``name``."""
-    # Both casts are structural, not semantic: FastAPI *is* an ASGI app and ASGIMiddleware
-    # *is* a WSGI app, but neither library's protocol types line up under --strict.
-    wsgi = cast("Any", ASGIMiddleware(cast("Any", make_app(router, name))))
+    wsgi = wsgi_from_asgi(make_app(router, name))
 
     def _handler(req: FlaskRequest) -> FlaskResponse:
         # from_app is inherited from werkzeug, whose stub under-reports the return type;

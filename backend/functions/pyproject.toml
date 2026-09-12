@@ -46,8 +46,10 @@ exclude = ["shared/generated", "\\.venv"]
 module = "shared.generated.*"
 ignore_errors = true
 
+# firebase_functions, a2wsgi and flask all ship their own py.typed — real type info,
+# verified by hand rather than assumed. firebase_admin does not, and needs this.
 [[tool.mypy.overrides]]
-module = ["firebase_functions.*", "firebase_admin.*", "a2wsgi.*"]
+module = ["firebase_admin.*"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]
@@ -78,4 +80,5 @@ name = "domains must not import each other"
 type = "independence"
 modules = [
     "src.system",
+    "src.contact",
 ]

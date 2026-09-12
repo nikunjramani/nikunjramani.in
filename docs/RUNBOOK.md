@@ -146,3 +146,5 @@ Nightly Firestore export → `nikunjramani-in-backups`, 30-day lifecycle.
 | Deploy fails on a secret | Secret read at import time instead of runtime |
 | `uv` builds against Python 3.9 | System Python picked up; force the Homebrew 3.13 |
 | Firestore query fails in prod only | Missing composite index |
+| `Could not detect runtime` / `Missing virtual environment at venv directory` | Run `make setup-backend` — Firebase needs `requirements.txt` and its own `venv/`, not `.venv/` |
+| A function request hangs forever, no response, no error | Something constructed `a2wsgi.ASGIMiddleware` directly instead of using `shared/wsgi_bridge.py` — see ADR 0003's implementation note |

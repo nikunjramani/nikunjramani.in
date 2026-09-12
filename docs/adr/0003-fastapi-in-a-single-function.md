@@ -53,3 +53,45 @@ Best cold-start isolation and independently scalable. Rejected: no shared routin
 
 - Cold starts on the API become user-visible
 - A single endpoint develops resource needs wildly different from the rest
+
+---
+
+## Implementation note — added 2026-09-12, during Phase 3
+
+**`a2wsgi.ASGIMiddleware` is not used directly, even though the FastAPI-via-`a2wsgi` decision
+above still stands.** Firebase's own deploy tooling forced this: it requires a `requirements.txt`
+at the function source root and a stdlib `venv/` it manages itself (distinct from the `uv`-managed
+`.venv/` used for local dev, lint and test), or `firebase deploy`/`firebase emulators:start` cannot
+detect the runtime or load the function at all. Neither is optional — `make setup-backend` now
+generates both.
+
+With that in place, a real end-to-end request through the emulator — the exact test this ADR's
+own Alternatives section assumed would already work — hung indefinitely. `os.fork()` reproduced it
+directly: `ASGIMiddleware` starts a persistent background thread running its own event loop at
+*construction* time, and `os.fork()` only duplicates the calling thread. Werkzeug's dev-server
+reloader (which `functions-framework` uses locally) forks, so the child inherits a dead copy of
+that thread — Python even warns about this at the fork call
+(`this process is multi-threaded, use of fork() may lead to deadlocks in the child`). Every
+subsequent request then hangs forever, waiting via
+`asyncio.run_coroutine_threadsafe(coro, self.loop).result()` on a loop nothing will ever run again.
+
+Direct in-process calls (`Response.from_app` from a synthetic Flask test context, even from a
+background thread) all worked fine — the corruption only shows up once an actual fork happens,
+which is exactly the gap between unit-testing the adapter and running it through the real
+emulator. This is the reason [Phase 3](../plan/phases/phase-3-backend.md) explicitly calls for
+verifying `make_function()` against the emulator itself before building further domains on it,
+rather than trusting a `TestClient` call.
+
+The fix, in `shared/wsgi_bridge.py`: reuse a2wsgi's `build_scope` (a small, pure,
+stateless WSGI-environ-to-ASGI-scope converter with no threading of its own) but drop
+`ASGIMiddleware`/`ASGIResponder` entirely, replacing them with a bridge that runs each request via
+a fresh `asyncio.run()` — no persistent thread, so nothing can be left dangling by a fork. This is
+strictly less efficient per call than a warm, reused event loop, which does not matter here: a
+Cloud Function cold-starts fresh per instance and handles one request at a time regardless.
+
+Verified against the real emulator, not just `TestClient`: a POST to `/contact` through the
+deployed `api_contact` function persisted correctly to Firestore, a honeypot-tripped submission
+returned the identical response without creating a document, and a missing-field submission
+produced a real 422 — all instantly, with no hang. Confirmed separately that the same
+`ASGIMiddleware` construction still hangs under a direct `os.fork()` test, isolating the fix to
+exactly the mechanism described above.

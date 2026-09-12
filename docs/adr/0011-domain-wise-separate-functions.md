@@ -163,3 +163,42 @@ directly, with CORS configured — which `shared/api.py` already does.
 *Recorded as an implementation note rather than a new ADR: the decision did not change,
 only a factual assumption about how the platform works.*
 
+---
+
+## Implementation note — added 2026-09-12, during Phase 3
+
+**Cold-start isolation, the headline benefit of this ADR, was not actually happening** with the
+obvious implementation — `main.py` doing a flat `from src.X import api_X` for every domain.
+
+`functions_framework` (the runtime `firebase-functions` builds on) loads a function by fully
+executing `main.py` and then plucking the one requested function out of the resulting module —
+confirmed by reading `functions_framework._function_registry` directly, and separately in
+`firebase_functions.private.serving.get_functions`, which does the same for `firebase deploy`'s own
+manifest discovery. A flat import list means every cold start — regardless of which single domain
+is actually about to serve the request — imports and fully constructs the FastAPI app for every
+*other* domain too. That is exactly as expensive as the single-function design this ADR replaced,
+just now duplicated across ~14 separate containers instead of paid once.
+
+The fix, in `main.py`: import conditionally on the `FUNCTION_TARGET` environment variable.
+
+```python
+_target = os.environ.get("FUNCTION_TARGET")
+
+def _wanted(name: str) -> bool:
+    return _target is None or _target == name
+
+if _wanted("api_contact"):
+    from src.contact import api_contact
+```
+
+`FUNCTION_TARGET` is unset wherever every function needs to be visible at once — the emulator, the
+test suite, and the CLI's manifest-discovery pass — so those get the same "import everything"
+behaviour as before, unchanged. It is set to exactly one function's name inside that function's own
+deployed container, where the conditional actually does its job.
+
+**This is now a fifth thing "adding a domain" requires**, alongside the schema, the router wiring,
+the `next.config.ts` rewrite and the import-linter contract entry: a new `if _wanted(...):` line in
+`main.py`. Forgetting it does not break anything visibly — the domain still works when invoked
+directly during discovery/testing — it just quietly loses the isolation this ADR exists for. See
+the `add-api-endpoint` skill and [CLAUDE.md](../../CLAUDE.md) for the checklist.
+

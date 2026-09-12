@@ -4,10 +4,11 @@
 SHELL := /bin/bash
 .DEFAULT_GOAL := help
 
-PYTHON  := /opt/homebrew/bin/python3.13
-BACKEND := backend/functions
-FRONT   := frontend
-VENV    := $(BACKEND)/.venv
+PYTHON     := /opt/homebrew/bin/python3.13
+BACKEND    := backend/functions
+FRONT      := frontend
+DEV_VENV   := $(BACKEND)/.venv
+FN_VENV    := $(BACKEND)/venv
 
 .PHONY: help setup setup-frontend setup-backend dev dev-frontend dev-emulators \
         gen validate lint lint-frontend lint-backend lint-infra test test-frontend \
@@ -21,7 +22,15 @@ help: ## Show this help
 setup: setup-backend setup-frontend ## Install all dependencies
 
 setup-backend:
+# Two Python environments exist here on purpose, not by accident:
+#   .venv/ — uv-managed, used for local dev, lint, mypy and pytest.
+#   venv/  — a plain stdlib venv Firebase's own CLI requires: `firebase deploy` and
+#            `firebase emulators:start` cannot detect the runtime or load a single
+#            function without both this venv and requirements.txt present, regardless
+#            of whatever tooling manages local dev. See ADR 0003's implementation note.
 	cd $(BACKEND) && uv venv --python $(PYTHON) && uv sync --all-extras
+	cd $(BACKEND) && uv export --no-dev --no-hashes --format requirements-txt -o requirements.txt
+	cd $(BACKEND) && $(PYTHON) -m venv venv && venv/bin/pip install --quiet -r requirements.txt
 
 setup-frontend:
 	cd $(FRONT) && npm install
@@ -74,7 +83,7 @@ deploy: ## terraform apply, then deploy rules + functions
 	firebase deploy --only functions
 
 clean: ## Remove build artefacts and caches
-	rm -rf $(FRONT)/.next $(FRONT)/node_modules $(VENV)
+	rm -rf $(FRONT)/.next $(FRONT)/node_modules $(DEV_VENV) $(FN_VENV)
 	find . -type d -name __pycache__ -prune -exec rm -rf {} + 2>/dev/null || true
 	find . -type d -name .pytest_cache -prune -exec rm -rf {} + 2>/dev/null || true
 	find . -type d -name .mypy_cache -prune -exec rm -rf {} + 2>/dev/null || true
