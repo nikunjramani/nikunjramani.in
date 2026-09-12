@@ -62,9 +62,15 @@ emulator-data/
 .Trashes
 Thumbs.db
 .idea/
+# launch.json/tasks.json/settings.json here are project infrastructure (which interpreter,
+# how to debug a function, how to start the emulators) — worth sharing, unlike an editor's
+# personal theme/font preferences. (`settings.shared.json` was never a real VS Code file;
+# only literal `settings.json` is read.)
 .vscode/*
 !.vscode/extensions.json
-!.vscode/settings.shared.json
+!.vscode/launch.json
+!.vscode/tasks.json
+!.vscode/settings.json
 *.swp
 *.swo
 

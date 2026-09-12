@@ -1,0 +1,78 @@
+{
+  "version": "0.2.0",
+  "inputs": [
+    {
+      "id": "domain",
+      "type": "promptString",
+      "description": "Domain to debug (a directory under backend/functions/src/, e.g. system, contact)",
+      "default": "contact"
+    }
+  ],
+  "configurations": [
+    {
+      "name": "Backend: debug a domain",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "functions_framework",
+      "args": ["--target=api_${input:domain}", "--port=8091"],
+      "cwd": "${workspaceFolder}/backend/functions",
+      "env": {
+        "FIRESTORE_EMULATOR_HOST": "127.0.0.1:8080",
+        "GOOGLE_CLOUD_PROJECT": "nikunjramani-in",
+        "ENVIRONMENT": "development"
+      },
+      "justMyCode": true,
+      "preLaunchTask": "emulators: data services",
+      "presentation": { "group": "backend", "order": 1 }
+    },
+    {
+      "name": "Backend: debug pytest (current file)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "pytest",
+      "args": ["${file}", "-v", "-s"],
+      "cwd": "${workspaceFolder}/backend/functions",
+      "env": {
+        "FIRESTORE_EMULATOR_HOST": "127.0.0.1:8080",
+        "GOOGLE_CLOUD_PROJECT": "nikunjramani-in"
+      },
+      "justMyCode": true,
+      "presentation": { "group": "backend", "order": 2 }
+    },
+    {
+      "name": "Backend: debug all tests",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "pytest",
+      "args": ["-v"],
+      "cwd": "${workspaceFolder}/backend/functions",
+      "env": {
+        "FIRESTORE_EMULATOR_HOST": "127.0.0.1:8080",
+        "GOOGLE_CLOUD_PROJECT": "nikunjramani-in"
+      },
+      "justMyCode": true,
+      "presentation": { "group": "backend", "order": 3 }
+    },
+    {
+      "name": "Frontend: debug full stack",
+      "type": "node-terminal",
+      "request": "launch",
+      "command": "npm run dev",
+      "cwd": "${workspaceFolder}/frontend",
+      "serverReadyAction": {
+        "pattern": "Local:\\s+(https?://\\S+)",
+        "uriFormat": "%s",
+        "action": "debugWithChrome"
+      },
+      "presentation": { "group": "frontend", "order": 1 }
+    }
+  ],
+  "compounds": [
+    {
+      "name": "Full stack: backend domain + frontend",
+      "configurations": ["Backend: debug a domain", "Frontend: debug full stack"],
+      "stopAll": true,
+      "presentation": { "group": "compound", "order": 1 }
+    }
+  ]
+}
