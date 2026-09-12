@@ -11,7 +11,7 @@ Firebase CLI · gcloud · uv
 
 ```bash
 make setup     # install both sides
-make dev       # Next.js on :3000 + emulators on :4000 (UI)
+make dev       # Next.js on :3000 + emulators (UI on :4040 — moved off the default :4000, which collides on macOS)
 ```
 
 | Command | Does |
@@ -42,7 +42,7 @@ The emulators sometimes survive a killed shell and hold their ports, which shows
 `Port 8080 is not open`:
 
 ```bash
-lsof -ti :8080 :9199 :4400
+lsof -ti :8080 :9199 :4040
 pkill -f cloud-firestore-emulator
 pkill -f firebase-storage-emulator
 ```

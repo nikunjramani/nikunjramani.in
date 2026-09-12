@@ -36,7 +36,7 @@ class Skill(BaseModel):
     yearsOfExperience: confloat(ge=0.0, le=60.0) | None = None
     icon: constr(max_length=40) | None = None
     blurb: constr(max_length=300) | None = None
-    projectSlugs: list[ProjectSlug] | None = Field(None, max_length=10)
+    projectSlugs: list[ProjectSlug] | None = Field(default=None, max_length=10)
     """
     Projects that used this skill. Rendered as links.
     """

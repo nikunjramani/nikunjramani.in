@@ -24,5 +24,5 @@ class Seo(BaseModel):
     """
     metaDescription: constr(max_length=160) | None = None
     ogImageUrl: AnyUrl | None = None
-    keywords: list[Keyword] | None = Field(None, max_length=12)
+    keywords: list[Keyword] | None = Field(default=None, max_length=12)
     noIndex: bool | None = False

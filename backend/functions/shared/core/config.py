@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     # Secrets — empty locally, injected from Secret Manager in production.
     resend_api_key: str = ""
     contact_email_to: str = ""
+    mail_from: str = "no-reply@nikunjramani.in"
     turnstile_secret_key: str = ""
     revalidate_token: str = ""
 

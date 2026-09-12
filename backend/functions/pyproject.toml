@@ -36,20 +36,30 @@ select = ["E", "F", "I", "N", "UP", "B", "A", "C4", "SIM", "RUF"]
 python_version = "3.13"
 strict = true
 warn_unreachable = true
+# `exclude` only applies to mypy's own directory-discovery, and is a no-op once a directory
+# is passed explicitly on the command line (which `make lint` does) or once a file outside
+# the excluded path imports one inside it. The override below is what actually keeps
+# generated code out of strict checking regardless of invocation style.
 exclude = ["shared/generated", "\\.venv"]
+
+[[tool.mypy.overrides]]
+module = "shared.generated.*"
+ignore_errors = true
 
 [[tool.mypy.overrides]]
 module = ["firebase_functions.*", "firebase_admin.*", "a2wsgi.*"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]
-testpaths = ["src", "tests"]
+# "shared" is deliberate, not a typo of "src" — shared/repositories and shared/services
+# have their own tests/ directories too, and both need discovering by a bare `pytest`.
+testpaths = ["src", "shared"]
 addopts = "-q --cov=src --cov=shared --cov-report=term-missing"
+asyncio_mode = "auto"
 
 [tool.coverage.run]
 # Generated models are not our code to test — the schemas and fixtures cover them.
 omit = ["shared/generated/*", "*/tests/*"]
-asyncio_mode = "auto"
 
 # ── Domain boundaries — see ADR 0011 ────────────────────────────────
 # These two rules are load-bearing. `make lint` runs them.

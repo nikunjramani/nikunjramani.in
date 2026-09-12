@@ -29,6 +29,7 @@ uvx --quiet --from datamodel-code-generator datamodel-codegen \
   --use-union-operator \
   --use-schema-description \
   --use-field-description \
+  --use-default-kwarg \
   --disable-timestamp
 
 # A curated re-export, so callers write `from shared.generated import Project` rather than
