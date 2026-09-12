@@ -142,6 +142,10 @@ in the repository layer, in exactly one place.
   real emulator. Phase 3's "deploy `make_function()` to the emulator before building further
   domains" step exists for exactly this gap.
 - **Localhost Lighthouse scores lie.** Only production numbers count.
+- **Debug a function directly via `functions-framework`, never through
+  `firebase emulators:start --only functions`.** Breakpoints don't reliably hit through that
+  emulator's own per-function subprocess model. VS Code configs for this are committed in
+  `.vscode/` — see [docs/RUNBOOK.md](./docs/RUNBOOK.md#debugging-vs-code).
 
 ## Working style
 

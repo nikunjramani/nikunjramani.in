@@ -49,6 +49,31 @@ pkill -f firebase-storage-emulator
 
 ---
 
+## Debugging (VS Code)
+
+`.vscode/launch.json`, `tasks.json`, `settings.json` and `extensions.json` are committed —
+they're project infrastructure (which interpreter, how to reach a breakpoint), not personal
+editor preferences, so there's nothing to set up beyond opening the repo.
+
+| Config | What it does |
+|---|---|
+| **Backend: debug a domain** | Prompts for a domain name (e.g. `contact`), runs it directly via `functions-framework` under `debugpy`. Breakpoints in `routes.py`/`service.py`/`repository.py` work normally. Starts the data-only emulator task first. |
+| **Backend: debug pytest (current file)** / **all tests** | Runs the open test file, or the whole suite, under the debugger. |
+| **Frontend: debug full stack** | `next dev` with both server and client breakpoints — VS Code's own [Next.js debugging recipe](https://nextjs.org/docs/app/guides/debugging), launched via `node-terminal` with a `serverReadyAction` that opens Chrome once the dev server is up. |
+| **Full stack: backend domain + frontend** | Both of the above together. |
+
+**Debug the function directly — never through the Firebase Functions emulator.** A function's
+breakpoints won't reliably hit if you route through `firebase emulators:start --only functions`;
+that emulator manages its own subprocess per function, which doesn't compose with an attached
+debugger the way a plain `functions-framework` process does. Worse, for this project specifically,
+the WSGI/ASGI bridge outright hangs the first time the emulator's underlying reloader forks — see
+[ADR 0003](./adr/0003-fastapi-in-a-single-function.md)'s implementation note. The **"emulators:
+data services"** task deliberately starts only Firestore, Auth and Storage — real data, no
+Functions emulator in the way — and the debug configs talk to the target function's own dev server
+directly on `:8091`.
+
+---
+
 ## Deploy
 
 Order is not optional — each step depends on the one before.
