@@ -42,14 +42,14 @@ class Experience(BaseModel):
     endDate: constr(pattern=r'^\d{4}-\d{2}$') | None = None
     current: bool
     summary: constr(max_length=600) | None = None
-    highlights: list[Highlight] | None = Field(None, max_length=8)
+    highlights: list[Highlight] | None = Field(default=None, max_length=8)
     """
     Achievements with numbers, not duties. 'Cut API p95 from 800ms to 120ms' beats 'worked on APIs'.
     """
-    stack: list[tech_schema.Tech] | None = Field(None, max_length=25)
+    stack: list[tech_schema.Tech] | None = Field(default=None, max_length=25)
     companyLogo: media_schema.Media | None = None
     companyUrl: AnyUrl | None = None
-    promotions: list[Promotion] | None = Field(None, max_length=6)
+    promotions: list[Promotion] | None = Field(default=None, max_length=6)
     teamSize: conint(ge=1, le=10000) | None = None
     order: conint(ge=0) | None = 0
     visibility: visibility_1.Visibility

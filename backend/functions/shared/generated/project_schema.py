@@ -33,7 +33,7 @@ class Architecture(BaseModel):
     )
     description: constr(max_length=4000) | None = None
     diagram: media_schema.Media | None = None
-    components: list[Component] | None = Field(None, max_length=20)
+    components: list[Component] | None = Field(default=None, max_length=20)
 
 
 class Challenge(BaseModel):
@@ -70,13 +70,13 @@ class Content(BaseModel):
     What you built, and why that way.
     """
     architecture: Architecture | None = None
-    challenges: list[Challenge] | None = Field(None, max_length=10)
-    outcomes: list[metric_schema.Metric] | None = Field(None, max_length=10)
+    challenges: list[Challenge] | None = Field(default=None, max_length=10)
+    outcomes: list[metric_schema.Metric] | None = Field(default=None, max_length=10)
     """
     Before/after figures. The part a recruiter actually reads.
     """
-    learnings: list[Learning] | None = Field(None, max_length=10)
-    futureWork: list[FutureWorkItem] | None = Field(None, max_length=10)
+    learnings: list[Learning] | None = Field(default=None, max_length=10)
+    futureWork: list[FutureWorkItem] | None = Field(default=None, max_length=10)
 
 
 class Tag(RootModel[constr(max_length=40)]):
@@ -163,8 +163,8 @@ class Project(BaseModel):
     """
     The story. Every block is optional and renders only when present.
     """
-    stack: list[tech_schema.Tech] | None = Field(None, max_length=30)
-    tags: list[Tag] | None = Field(None, max_length=15)
+    stack: list[tech_schema.Tech] | None = Field(default=None, max_length=30)
+    tags: list[Tag] | None = Field(default=None, max_length=15)
     role: constr(max_length=80) | None = None
     team: Team | None = None
     client: Client | None = None
@@ -172,12 +172,12 @@ class Project(BaseModel):
     When confidential is true the name is stripped server-side in lib/data/ and never reaches the browser. Filtering in a component would still ship it in the RSC payload.
     """
     cover: media_schema.Media | None = None
-    gallery: list[media_schema.Media] | None = Field(None, max_length=20)
-    links: list[link_schema.Link] | None = Field(None, max_length=12)
+    gallery: list[media_schema.Media] | None = Field(default=None, max_length=20)
+    links: list[link_schema.Link] | None = Field(default=None, max_length=12)
     testimonial: Testimonial | None = None
-    metrics: list[metric_schema.Metric] | None = Field(None, max_length=8)
-    awards: list[Award] | None = Field(None, max_length=8)
-    collaborators: list[Collaborator] | None = Field(None, max_length=15)
+    metrics: list[metric_schema.Metric] | None = Field(default=None, max_length=8)
+    awards: list[Award] | None = Field(default=None, max_length=8)
+    collaborators: list[Collaborator] | None = Field(default=None, max_length=15)
     featured: bool | None = False
     pinned: bool | None = False
     order: conint(ge=0) | None = 0

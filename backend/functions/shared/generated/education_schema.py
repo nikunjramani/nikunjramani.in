@@ -24,7 +24,7 @@ class Education(BaseModel):
     endYear: conint(ge=1950, le=2100) | None = None
     grade: constr(max_length=40) | None = None
     location: constr(max_length=80) | None = None
-    highlights: list[Highlight] | None = Field(None, max_length=6)
+    highlights: list[Highlight] | None = Field(default=None, max_length=6)
     logo: media_schema.Media | None = None
     order: conint(ge=0) | None = 0
     visibility: visibility_1.Visibility

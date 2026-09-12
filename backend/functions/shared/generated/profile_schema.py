@@ -43,7 +43,7 @@ class Profile(BaseModel):
     ogImage: media_schema.Media | None = None
     resumeUrl: AnyUrl | None = None
     availableForWork: bool | None = False
-    socials: list[Social] | None = Field(None, max_length=12)
+    socials: list[Social] | None = Field(default=None, max_length=12)
     visibility: visibility_1.Visibility
     seo: seo_schema.Seo | None = None
     audit: audit_schema.Audit | None = None

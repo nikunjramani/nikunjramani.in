@@ -26,7 +26,7 @@ class Post(BaseModel):
     excerpt: constr(max_length=300) | None = None
     contentMd: constr(max_length=100000) | None = None
     cover: media_schema.Media | None = None
-    tags: list[Tag] | None = Field(None, max_length=10)
+    tags: list[Tag] | None = Field(default=None, max_length=10)
     readingMinutes: conint(ge=1, le=120) | None = None
     featured: bool | None = False
     visibility: visibility_1.Visibility
