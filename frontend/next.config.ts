@@ -19,7 +19,7 @@ const FUNCTIONS_BASE =
   process.env.FUNCTIONS_BASE_URL ??
   "http://127.0.0.1:5001/nikunjramani-in/asia-south1";
 
-const DOMAINS = ["system"] as const;
+const DOMAINS = ["system", "contact"] as const;
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,

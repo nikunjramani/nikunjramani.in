@@ -1,6 +1,7 @@
 # Phase 3 · Backend
 
-**~14 hours** · Status: ⬜ Not started
+**~14 hours** · Status: 🟡 In progress — `shared/` done, `contact` domain done and verified against
+the real emulator (2026-09-12)
 
 > **Goal:** A complete, tested Python API — every CRUD route the admin panel will need,
 > the contact pipeline, and the background triggers — running on the emulator.
@@ -12,10 +13,13 @@ triggers and tests. → [ADR 0011](../../adr/0011-domain-wise-separate-functions
 
 ## Prerequisites
 
-- [ ] [Phase 1](./phase-1-schemas.md) done — generated Pydantic models exist
-- [ ] [03 · Security](../03-security.md) read
-- [ ] Resend account + verified sending domain
-- [ ] Cloudflare Turnstile site + secret keys
+- [x] [Phase 1](./phase-1-schemas.md) done — generated Pydantic models exist
+- [x] [03 · Security](../03-security.md) read
+- [ ] Resend account + verified sending domain *(deferred with billing — `shared/services/email.py`
+      logs and skips instead of sending when `RESEND_API_KEY` is unset, so the rest of the flow is
+      fully testable against the emulator without it)*
+- [ ] Cloudflare Turnstile site + secret keys *(deferred the same way — `src/contact/turnstile.py`
+      passes verification when `TURNSTILE_SECRET_KEY` is unset)*
 
 ---
 
@@ -25,16 +29,27 @@ triggers and tests. → [ADR 0011](../../adr/0011-domain-wise-separate-functions
 
 Everything below depends on it, and it's the only code more than one domain may import.
 
-- [ ] `shared/core/config.py` — `pydantic-settings`, env-driven, fails loudly on missing values
-- [ ] `shared/core/firebase.py` — Admin SDK init, emulator-aware
-- [ ] `shared/core/errors.py` — typed exceptions → consistent JSON error envelope
-- [ ] `shared/core/logging.py` — structured JSON logs for Cloud Logging
-- [ ] `shared/core/security.py` — verify ID token, assert `admin` claim
-- [ ] `shared/core/rate_limit.py` — Firestore-backed, per-IP and global
-- [ ] `shared/repositories/base.py` — `BaseRepository[T]`: CRUD, pagination, ordering, soft delete
-- [ ] Firestore `Timestamp` ↔ ISO string conversion, in exactly one place
-- [ ] `shared/services/` — storage, email (Resend + retry), image, audit
-- [ ] **`shared/api.py` — `make_function()`**: the FastAPI + `a2wsgi` + CORS wrapper, written once
+- [x] `shared/core/config.py` — `pydantic-settings`, env-driven, fails loudly on missing values
+- [x] `shared/core/firebase.py` — Admin SDK init, emulator-aware
+- [x] `shared/core/errors.py` — typed exceptions → consistent JSON error envelope
+- [x] `shared/core/logging.py` — structured JSON logs for Cloud Logging
+- [x] `shared/core/security.py` — verify ID token, assert `admin` claim, plus a ready-made
+      `Depends(require_admin)` every future admin route reuses — proven with its own tests
+      (401 / 403 / 200) rather than for the first time by whichever admin domain comes first
+- [x] `shared/core/rate_limit.py` — Firestore-backed, per-IP and global, transactional
+      check-then-increment, proven against the real emulator
+- [x] `shared/repositories/base.py` — `BaseRepository[T]`: CRUD, pagination, ordering.
+      **Soft delete dropped**: no schema defines a `deletedAt`/`archived` field, and
+      `audit_log` already stores the full `before` state on every delete — that gives the
+      same recoverability without a field every collection would otherwise need
+- [x] Firestore `Timestamp` ↔ ISO string conversion, in exactly one place (`shared/core/timestamps.py`)
+- [x] `shared/services/audit.py`, `shared/services/email.py` — Resend + retry, with a
+      dev-mode skip when no key is configured
+- [ ] `shared/services/storage.py`, `shared/services/image.py` — needed by the `media` domain
+      (§3.4), not yet built
+- [x] **`shared/api.py` — `make_function()`**: FastAPI + CORS wrapper, written once. **Not**
+      `a2wsgi`'s own `ASGIMiddleware` — see the gotcha below and
+      [ADR 0003](../../adr/0003-fastapi-in-a-single-function.md)'s implementation note
 
 > ⚠️ `shared/` may never import from `src/`. Get this rule wrong once and the circular import will
 > cost an afternoon.
@@ -44,14 +59,32 @@ Everything below depends on it, and it's the only code more than one domain may 
 Build one domain completely before starting the others. It's the smallest, it's public, and it
 exercises every layer.
 
-- [ ] `src/contact/repository.py`
-- [ ] `src/contact/service.py` — validation, Turnstile, rate limit, spam scoring
-- [ ] `src/contact/routes.py` — `POST /contact`
-- [ ] `src/contact/__init__.py` — exports `api_contact`
-- [ ] `src/contact/triggers.py` — `on_contact_created` → email via Resend
-- [ ] `src/contact/tests/`
-- [ ] Registered in `main.py`, rewrite added to `frontend/next.config.ts`
-- [ ] **Deployed to the emulator and verified end to end**
+- [x] `src/contact/repository.py`
+- [x] `src/contact/service.py` — validation, Turnstile, rate limit, spam scoring. All three
+      anti-abuse failures (honeypot, rate limit, failed Turnstile) disguise themselves as
+      success rather than erroring — see the module docstring for why
+- [x] `src/contact/routes.py` — `POST /contact`
+- [x] `src/contact/__init__.py` — exports `api_contact`
+- [x] `src/contact/triggers.py` — `on_contact_created` → email via Resend
+- [x] `src/contact/tests/` — 18 tests: spam scoring, the disguise behaviour with the
+      repository mocked, and the request contract through `TestClient`
+- [x] Registered in `main.py` (with `FUNCTION_TARGET`-conditional imports — see below),
+      rewrite added to `frontend/next.config.ts`
+- [x] **Deployed to the emulator and verified end to end** — a real POST through the live
+      `api_contact` function persisted to Firestore; a honeypot-tripped submission returned
+      the identical response without persisting anything; a missing-field submission
+      produced a genuine 422
+
+Also fixed while proving this end to end, since both would otherwise have bitten every
+subsequent domain silently:
+
+- **Cold-start isolation wasn't real.** `functions_framework` fully executes `main.py` on every
+  invocation regardless of which function is targeted — a flat `from src.X import api_X` for
+  every domain would construct every OTHER domain's FastAPI app on every cold start, defeating
+  the entire reason for ADR 0011. `main.py` now imports conditionally on the `FUNCTION_TARGET`
+  environment variable (unset — import everything — during the emulator, tests and the CLI's own
+  manifest discovery; set to one name inside a deployed function's own container).
+- **The `a2wsgi`/fork hang below.**
 
 > Don't proceed until this one works. Every remaining domain is this shape repeated, so a mistake
 > here gets copied thirteen times.
@@ -118,7 +151,26 @@ Every admin route carries `Depends(require_admin)`. No exceptions.
 
 **`a2wsgi` and the entrypoint.** Firebase's Python SDK expects a `flask.Request`-shaped handler.
 Get `make_function()` working with one trivial route through the emulator *before* building
-fourteen domains on top of it.
+fourteen domains on top of it. This is not a theoretical warning — doing exactly this for the
+`system` and `contact` domains surfaced a real hang, below.
+
+**A `TestClient` call is not the same proof as a live emulator request.** `ASGIMiddleware` from
+`a2wsgi` starts a persistent background thread at construction time. Werkzeug's dev-server
+reloader — which `functions-framework` uses locally — forks, and `os.fork()` only duplicates the
+calling thread, so the child inherits a dead copy of that background thread. Every request then
+hangs forever, waiting on a loop nothing will ever run again. This type-checked cleanly and passed
+every unit test built against FastAPI's `TestClient`; it only showed up against the real emulator,
+reproduced directly with a standalone `os.fork()` test. Fixed in `shared/wsgi_bridge.py`, which
+drops the background thread and drives each request with a fresh `asyncio.run()` instead — see
+[ADR 0003](../../adr/0003-fastapi-in-a-single-function.md)'s implementation note for the full
+account. The lesson generalises: proving an adapter against a mocked or synthetic client is not
+proving it against the real runtime it will actually execute inside.
+
+**`firebase deploy`/`firebase emulators:start` need `backend/functions/requirements.txt` and a
+plain stdlib `venv/`**, distinct from the `uv`-managed `.venv/` everything else in this project
+uses. Without both, the CLI cannot even detect the Python runtime, let alone load a function.
+`make setup-backend` generates both — `requirements.txt` via `uv export`, committed (it is part of
+what actually gets deployed); `venv/` built locally and gitignored, matching `.venv/`.
 
 **A missing rewrite is a silent 404.** The function deploys fine and looks healthy; the frontend
 just can't reach it. Check `next.config.ts` whenever a new domain 404s.

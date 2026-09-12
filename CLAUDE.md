@@ -128,6 +128,19 @@ in the repository layer, in exactly one place.
   has no rewrites). Without it the function deploys fine and looks healthy, but the frontend gets a
   404 that reads like a routing bug. It also needs adding to the `importlinter` contract in
   `backend/functions/pyproject.toml`, or its boundaries go unchecked.
+- **Never construct `a2wsgi.ASGIMiddleware` directly.** It starts a persistent background thread
+  at construction time, and Werkzeug's dev-server reloader (which `functions-framework` uses
+  locally) forks — the child inherits a dead copy of that thread, and every request hangs forever.
+  Reproduced directly with `os.fork()`. Use `shared/wsgi_bridge.py` (`wsgi_from_asgi`), which drives
+  each request with a fresh `asyncio.run()` instead. See ADR 0003's implementation note.
+- **Firebase's own tooling needs `backend/functions/requirements.txt` and a stdlib `venv/`**,
+  separate from the `uv`-managed `.venv/` used for lint/test — `make setup-backend` generates both.
+  Without them, `firebase deploy` and `firebase emulators:start` cannot detect the runtime or load
+  any function at all.
+- **A `TestClient` call proves the FastAPI app works, not that the Firebase adapter does.** The
+  a2wsgi bug above type-checked cleanly and passed every unit test; it only appeared against the
+  real emulator. Phase 3's "deploy `make_function()` to the emulator before building further
+  domains" step exists for exactly this gap.
 - **Localhost Lighthouse scores lie.** Only production numbers count.
 
 ## Working style

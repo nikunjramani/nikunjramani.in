@@ -3,10 +3,14 @@
 # Generated code — committed, but never hand-edited (see PLAN.md §5).
 # Collapsed in GitHub diffs and excluded from language stats.
 frontend/src/generated/**  linguist-generated=true
-backend/functions/generated/**  linguist-generated=true
+backend/functions/shared/generated/**  linguist-generated=true
 *.lock            linguist-generated=true
 package-lock.json linguist-generated=true
 uv.lock           linguist-generated=true
+
+# requirements.txt is exported from pyproject.toml by `make setup-backend` — Firebase's
+# own deploy tooling requires it present in the source tree; it is not hand-edited.
+backend/functions/requirements.txt  linguist-generated=true
 
 # Binary
 *.png binary

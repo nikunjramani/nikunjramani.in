@@ -20,7 +20,7 @@ src/<domain>/
 └── tests/
 ```
 
-If the endpoint fits an existing domain, add it there. A **new** domain needs four extra steps —
+If the endpoint fits an existing domain, add it there. A **new** domain needs six extra steps —
 see "Adding a new domain" below.
 
 ### Two import rules, both non-negotiable
@@ -62,39 +62,50 @@ class ProjectRepository(BaseRepository[Project]):
 `BaseRepository` gives CRUD, pagination and ordering. Add a method only for a genuinely
 collection-specific query.
 
-**3 · Service** — `backend/functions/services/`. Business rules go here: slug uniqueness, publish
-transitions, reorder transactions, cache busting. Raise domain exceptions from `core/errors.py`,
-never HTTP ones.
+**3 · Service** — `src/<domain>/service.py`. Business rules go here: slug uniqueness, publish
+transitions, reorder transactions, cache busting, rate limiting. Raise domain exceptions from
+`shared/core/errors.py`, never HTTP ones. Rate limiting is a plain call inside the service, not a
+router dependency — `RateLimiter(db).check(scope=..., identifier=..., limit=..., window_seconds=...)`
+raises `RateLimitedError`, which the service either lets propagate (a real 429) or catches to
+disguise as success (see `src/contact/service.py` for why the contact form does the latter).
 
-**4 · Router** — `src/<domain>/routes.py`.
+**4 · Router** — `src/<domain>/routes.py`. Every admin route carries `AdminClaims`, which is
+`Annotated[dict, Depends(require_admin)]` from `shared.core.security` — it verifies the bearer
+token AND the `admin: true` claim, and hands back the decoded claims for the audit trail:
 
 ```python
+from shared.core.security import AdminClaims
+
 @router.post("/projects", response_model=Project, status_code=201)
 async def create_project(
     payload: ProjectCreate,
-    _: None = Depends(require_admin),      # ← every admin route, no exceptions
-    svc: ProjectService = Depends(get_project_service),
+    claims: AdminClaims,                                # ← every admin route, no exceptions
+    svc: Annotated[ProjectService, Depends(get_project_service)],
 ) -> Project:
-    return await svc.create(payload)
+    return svc.create(payload, actor=claims["uid"])
 ```
 
-- Every route under `admin/` needs `Depends(require_admin)` — signing in isn't enough, the
-  `admin: true` claim is the gate
-- Public routes that write need rate limiting: `Depends(rate_limit("3/hour"))`
-- Declare `response_model` so the OpenAPI spec stays accurate
+Signing in isn't enough — the claim is the actual gate, and `require_admin` is already built and
+tested (`shared/core/tests/test_security.py`), so a new domain does not re-prove it. Declare
+`response_model` so the OpenAPI spec stays accurate.
 
-**5 · Audit** — every admin mutation writes `{ actor, action, collection, docId, before, after, at }`
-to `audit_log`. Handle it in the service, not the router.
+**5 · Audit** — every admin mutation calls `AuditService(db).record(actor=..., action=...,
+collection=..., doc_id=..., before=..., after=...)`. Handle it in the service, not the router.
 
 **6 · Cache** — a write that changes public content calls the Next.js revalidate endpoint, usually
 via the `on_content_published` trigger. Without this, edits don't appear until ISR expires.
 
 **7 · Tests** — required, all four:
 
-- Unit test of the service with the repository mocked
-- Integration test against the Firestore emulator
-- Auth: no token → 401 · valid token without the claim → **403** · with the claim → 200
-- Rate limit, if the route is public
+- Unit test of the service with the repository mocked (see `src/contact/tests/test_service.py`)
+- Integration test against the Firestore emulator (see `shared/repositories/tests/`) — the `db`
+  fixture from the root `conftest.py` skips automatically when the emulator isn't running, so
+  `make test` still works offline
+- Auth: no token → 401 · valid token without the claim → **403** · with the claim → 200 — already
+  proven once for `require_admin` itself; a new admin domain doesn't need to re-derive this, just
+  use `AdminClaims`
+- Rate limit, if the route is public (see `shared/core/tests/test_rate_limit.py` for the pattern —
+  a fresh scope per test avoids window collisions)
 
 ## Triggers and scheduled jobs
 
@@ -105,7 +116,9 @@ Import heavy dependencies *inside* the handler; every top-level import runs on e
 
 ## Adding a new domain
 
-Four steps, and forgetting any of them fails in a confusing way:
+Six steps. Each of 3–5 fails silently rather than loudly — the domain works fine when invoked
+directly (during local dev, tests, or manifest discovery), and only misbehaves in the one
+situation those steps actually govern, which makes them easy to skip and forget.
 
 1. `mkdir src/<domain>/` with the shape above
 2. Export the function:
@@ -116,7 +129,14 @@ Four steps, and forgetting any of them fails in a confusing way:
 
    api_<domain> = make_function(router, name="api_<domain>")
    ```
-3. Import and re-export it in `backend/functions/main.py`
+3. **Add it to `main.py`'s `FUNCTION_TARGET`-conditional imports** — not a flat import. Without
+   this, every domain's FastAPI app gets constructed on every OTHER domain's cold start, which
+   defeats the entire reason for one-function-per-domain. See
+   [ADR 0011](../../../docs/adr/0011-domain-wise-separate-functions.md)'s implementation note.
+   ```python
+   if _wanted("api_<domain>"):
+       from src.<domain> import api_<domain>
+   ```
 4. **Add the rewrite** in `frontend/next.config.ts` — without it the function deploys fine and
    looks healthy, but the frontend gets a 404 that reads like a routing bug. Add the domain to the
    `DOMAINS` array:
@@ -126,8 +146,7 @@ Four steps, and forgetting any of them fails in a confusing way:
    (Firebase Hosting rewrites don't apply — App Hosting is a different product and has none.)
 5. **Add it to the import-linter contract** in `backend/functions/pyproject.toml`, or the domain's
    boundaries are silently unchecked.
-
-Then add the domain to the Terraform `domains` map with its memory and `max_instances`.
+6. Add the domain to the Terraform `domains` map with its memory and `max_instances`.
 
 ## Verify
 
@@ -151,3 +170,11 @@ firebase deploy --only functions:api_<domain>
 - **Composite queries need composite indexes** — add to `x-firestore.indexes` in the schema.
 - **`/docs` must be disabled in production.**
 - **A change under `shared/` redeploys every domain.** Worth knowing before refactoring it casually.
+- **Never construct `a2wsgi.ASGIMiddleware` directly**, even to fix or extend `shared/api.py`. It
+  starts a persistent background thread at construction time, which hangs every request forever
+  once the process forks — which Werkzeug's dev-server reloader does locally. Reproduced directly
+  with `os.fork()`. `shared/wsgi_bridge.py` is the fix; nothing should bypass it.
+- **A `TestClient` pass does not prove the Firebase adapter works.** The bug above type-checked
+  and passed every unit test — it only appeared against the real emulator. Any change to
+  `shared/api.py` or `shared/wsgi_bridge.py` needs a real request through
+  `firebase emulators:start --only functions,firestore`, not just `TestClient`.
