@@ -69,6 +69,15 @@ class MediaService:
         )
         return self.repo.create(asset)
 
+    def update_metadata(self, doc_id: str, *, alt: str, caption: str | None) -> Record[MediaAsset]:
+        """Alt text has to be editable after upload — there's no alt at the moment a file
+        lands in Storage, and the schema deliberately doesn't require it there (see
+        media-asset.schema.json). The admin panel is what actually enforces it, by refusing
+        to let an asset without one be picked for use elsewhere."""
+        existing = self.repo.require(doc_id)
+        updated = existing.data.model_copy(update={"alt": alt, "caption": caption})
+        return self.repo.save(doc_id, updated)
+
     def delete(self, doc_id: str) -> None:
         asset = self.repo.get(doc_id)
         if asset is None:

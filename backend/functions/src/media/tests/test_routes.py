@@ -5,6 +5,8 @@ from unittest.mock import MagicMock, patch
 from fastapi.testclient import TestClient
 
 from shared.api import make_app
+from shared.generated import MediaAsset
+from shared.repositories.base import Record
 from src.media.routes import get_media_service, router
 
 ADMIN = {"uid": "admin-1", "admin": True}
@@ -45,3 +47,25 @@ def test_list_requires_admin() -> None:
 
 def test_delete_requires_admin() -> None:
     assert _client(MagicMock()).delete("/some-id").status_code == 401
+
+
+def test_update_metadata_requires_admin() -> None:
+    response = _client(MagicMock()).patch("/some-id", json={"alt": "A photo"})
+    assert response.status_code == 401
+
+
+def test_update_metadata_returns_the_updated_record() -> None:
+    fake = MagicMock()
+    asset = MediaAsset.model_validate(
+        {"url": "https://x", "path": "p", "uploadedAt": "2025-01-01T00:00:00Z", "alt": "A photo"}
+    )
+    fake.update_metadata.return_value = Record(id="some-id", data=asset)
+    with patch("shared.core.security.auth.verify_id_token", return_value=ADMIN):
+        response = _client(fake).patch(
+            "/some-id",
+            json={"alt": "A photo"},
+            headers={"Authorization": "Bearer x"},
+        )
+    assert response.status_code == 200
+    assert response.json()["data"]["alt"] == "A photo"
+    fake.update_metadata.assert_called_once_with("some-id", alt="A photo", caption=None)

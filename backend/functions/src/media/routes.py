@@ -38,6 +38,11 @@ class RecordOut(BaseModel):
     data: MediaAsset
 
 
+class UpdateMetadataRequest(BaseModel):
+    alt: Annotated[str, Field(min_length=1, max_length=200)]
+    caption: Annotated[str, Field(max_length=300)] | None = None
+
+
 @router.post("/upload-url", response_model=UploadResponse)
 def request_upload_url(
     payload: UploadRequest,
@@ -62,6 +67,17 @@ def get_media(
     doc_id: str, claims: AdminClaims, service: Annotated[MediaService, Depends(get_media_service)]
 ) -> dict[str, object]:
     record = service.get(doc_id)
+    return {"id": record.id, "data": record.data}
+
+
+@router.patch("/{doc_id}", response_model=RecordOut)
+def update_media_metadata(
+    doc_id: str,
+    payload: UpdateMetadataRequest,
+    claims: AdminClaims,
+    service: Annotated[MediaService, Depends(get_media_service)],
+) -> dict[str, object]:
+    record = service.update_metadata(doc_id, alt=payload.alt, caption=payload.caption)
     return {"id": record.id, "data": record.data}
 
 

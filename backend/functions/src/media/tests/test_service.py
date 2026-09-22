@@ -53,6 +53,27 @@ def test_create_from_processed_upload_persists_the_asset(db: Client, clean_colle
     assert fetched.data.uploadedBy == "uid-1"
 
 
+def test_update_metadata_sets_alt_and_caption(db: Client, clean_collection: str) -> None:
+    svc = _service(db, clean_collection, MagicMock())
+    record = svc.create_from_processed_upload(
+        original_path="public/media/1/original.webp",
+        url="https://x/processed.webp",
+        thumbnail_url="https://x/thumbnail.webp",
+        width=100,
+        height=100,
+        blurhash="x",
+        content_type="image/webp",
+        size_bytes=1,
+        uploaded_by=None,
+    )
+    updated = svc.update_metadata(record.id, alt="A dashboard screenshot", caption="v2")
+    assert updated.data.alt == "A dashboard screenshot"
+    assert updated.data.caption == "v2"
+
+    fetched = svc.get(record.id)
+    assert fetched.data.alt == "A dashboard screenshot"
+
+
 def test_delete_removes_both_storage_and_firestore(db: Client, clean_collection: str) -> None:
     storage = MagicMock()
     svc = _service(db, clean_collection, storage)
