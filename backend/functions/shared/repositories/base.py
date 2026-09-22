@@ -53,6 +53,10 @@ class BaseRepository[T: BaseModel]:
         self._db = db if db is not None else get_db()
 
     @property
+    def db(self) -> Client:
+        return self._db
+
+    @property
     def _ref(self) -> CollectionReference:
         return self._db.collection(self.collection)
 
@@ -124,20 +128,18 @@ class BaseRepository[T: BaseModel]:
 
     # ── writes ───────────────────────────────────────────────────────
 
+    def exists(self, doc_id: str) -> bool:
+        return bool(self._ref.document(doc_id).get().exists)
+
     def create(self, data: T, *, doc_id: str | None = None) -> Record[T]:
-        payload = data.model_dump(mode="json", exclude_none=True)
-        payload = to_firestore(payload)
+        ref = self._ref.document(doc_id) if doc_id else self._ref.document()
+        ref.set(self._payload(data))
+        return self.require(ref.id)
 
-        if doc_id:
-            ref = self._ref.document(doc_id)
-            ref.set(payload)
-            new_id = doc_id
-        else:
-            ref = self._ref.document()
-            ref.set(payload)
-            new_id = ref.id
-
-        return self.require(new_id)
+    def save(self, doc_id: str, data: T) -> Record[T]:
+        """Full replace (upsert) of the document at `doc_id`."""
+        self._ref.document(doc_id).set(self._payload(data))
+        return self.require(doc_id)
 
     def update(self, doc_id: str, patch: dict[str, object]) -> Record[T]:
         """Partial update. `patch` uses dotted paths for nested fields, same as Firestore's
@@ -158,6 +160,10 @@ class BaseRepository[T: BaseModel]:
         batch.commit()
 
     # ── internal ─────────────────────────────────────────────────────
+
+    @staticmethod
+    def _payload(data: T) -> dict[str, object]:
+        return to_firestore(data.model_dump(mode="json", exclude_none=True))
 
     def _to_record(self, doc_id: str, raw: dict[str, object]) -> Record[T]:
         converted = from_firestore(raw)
