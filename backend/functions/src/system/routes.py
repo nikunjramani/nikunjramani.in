@@ -4,13 +4,14 @@ Deliberately the first domain built — it is the smallest thing that exercises 
 adapter, so a mistake here is caught before it is copied thirteen times.
 """
 
-from typing import Annotated
+from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
 
 from shared.core.config import get_settings
+from shared.core.security import AdminClaims
 from src.system.service import SystemService
 
 router = APIRouter()
@@ -41,3 +42,14 @@ def resume(service: Annotated[SystemService, Depends(get_system_service)]) -> Re
     url = service.get_resume_url()
     service.record_resume_download()
     return RedirectResponse(url, status_code=302)
+
+
+@router.get("/audit-log")
+def audit_log(
+    claims: AdminClaims,
+    service: Annotated[SystemService, Depends(get_system_service)],
+    collection: Annotated[str | None, Query()] = None,
+    doc_id: Annotated[str | None, Query()] = None,
+    limit: Annotated[int, Query(ge=1, le=200)] = 50,
+) -> list[dict[str, Any]]:
+    return service.list_audit_log(collection=collection, doc_id=doc_id, limit=limit)
