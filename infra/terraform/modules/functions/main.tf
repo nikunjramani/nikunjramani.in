@@ -19,8 +19,21 @@ variable "domains" {
     public        = bool
   }))
   default = {
-    api_system = { memory = "256Mi", max_instances = 3, public = true }
+    api_system         = { memory = "256Mi", max_instances = 3, public = true }
+    api_contact        = { memory = "256Mi", max_instances = 3, public = true }
+    api_projects       = { memory = "256Mi", max_instances = 3, public = true }
+    api_skills         = { memory = "256Mi", max_instances = 3, public = true }
+    api_experience     = { memory = "256Mi", max_instances = 3, public = true }
+    api_education      = { memory = "256Mi", max_instances = 3, public = true }
+    api_certifications = { memory = "256Mi", max_instances = 3, public = true }
+    api_posts          = { memory = "256Mi", max_instances = 3, public = true }
+    api_profile        = { memory = "256Mi", max_instances = 3, public = true }
+    api_settings       = { memory = "256Mi", max_instances = 3, public = true }
   }
+  # public = true here means "reachable" at the Cloud Run IAM layer, not "unauthenticated" —
+  # every admin route still gates on Depends(require_admin) inside the app. media, in
+  # particular, needs public=true even though almost every route it holds is admin-only,
+  # because signed-upload URLs alone don't help if the function itself can't be reached.
 }
 
 # Public endpoints (contact, health) need unauthenticated invocation.

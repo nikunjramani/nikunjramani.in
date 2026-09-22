@@ -34,7 +34,7 @@ def _dict(snapshot: DocumentSnapshot) -> dict[str, Any]:
 
 
 @pytest.fixture
-def service(db: Client, clean_collection: str, clean_audit_log: None) -> ContentService[Skill]:
+def service(db: Client, clean_collection: str) -> ContentService[Skill]:
     return ContentService(SkillRepository(db), bust_cache=MagicMock())
 
 
@@ -133,8 +133,14 @@ def test_patch_publish_transition_sets_published_at(service: ContentService[Skil
     published = service.patch(record.id, {"visibility": "public"}, CLAIMS)
     assert published.data.audit.publishedAt is not None  # type: ignore[union-attr]
 
+    # .stream() gives no ordering guarantee — auto-generated document ids are not
+    # chronological — so filter to this record and sort by "at" explicitly rather than
+    # assuming stream order matches write order.
     audit_entries = [_dict(e) for e in service.repo.db.collection("audit_log").stream()]
-    assert audit_entries[-1]["action"] == "publish"
+    this_record = sorted(
+        (e for e in audit_entries if e["docId"] == record.id), key=lambda e: e["at"]
+    )
+    assert [e["action"] for e in this_record] == ["create", "publish"]
 
 
 def test_patch_republish_keeps_the_original_published_at(service: ContentService[Skill]) -> None:
@@ -146,9 +152,7 @@ def test_patch_republish_keeps_the_original_published_at(service: ContentService
     assert republished.data.audit.publishedAt == first_published_at  # type: ignore[union-attr]
 
 
-def test_patch_rejects_changing_the_slug(
-    db: Client, clean_collection: str, clean_audit_log: None
-) -> None:
+def test_patch_rejects_changing_the_slug(db: Client, clean_collection: str) -> None:
     from shared.generated import Project
 
     class ProjectRepository(BaseRepository[Project]):

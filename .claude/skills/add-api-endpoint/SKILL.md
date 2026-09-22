@@ -5,7 +5,21 @@ description: Add or modify an endpoint in the Python Firebase Functions backend.
 
 # Adding a backend endpoint
 
-## First: which domain?
+## First: is this just another content collection?
+
+If the domain is plain CRUD on a Firestore collection — create/list/get/patch/delete/reorder,
+`visibility`/`order`, an audit trail — **do not hand-write the service or the routes.**
+`shared/crud.py` already has this: `ContentService[T]` for the business rules, `make_crud_router`
+for the FastAPI routes. See `src/skills/` for the three-file minimum this reduces to (repository +
+one-line service + one line of router wiring), or `src/projects/` for a domain that adds exactly
+one thing beyond the generic shape (`duplicate`). Singletons (`profile`, `settings`) use the same
+factory with `singleton_id="main"`. → [ADR 0012](../../../docs/adr/0012-generic-content-crud-in-shared.md)
+
+Only write this section's full router/service/repository trio by hand for something that
+genuinely isn't collection CRUD — `contact` (public, anti-abuse logic) and `media` are the reason
+this pattern exists at all.
+
+## First (if not): which domain?
 
 One deployed function per domain. Everything about a domain lives in
 `backend/functions/src/<domain>/`. → [ADR 0011](../../../docs/adr/0011-domain-wise-separate-functions.md)

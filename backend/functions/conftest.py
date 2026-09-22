@@ -31,12 +31,20 @@ def _emulator_reachable() -> bool:
 
 
 @pytest.fixture
-def db() -> Client:
+def db() -> Iterator[Client]:
     if not _emulator_reachable():
         pytest.skip("Firestore emulator not reachable on FIRESTORE_EMULATOR_HOST")
     from shared.core.firebase import get_db
 
-    return get_db()
+    client = get_db()
+    _wipe(client, "audit_log")
+    yield client
+    _wipe(client, "audit_log")
+
+
+def _wipe(db: Client, collection: str) -> None:
+    for doc in db.collection(collection).stream():
+        doc.reference.delete()
 
 
 @pytest.fixture
@@ -44,17 +52,4 @@ def clean_collection(db: Client) -> Iterator[str]:
     """Yields a scratch collection name and wipes it afterwards."""
     name = "_test_scratch"
     yield name
-    for doc in db.collection(name).stream():
-        doc.reference.delete()
-
-
-@pytest.fixture
-def clean_audit_log(db: Client) -> Iterator[None]:
-    """`audit_log` is real, shared, and never wiped on its own — a test asserting on its
-    contents needs a clean slate first, or it sees every other test's entries too (all
-    tests share one emulator instance for the run)."""
-    for doc in db.collection("audit_log").stream():
-        doc.reference.delete()
-    yield
-    for doc in db.collection("audit_log").stream():
-        doc.reference.delete()
+    _wipe(db, name)

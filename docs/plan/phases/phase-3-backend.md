@@ -92,15 +92,26 @@ subsequent domain silently:
 ### 3.3 · Content domains
 
 Each is the same shape: `routes · service · repository · tests`, exporting one function.
-Most subclass `BaseRepository` and add little more than a collection name.
+Most subclass `BaseRepository` and add little more than a collection name — and now that
+`shared/crud.py` exists (`ContentService` + `make_crud_router`), most add *nothing else at
+all*. Audit trail, publish/unpublish transitions, RFC 7386 merge-patch semantics and
+best-effort cache revalidation are shared, tested once in `shared/tests/test_crud.py`, and
+reused by every domain below rather than re-implemented per domain.
 
-- [ ] `src/projects/` — CRUD + reorder + duplicate + slug uniqueness + publish transitions
-- [ ] `src/skills/` · `src/experience/` · `src/education/` · `src/certifications/`
-- [ ] `src/posts/` *(stub — wired in Phase 8)*
-- [ ] `src/profile/` — single-document domain, `PATCH` only
-- [ ] `src/settings/` — feature flags
+- [x] `src/projects/` — CRUD + reorder + duplicate + slug uniqueness + publish transitions.
+      `duplicate` is the one thing genuinely specific to this domain (fresh slug, resets
+      publish state) — everything else comes from `ContentService`
+- [x] `src/skills/` · `src/experience/` · `src/education/` · `src/certifications/` — each is
+      a repository, a one-line service subclass, and `make_crud_router(...)`. Router wiring
+      proven once, parametrised across all four, in `tests/test_domain_routers.py`
+- [x] `src/posts/` *(stub — wired in Phase 8)*. Router is real and tested (slugged, like
+      projects); no public UI yet
+- [x] `src/profile/` — singleton (`GET`/`PUT`/`PATCH` on `/`, no list, no id in the path),
+      via `make_crud_router(..., singleton_id="main")`
+- [x] `src/settings/` — same singleton shape, for feature flags
 
-Every admin route carries `Depends(require_admin)`. No exceptions.
+Every admin route carries `AdminClaims` (`Depends(require_admin)`). No exceptions — proven
+per domain shape in `tests/test_domain_routers.py` and `tests/test_singleton_routers.py`.
 
 ### 3.4 · Supporting domains
 
