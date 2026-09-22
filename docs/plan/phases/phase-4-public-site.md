@@ -76,12 +76,12 @@ The [progressive disclosure](../02-data-model.md#progressive-disclosure) page. E
 
 ### 4.7 · SEO
 
-- [ ] `generateMetadata` per route — title, description, canonical, OG, Twitter
-- [ ] JSON-LD: `Person`, `WebSite`, `BreadcrumbList`, `CreativeWork` per project
-- [ ] `app/sitemap.ts` — generated from Firestore
-- [ ] `app/robots.ts`
-- [ ] `opengraph-image.tsx` — dynamic OG images per project
-- [ ] Canonical host consistent with the [redirect policy](../07-domain-setup.md#redirect-policy)
+- [x] `generateMetadata` per route — title, description, canonical, OG, Twitter
+- [x] JSON-LD: `Person`, `WebSite`, `BreadcrumbList`, `CreativeWork` per project
+- [x] `app/sitemap.ts` — generated from Firestore
+- [x] `app/robots.ts`
+- [x] `opengraph-image.tsx` — dynamic OG images per project
+- [x] Canonical host consistent with the [redirect policy](../07-domain-setup.md#redirect-policy)
 
 ### 4.8 · Quality
 

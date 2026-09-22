@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { ArrowRight } from "lucide-react";
 import Link from "next/link";
 
@@ -6,6 +7,10 @@ import { SkillPills } from "@/components/site/skill-pills";
 import { getFeaturedProjects } from "@/lib/data/projects";
 import { getProfile } from "@/lib/data/profile";
 import { getFeaturedSkills } from "@/lib/data/skills";
+
+export const metadata: Metadata = {
+  alternates: { canonical: "/" },
+};
 
 export default async function HomePage() {
   const [profile, skills, projects] = await Promise.all([

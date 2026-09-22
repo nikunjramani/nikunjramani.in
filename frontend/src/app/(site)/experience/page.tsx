@@ -6,6 +6,7 @@ import { getExperience } from "@/lib/data/experience";
 export const metadata: Metadata = {
   title: "Experience",
   description: "Roles, achievements, and the tech behind each one.",
+  alternates: { canonical: "/experience" },
 };
 
 function formatMonth(yyyyMm: string): string {
