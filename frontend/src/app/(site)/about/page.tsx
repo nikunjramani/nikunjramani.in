@@ -13,6 +13,7 @@ import { getCertifications } from "@/lib/data/certifications";
 export const metadata: Metadata = {
   title: "About",
   description: "Background, skills, and how I got here.",
+  alternates: { canonical: "/about" },
 };
 
 export default async function AboutPage() {

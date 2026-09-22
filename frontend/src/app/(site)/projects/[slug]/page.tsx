@@ -7,9 +7,12 @@ import { ArrowLeft, ArrowRight, Quote } from "lucide-react";
 import { GalleryLightbox } from "@/components/site/project/gallery-lightbox";
 import { OutcomeMetrics } from "@/components/site/project/outcome-metrics";
 import { LinkIcon, linkTypeLabel } from "@/components/site/project/link-icon";
+import { JsonLd } from "@/components/site/json-ld";
 import { getAllProjects, getProjectBySlug } from "@/lib/data/projects";
 import { blurhashToDataURL } from "@/lib/blurhash";
 import { cn } from "@/lib/utils";
+
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://nikunjramani.in";
 
 type Params = Promise<{ slug: string }>;
 
@@ -23,19 +26,23 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
   const project = await getProjectBySlug(slug);
   if (!project) return {};
 
+  // Next only falls back to the file-convention opengraph-image.tsx in this route when
+  // `openGraph` has no `images` key at all — even `images: undefined` still counts as the
+  // key being present (see mergeStaticMetadata's `hasOwnProperty` check) and suppresses it.
+  // So the key is only added at all when there's an explicit override to put in it.
+  const explicitImage = project.seo?.ogImageUrl ?? project.cover?.url;
+
   return {
     title: project.seo?.metaTitle ?? project.title,
     description: project.seo?.metaDescription ?? project.summary,
     keywords: project.seo?.keywords,
+    alternates: { canonical: `/projects/${slug}` },
     openGraph: {
       title: project.seo?.metaTitle ?? project.title,
       description: project.seo?.metaDescription ?? project.summary,
-      images: project.seo?.ogImageUrl
-        ? [project.seo.ogImageUrl]
-        : project.cover
-          ? [project.cover.url]
-          : undefined,
+      url: `${SITE_URL}/projects/${slug}`,
       type: "article",
+      ...(explicitImage ? { images: [explicitImage] } : {}),
     },
   };
 }
@@ -74,6 +81,30 @@ export default async function ProjectDetailPage({ params }: { params: Params }) 
 
   return (
     <article className="mx-auto max-w-4xl px-6 py-16">
+      <JsonLd
+        data={{
+          "@context": "https://schema.org",
+          "@type": "BreadcrumbList",
+          itemListElement: [
+            { "@type": "ListItem", position: 1, name: "Home", item: SITE_URL },
+            { "@type": "ListItem", position: 2, name: "Projects", item: `${SITE_URL}/projects` },
+            { "@type": "ListItem", position: 3, name: project.title, item: `${SITE_URL}/projects/${slug}` },
+          ],
+        }}
+      />
+      <JsonLd
+        data={{
+          "@context": "https://schema.org",
+          "@type": "CreativeWork",
+          name: project.title,
+          description: project.summary,
+          url: `${SITE_URL}/projects/${slug}`,
+          ...(project.cover ? { image: project.cover.url } : {}),
+          ...(project.tags?.length ? { keywords: project.tags.join(", ") } : {}),
+          author: { "@type": "Person", name: "Nikunj Ramani" },
+        }}
+      />
+
       <Link
         href="/projects"
         className="mb-8 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"

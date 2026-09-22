@@ -7,6 +7,9 @@ import { getAllProjects } from "@/lib/data/projects";
 export const metadata: Metadata = {
   title: "Projects",
   description: "A selection of things I've built.",
+  // Filtered views (?kind=&tech=&status=) are near-duplicates of this page — canonicalizing
+  // all of them here keeps search engines from indexing every filter combination separately.
+  alternates: { canonical: "/projects" },
 };
 
 type SearchParams = Promise<{ kind?: string; tech?: string; status?: string }>;
