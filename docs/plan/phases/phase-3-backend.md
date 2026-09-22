@@ -1,7 +1,8 @@
 # Phase 3 · Backend
 
-**~14 hours** · Status: 🟡 In progress — `shared/` done, `contact` domain done and verified against
-the real emulator (2026-09-12)
+**~14 hours** · Status: ✅ Done (2026-09-22) — all 12 domains built, wired and verified live
+against the real functions emulator. Only §7 (live Storage upload) is deferred to Phase 6, which
+needs billing regardless.
 
 > **Goal:** A complete, tested Python API — every CRUD route the admin panel will need,
 > the contact pipeline, and the background triggers — running on the emulator.
@@ -115,46 +116,82 @@ per domain shape in `tests/test_domain_routers.py` and `tests/test_singleton_rou
 
 ### 3.4 · Supporting domains
 
-- [ ] `src/media/` — signed upload URLs, content-type allowlist, size caps, list, delete
-- [ ] `src/media/triggers.py` — `on_media_uploaded` → WebP, thumbnails, blurhash, dimensions
-- [ ] `src/messages/` — list, mark read/replied, export
-- [ ] `src/system/` — `health`, `resume` (302 to signed URL), `sitemap`
-- [ ] `src/system/scheduled.py` — `nightly_backup`
-- [ ] `on_content_published` trigger → Next.js revalidation *(lives with `projects`)*
+- [x] `src/media/` — signed upload URLs, content-type allowlist, size caps, list, delete.
+      Hand-written, not `shared/crud.py`: creation happens inside the trigger below, not a
+      POST body, and there's no visibility/publish concept for an asset
+- [x] `src/media/triggers.py` — `on_media_uploaded` → WebP, thumbnails, blurhash, dimensions.
+      Filters to `.../original.<ext>` only — its own output (`processed.webp`,
+      `thumbnail.webp`) lands in the same watched bucket, so an unfiltered trigger would
+      reprocess its own output forever
+- [x] `src/messages/` — list, mark read/replied, export. **Never orders by `createdAt`
+      server-side** — Firestore's `.order_by()` silently excludes any document missing that
+      field, which would make a message vanish from the admin inbox with no error. Fetches
+      unordered and sorts client-side with a null-safe key instead
+- [x] `src/system/` — `health`, `resume` (302 + a download counter increment — a write,
+      which is why this stays in Python rather than moving to Next.js). **Not** `sitemap`:
+      that's a pure content read, and belongs in Next.js's `app/sitemap.ts` per
+      [ADR 0005](../../adr/0005-reads-bypass-python.md) — its presence here in earlier
+      drafts of this doc, `01-repo-architecture.md`, `03-security.md` and ADR 0011 was
+      simply wrong, and all four are now corrected
+- [x] `src/system/scheduled.py` — `nightly_backup`
+- [x] Cache revalidation on every content write — not a separate `on_content_published`
+      trigger "living with projects" as originally planned, but a direct call from
+      `ContentService` (ADR 0012), since it's shared across all eight content domains, not
+      just projects. Firestore-trigger-based revalidation would add an extra write→trigger
+      hop for no benefit over calling it inline where the write already happens
 
 ### 3.5 · Wiring
 
-- [ ] `main.py` imports and re-exports every function
-- [ ] `next.config.ts` rewrites for **every** domain — a missing one is a 404 that looks like a routing bug
-- [ ] CORS restricted to the real origins + localhost
-- [ ] `/docs` reachable in dev, disabled in prod
-- [ ] Per-domain `max_instances` and memory set in Terraform
-- [ ] Import-linter rule in `make lint`: no `shared/ → src/`, no cross-domain imports
-- [ ] Each new domain added to the `importlinter` independence contract in `pyproject.toml` —
+- [x] `main.py` imports and re-exports every function — **including triggers and scheduled
+      jobs, not just each domain's HTTP route.** `on_contact_created` and `on_media_uploaded`
+      both existed as fully tested code that was never actually wired in; caught by
+      `tests/test_main_entrypoint.py`, which is now a permanent regression test rather than
+      a one-time fix
+- [x] `next.config.ts` rewrites for **every** domain — a missing one is a 404 that looks like a routing bug
+- [x] CORS restricted to the real origins + localhost
+- [x] `/docs` reachable in dev, disabled in prod
+- [x] Per-domain `max_instances` and memory set in Terraform
+- [x] Import-linter rule in `make lint`: no `shared/ → src/`, no cross-domain imports
+- [x] Each new domain added to the `importlinter` independence contract in `pyproject.toml` —
       a domain missing from that list is silently unchecked
 
 ### 3.6 · Tests
 
-- [ ] Unit tests for services, with repositories mocked
-- [ ] Integration tests against the Firestore emulator
-- [ ] Auth tests: no token → 401, valid token without claim → 403, with claim → 200
-- [ ] Rate-limit tests
-- [ ] Contact spam-path tests
-- [ ] ≥ 80% coverage on services + repositories
-- [ ] `mypy --strict` clean, `ruff` clean
+- [x] Unit tests for services, with repositories mocked
+- [x] Integration tests against the Firestore emulator
+- [x] Auth tests: no token → 401, valid token without claim → 403, with claim → 200 — proven
+      once for `require_admin` itself, then again per router shape (collection, singleton)
+- [x] Rate-limit tests — transactional check-then-increment, proven against the real emulator
+- [x] Contact spam-path tests
+- [x] ≥ 80% coverage on services + repositories — 89% overall across 115 files
+- [x] `mypy --strict` clean, `ruff` clean — 128 tests passing, stable across repeated runs
+- [x] `main.py` actually imports cleanly, end to end — not originally listed here, but earned
+      its place: it's the check that caught two functions silently never deploying
 
 ---
 
 ## Definition of done
 
-1. Every domain deploys as its own function and appears in the emulator
-2. Each domain's `/docs` shows accurate request/response models
-3. Every admin route rejects a token without the `admin` claim
-4. A contact submission on the emulator lands an email in your inbox
-5. `make test` passes with ≥ 80% coverage on services and repositories
-6. `mypy --strict` reports zero errors
-7. Uploading an image produces WebP derivatives and a blurhash automatically
-8. `make lint` fails on a deliberate cross-domain import — the boundary rule actually works
+1. ✅ Every domain deploys as its own function and appears in the emulator — confirmed live:
+   all 15 functions (13 HTTP, 2 triggers) discovered and initialized by
+   `firebase emulators:start --only functions,firestore`, and five different domain shapes
+   (collection CRUD, singleton, hand-written) each correctly return 401 without a token over
+   real HTTP — not just `TestClient`, which is exactly what let the a2wsgi/fork bug and the
+   two unwired triggers hide until this was actually run
+2. ✅ Each domain's `/docs` shows accurate request/response models — confirmed live for `api_skills`
+3. ✅ Every admin route rejects a token without the `admin` claim
+4. ✅ A contact submission on the emulator lands an email in your inbox (Phase 3.2)
+5. ✅ `make test` passes with ≥ 80% coverage on services and repositories — 89%, 128 tests,
+   stable across repeated runs
+6. ✅ `mypy --strict` reports zero errors — across 115 source files
+7. 🟡 Uploading an image produces WebP derivatives and a blurhash automatically — proven at
+   the component level (`process_image()` against real encoded PNGs, `on_media_uploaded`'s
+   filtering and orchestration logic under test) but **not** through a live Storage bucket,
+   which doesn't exist until Phase 6. One real end-to-end upload is still owed once billing
+   is on
+8. ✅ `make lint` fails on a deliberate cross-domain import — the boundary rule actually works
+   (exercised indirectly: the cross-domain wiring tests had to move out of `shared/tests/`
+   specifically because import-linter caught them there on the first attempt)
 
 ---
 

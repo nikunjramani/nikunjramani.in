@@ -34,8 +34,14 @@ def _wanted(name: str) -> bool:
 if _wanted("api_system"):
     from src.system import api_system
 
+if _wanted("nightly_backup"):
+    from src.system.scheduled import nightly_backup
+
 if _wanted("api_contact"):
     from src.contact import api_contact
+
+if _wanted("on_contact_created"):
+    from src.contact.triggers import on_contact_created
 
 if _wanted("api_projects"):
     from src.projects import api_projects
@@ -61,15 +67,29 @@ if _wanted("api_profile"):
 if _wanted("api_settings"):
     from src.settings import api_settings
 
+if _wanted("api_media"):
+    from src.media import api_media
+
+if _wanted("on_media_uploaded"):
+    from src.media.triggers import on_media_uploaded
+
+if _wanted("api_messages"):
+    from src.messages import api_messages
+
 __all__ = [
     "api_certifications",
     "api_contact",
     "api_education",
     "api_experience",
+    "api_media",
+    "api_messages",
     "api_posts",
     "api_profile",
     "api_projects",
     "api_settings",
     "api_skills",
     "api_system",
+    "nightly_backup",
+    "on_contact_created",
+    "on_media_uploaded",
 ]

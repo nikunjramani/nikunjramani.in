@@ -5,6 +5,7 @@ from .certification_schema import Certification as Certification
 from .contact_message_schema import ContactMessage as ContactMessage
 from .education_schema import Education as Education
 from .experience_schema import Experience as Experience
+from .media_asset_schema import MediaAsset as MediaAsset
 from .post_schema import Post as Post
 from .profile_schema import Profile as Profile
 from .project_schema import Project as Project
@@ -17,6 +18,7 @@ __all__ = [
     "ContactMessage",
     "Education",
     "Experience",
+    "MediaAsset",
     "Post",
     "Profile",
     "Project",

@@ -106,8 +106,10 @@ tested (`shared/core/tests/test_security.py`), so a new domain does not re-prove
 **5 · Audit** — every admin mutation calls `AuditService(db).record(actor=..., action=...,
 collection=..., doc_id=..., before=..., after=...)`. Handle it in the service, not the router.
 
-**6 · Cache** — a write that changes public content calls the Next.js revalidate endpoint, usually
-via the `on_content_published` trigger. Without this, edits don't appear until ISR expires.
+**6 · Cache** — a write that changes public content needs to bust the Next.js ISR cache, or edits
+don't appear until the window expires. If the domain uses `shared/crud.py`'s `ContentService`, this
+is already handled — every create/patch/delete calls `revalidate_tags` inline (ADR 0012). Only
+hand-written services need to call `shared.services.revalidate.revalidate_tags` themselves.
 
 **7 · Tests** — required, all four:
 
@@ -123,10 +125,29 @@ via the `on_content_published` trigger. Without this, edits don't appear until I
 
 ## Triggers and scheduled jobs
 
-Discrete functions, not FastAPI routes — `src/<domain>/triggers.py`, living with the domain they
-belong to. `on_media_uploaded` goes in `src/media/`, not a global triggers directory.
+Discrete functions, not FastAPI routes — `src/<domain>/triggers.py` or `scheduled.py`, living with
+the domain they belong to. `on_media_uploaded` goes in `src/media/`, not a global triggers
+directory.
+
+**Each one needs its own `main.py` line, separate from the domain's `api_<domain>` line.**
+`on_contact_created` and `on_media_uploaded` both shipped as working, tested code that was *never
+actually wired into `main.py`* — `functions_framework`'s deploy discovery only ever sees what
+`main.py` imports, so both would have deployed nothing at all, silently, and every test in the
+suite still passed because none of them imported `main.py` itself. Caught by
+`tests/test_main_entrypoint.py`, which actually imports `main.py` and cross-checks every decorated
+function in every `triggers.py`/`scheduled.py` against it — run that file (or `make test`, which
+includes it) after adding any trigger or scheduled job, not just the domain's HTTP route:
+
+```python
+if _wanted("on_<event>"):
+    from src.<domain>.triggers import on_<event>
+```
 
 Import heavy dependencies *inside* the handler; every top-level import runs on every cold start.
+The one exception: anything the decorator itself needs synchronously, like
+`storage_fn.on_object_finalized(bucket=...)` — that argument must be a real value at *decoration*
+time (module import), and only surfaces as broken by actually importing the module, not by reading
+the code. `tests/test_main_entrypoint.py` catches this too.
 
 ## Adding a new domain
 

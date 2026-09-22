@@ -30,6 +30,8 @@ const DOMAINS = [
   "posts",
   "profile",
   "settings",
+  "media",
+  "messages",
 ] as const;
 
 const nextConfig: NextConfig = {

@@ -117,13 +117,25 @@ class BaseRepository[T: BaseModel]:
         return Page(items=items, next_cursor=next_cursor)
 
     def list_all(
-        self, *, visibility: str | None = None, order_by: str = "order"
+        self, *, visibility: str | None = None, order_by: str | None = "order"
     ) -> list[Record[T]]:
-        """Small collections (skills, experience) that the admin panel always loads whole."""
+        """Small collections (skills, experience, contact_messages) that the admin panel
+        always loads whole.
+
+        `order_by=None` skips server-side ordering entirely. Firestore's `.order_by(field)`
+        silently *excludes* any document where that field is absent — fine for `order`,
+        which every content schema defaults to 0 so it is always written, but wrong for a
+        collection like contact_messages where nothing guarantees every document has the
+        field (a partial migration, a manually-corrected record). An admin inbox silently
+        losing a message because of one bad `.order_by()` is a worse failure than a message
+        that just doesn't sort quite right — pass `order_by=None` and sort client-side with
+        a null-safe key when that guarantee matters more than server-side ordering.
+        """
         query: Query | CollectionReference = self._ref
         if visibility is not None:
             query = query.where(filter=FieldFilter("visibility", "==", visibility))
-        query = query.order_by(order_by)
+        if order_by is not None:
+            query = query.order_by(order_by)
         return [self._to_record(s.id, s.to_dict() or {}) for s in query.stream()]
 
     # ── writes ───────────────────────────────────────────────────────
