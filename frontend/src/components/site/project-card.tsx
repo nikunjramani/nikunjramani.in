@@ -3,6 +3,7 @@ import Link from "next/link";
 
 import type { Project } from "@/generated/types";
 import type { WithId } from "@/lib/data/convert";
+import { blurhashToDataURL } from "@/lib/blurhash";
 
 export function ProjectCard({ project }: { project: WithId<Project> }) {
   return (
@@ -18,7 +19,8 @@ export function ProjectCard({ project }: { project: WithId<Project> }) {
             fill
             sizes="(min-width: 640px) 50vw, 100vw"
             className="object-cover transition-transform group-hover:scale-[1.02]"
-            placeholder={project.cover.blurhash ? undefined : "empty"}
+            placeholder={project.cover.blurhash ? "blur" : "empty"}
+            blurDataURL={project.cover.blurhash ? blurhashToDataURL(project.cover.blurhash) : undefined}
           />
         </div>
       ) : (
