@@ -29,6 +29,7 @@ variable "domains" {
     api_posts          = { memory = "256Mi", max_instances = 3, public = true }
     api_profile        = { memory = "256Mi", max_instances = 3, public = true }
     api_settings       = { memory = "256Mi", max_instances = 3, public = true }
+    api_media          = { memory = "1Gi", max_instances = 2, public = true }
   }
   # public = true here means "reachable" at the Cloud Run IAM layer, not "unauthenticated" —
   # every admin route still gates on Depends(require_admin) inside the app. media, in

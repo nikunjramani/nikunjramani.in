@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "media-asset.schema.json",
+  "title": "MediaAsset",
+  "description": "One uploaded file in the admin media library. Distinct from common/media.schema.json, which is the small {url, alt, ...} value embedded inside a project/profile/etc — this is the library entry the admin panel browses, uploads to, and deletes from. Admin-only: visitors never browse the raw library, only the images already embedded in published content.",
+  "x-version": "1.0.0",
+  "x-firestore": {
+    "collection": "media_assets",
+    "publicRead": false,
+    "indexes": [["uploadedAt"]]
+  },
+  "type": "object",
+  "properties": {
+    "url": { "type": "string", "format": "uri" },
+    "path": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 500,
+      "description": "Storage object path, e.g. public/media/<id>/original.webp — needed to delete the underlying object, not just the Firestore record."
+    },
+    "alt": {
+      "type": "string",
+      "maxLength": 200,
+      "description": "Required before the asset can be referenced elsewhere — enforced by the admin panel, not this schema, since an upload has no alt text yet at the moment it's created."
+    },
+    "caption": { "type": "string", "maxLength": 300 },
+    "type": { "$ref": "enums/media-type.json" },
+    "contentType": { "type": "string", "maxLength": 100 },
+    "sizeBytes": { "type": "integer", "minimum": 0 },
+    "width": { "type": "integer", "minimum": 1 },
+    "height": { "type": "integer", "minimum": 1 },
+    "blurhash": { "type": "string", "maxLength": 64 },
+    "thumbnailUrl": { "type": "string", "format": "uri" },
+    "usageCount": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 0,
+      "description": "Best-effort reference count the admin panel can use to warn before deleting an asset still in use elsewhere."
+    },
+    "uploadedBy": { "type": "string", "maxLength": 128 },
+    "uploadedAt": { "type": "string", "format": "date-time" }
+  },
+  "required": ["url", "path", "uploadedAt"],
+  "additionalProperties": false
+}

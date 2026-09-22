@@ -77,7 +77,8 @@ frontend/
 │   │   │   ├── projects/[id]/page.tsx
 │   │   │   └── skills/ experience/ media/ messages/ settings/
 │   │   ├── api/revalidate/route.ts        # on-demand ISR bust
-│   │   ├── sitemap.ts  robots.ts  opengraph-image.tsx
+│   │   ├── sitemap.ts  robots.ts  opengraph-image.tsx  # sitemap reads Firestore
+│   │   │                                                # directly — ADR 0005
 │   │   └── layout.tsx  not-found.tsx
 │   ├── components/
 │   │   ├── ui/                            # shadcn primitives
@@ -139,7 +140,9 @@ backend/functions/
     ├── media/                     # + on_media_uploaded → WebP, thumbs, blurhash
     ├── messages/
     ├── settings/
-    └── system/                    # health · resume · sitemap · nightly_backup
+    └── system/                    # health · resume (302 + download counter) · nightly_backup
+                                    # NOT sitemap — that's a pure content read, owned by
+                                    # Next.js's app/sitemap.ts per ADR 0005
 ```
 
 Every domain has the identical shape, so adding one is copy, rename, register.

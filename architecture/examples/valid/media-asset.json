@@ -1,0 +1,14 @@
+{
+  "$schema": "media-asset",
+  "url": "https://storage.googleapis.com/nikunjramani-in-media/public/media/abc123/original.webp",
+  "path": "public/media/abc123/original.webp",
+  "alt": "A dashboard showing stock levels across three warehouses",
+  "type": "image",
+  "contentType": "image/webp",
+  "sizeBytes": 245678,
+  "width": 1600,
+  "height": 900,
+  "blurhash": "LGF5]+Yk^6#M@-5c,1J5@[or[Q6.",
+  "uploadedBy": "uid-1",
+  "uploadedAt": "2026-01-05T10:00:00+00:00"
+}

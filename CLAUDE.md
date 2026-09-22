@@ -12,10 +12,10 @@ with a Python API owning every write.
 employer names, client names, or anything from a private engagement. Reach for a placeholder and
 say so.
 
-**Status:** Phases 0–1 done. Phase 3 (backend) in progress — `shared/`, `contact`, and all eight
-content domains (`projects`, `skills`, `experience`, `education`, `certifications`, `posts`,
-`profile`, `settings`) are built and tested. Billing is deferred, so development runs entirely
-against the **Firebase emulators** — that works for everything up to Phase 6.
+**Status:** Phases 0, 1 and 3 done — the whole backend (12 domains, 128 tests, verified live
+against the real functions emulator) is built. Next is Phase 2 (content — needs the site owner's
+own writing) and Phase 4 (frontend). Billing is deferred, so development runs entirely against the
+**Firebase emulators** — that works for everything up to Phase 6.
 Full plan: [`docs/plan/`](./docs/plan/README.md) · Decisions: [`docs/adr/`](./docs/adr/README.md)
 
 ## Stack
@@ -149,6 +149,13 @@ in the repository layer, in exactly one place.
   a2wsgi bug above type-checked cleanly and passed every unit test; it only appeared against the
   real emulator. Phase 3's "deploy `make_function()` to the emulator before building further
   domains" step exists for exactly this gap.
+- **A trigger or scheduled function needs its own `main.py` line, separate from the domain's
+  `api_<domain>` HTTP route.** `on_contact_created` and `on_media_uploaded` both shipped as fully
+  tested, working code that was never actually imported into `main.py` — deploy discovery only
+  sees what `main.py` imports, so both would have silently deployed nothing. No unit or route test
+  catches this, because none of them import `main.py` itself.
+  `tests/test_main_entrypoint.py` does, by actually importing it and cross-checking every decorated
+  function against it — run it (or `make test`) after adding any trigger or scheduled job.
 - **Localhost Lighthouse scores lie.** Only production numbers count.
 - **Debug a function directly via `functions-framework`, never through
   `firebase emulators:start --only functions`.** Breakpoints don't reliably hit through that

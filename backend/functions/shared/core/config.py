@@ -24,6 +24,7 @@ class Settings(BaseSettings):
     # Where the Next.js app listens for cache-bust calls after a content write.
     revalidate_url: str = "http://localhost:3000/api/revalidate"
     storage_bucket: str = "nikunjramani-in-media"
+    backups_bucket: str = "nikunjramani-in-backups"
     site_url: str = "https://nikunjramani.in"
 
     @property

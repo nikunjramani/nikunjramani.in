@@ -1,0 +1,2 @@
+{ "$schema": "media-asset", "_why": "path is required to delete the underlying Storage object, not just the Firestore record.",
+  "url": "https://example.com/x.webp", "uploadedAt": "2026-01-05T10:00:00+00:00" }

@@ -4,12 +4,20 @@ Deliberately the first domain built — it is the smallest thing that exercises 
 adapter, so a mistake here is caught before it is copied thirteen times.
 """
 
-from fastapi import APIRouter
+from typing import Annotated
+
+from fastapi import APIRouter, Depends
+from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
 
 from shared.core.config import get_settings
+from src.system.service import SystemService
 
 router = APIRouter()
+
+
+def get_system_service() -> SystemService:
+    return SystemService()
 
 
 class Health(BaseModel):
@@ -26,3 +34,10 @@ async def health() -> Health:
         environment=settings.environment,
         project=settings.firebase_project_id,
     )
+
+
+@router.get("/resume")
+def resume(service: Annotated[SystemService, Depends(get_system_service)]) -> RedirectResponse:
+    url = service.get_resume_url()
+    service.record_resume_download()
+    return RedirectResponse(url, status_code=302)

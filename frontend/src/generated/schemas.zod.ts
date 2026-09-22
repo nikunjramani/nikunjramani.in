@@ -294,6 +294,48 @@ export const ExperienceSchema = z
   );
 export type ExperienceInput = z.infer<typeof ExperienceSchema>;
 
+export const MediaAssetSchema = z
+  .object({
+    url: z.string().url(),
+    path: z
+      .string()
+      .min(1)
+      .max(500)
+      .describe(
+        "Storage object path, e.g. public/media/<id>/original.webp — needed to delete the underlying object, not just the Firestore record.",
+      ),
+    alt: z
+      .string()
+      .max(200)
+      .describe(
+        "Required before the asset can be referenced elsewhere — enforced by the admin panel, not this schema, since an upload has no alt text yet at the moment it's created.",
+      )
+      .optional(),
+    caption: z.string().max(300).optional(),
+    type: z.enum(["image", "video", "diagram"]).optional(),
+    contentType: z.string().max(100).optional(),
+    sizeBytes: z.number().int().gte(0).optional(),
+    width: z.number().int().gte(1).optional(),
+    height: z.number().int().gte(1).optional(),
+    blurhash: z.string().max(64).optional(),
+    thumbnailUrl: z.string().url().optional(),
+    usageCount: z
+      .number()
+      .int()
+      .gte(0)
+      .describe(
+        "Best-effort reference count the admin panel can use to warn before deleting an asset still in use elsewhere.",
+      )
+      .default(0),
+    uploadedBy: z.string().max(128).optional(),
+    uploadedAt: z.string().datetime({ offset: true }),
+  })
+  .strict()
+  .describe(
+    "One uploaded file in the admin media library. Distinct from common/media.schema.json, which is the small {url, alt, ...} value embedded inside a project/profile/etc — this is the library entry the admin panel browses, uploads to, and deletes from. Admin-only: visitors never browse the raw library, only the images already embedded in published content.",
+  );
+export type MediaAssetInput = z.infer<typeof MediaAssetSchema>;
+
 export const PostSchema = z
   .object({
     slug: z

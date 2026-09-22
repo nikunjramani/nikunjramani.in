@@ -21,6 +21,7 @@ export type SkillCategory =
   | "data"
   | "mobile"
   | "tools";
+export type MediaType1 = "image" | "video" | "diagram";
 export type SocialPlatform =
   | "github"
   | "linkedin"
@@ -320,6 +321,34 @@ export interface Tech {
   name: string;
   category?: SkillCategory;
   primary?: boolean;
+}
+/**
+ * One uploaded file in the admin media library. Distinct from common/media.schema.json, which is the small {url, alt, ...} value embedded inside a project/profile/etc — this is the library entry the admin panel browses, uploads to, and deletes from. Admin-only: visitors never browse the raw library, only the images already embedded in published content.
+ */
+export interface MediaAsset {
+  url: string;
+  /**
+   * Storage object path, e.g. public/media/<id>/original.webp — needed to delete the underlying object, not just the Firestore record.
+   */
+  path: string;
+  /**
+   * Required before the asset can be referenced elsewhere — enforced by the admin panel, not this schema, since an upload has no alt text yet at the moment it's created.
+   */
+  alt?: string;
+  caption?: string;
+  type?: MediaType1;
+  contentType?: string;
+  sizeBytes?: number;
+  width?: number;
+  height?: number;
+  blurhash?: string;
+  thumbnailUrl?: string;
+  /**
+   * Best-effort reference count the admin panel can use to warn before deleting an asset still in use elsewhere.
+   */
+  usageCount?: number;
+  uploadedBy?: string;
+  uploadedAt: string;
 }
 /**
  * Blog post. Schema exists from Phase 1 so the shape is settled; the UI ships in Phase 8 behind the showBlog flag.

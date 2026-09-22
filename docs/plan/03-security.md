@@ -101,7 +101,9 @@ Signing in with Google is **not** enough — anyone can do that. Authorisation i
 `admin: true` claim, set once on your UID by `infra/scripts/set_admin_claim.py` and verifiable only
 server-side.
 
-- Public routes: `/health`, `/contact`, `/resume`, `/sitemap.xml`
+- Public routes: `/health`, `/contact`, `/resume`
+  (`/sitemap.xml` is Next.js's `app/sitemap.ts`, reading Firestore directly per
+  [ADR 0005](../adr/0005-reads-bypass-python.md) — not a Python route at all)
 - Everything under `/api/v1/admin/*` requires the claim
 - Tokens are verified on every request — no session cache, no "trust the cookie"
 - Every admin mutation writes `{ actor, action, collection, docId, before, after, at }` to `audit_log`

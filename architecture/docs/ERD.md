@@ -12,6 +12,7 @@
 | `contact_messages` | **ContactMessage** | ❌ | `name`, `email`, `message` | 1 |
 | `education` | **Education** | ✅ | `institution`, `qualification`, `visibility` | 1 |
 | `experience` | **Experience** | ✅ | `company`, `role`, `startDate`, `current`, `visibility` | 2 |
+| `media_assets` | **MediaAsset** | ❌ | `url`, `path`, `uploadedAt` | 1 |
 | `posts` | **Post** | ✅ | `slug`, `title`, `visibility` | 2 |
 | `profile` | **Profile** | ✅ | `name`, `headline`, `visibility` | 0 |
 | `projects` | **Project** | ✅ | `slug`, `title`, `summary`, `kind`, `status`, `visibility` | 3 |
@@ -107,6 +108,27 @@ _A role. Unlike projects, jobs genuinely have a start and an end, so real dates 
 | `order` | integer | no |
 | `visibility` | visibility | **yes** |
 | `audit` | audit | no |
+
+## MediaAsset
+
+_One uploaded file in the admin media library. Distinct from common/media.schema.json, which is the small {url, alt, ...} value embedded inside a project/profile/etc — this is the library entry the admin panel browses, uploads to, and deletes from. Admin-only: visitors never browse the raw library, only the images already embedded in published content._
+
+| Field | Type | Required |
+|---|---|---|
+| `url` | string | **yes** |
+| `path` | string | **yes** |
+| `alt` | string | no |
+| `caption` | string | no |
+| `type` | media-type | no |
+| `contentType` | string | no |
+| `sizeBytes` | integer | no |
+| `width` | integer | no |
+| `height` | integer | no |
+| `blurhash` | string | no |
+| `thumbnailUrl` | string | no |
+| `usageCount` | integer | no |
+| `uploadedBy` | string | no |
+| `uploadedAt` | string | **yes** |
 
 ## Post
 

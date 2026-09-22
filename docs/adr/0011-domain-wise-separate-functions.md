@@ -48,7 +48,9 @@ backend/functions/
     ├── media/              # + on_media_uploaded
     ├── messages/
     ├── settings/
-    └── system/             # health · resume · sitemap · nightly_backup
+    └── system/             # health · resume (302 + download counter) · nightly_backup
+                             # NOT sitemap — a pure content read belongs in Next.js's
+                             # app/sitemap.ts (ADR 0005), not here
 ```
 
 Each domain exports one function through a shared three-line wrapper:
