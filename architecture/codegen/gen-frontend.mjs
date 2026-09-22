@@ -100,3 +100,69 @@ await writeFile(
 
 console.log(`  typescript  → frontend/src/generated/types.ts (${roots.length} models)`);
 console.log(`  zod         → frontend/src/generated/schemas.zod.ts`);
+
+// ── Admin form schemas ──────────────────────────────────────────────
+// <SchemaForm> (Phase 5) reads these at runtime to build the admin editor for every
+// content collection — field resolver walks `schema.properties`, so a field added here
+// needs no form code changed. Only `x-firestore.publicRead: true` schemas get a generic
+// form: that flag already exactly identifies the 8 collections shared/crud.py's generic
+// router serves (media-asset, contact-message and audit-log are all publicRead: false —
+// each has its own hand-built admin UI instead, for reasons documented in their own
+// service.py files).
+//
+// One exception the schema can't tell you: `x-firestore.collection` is the Firestore
+// collection name, but the site-config domain's API route is mounted as `/settings`, not
+// `/site_config` — see backend/functions/src/settings/. Every other domain's route matches
+// its collection name exactly.
+const API_DOMAIN_OVERRIDES = { site_config: "settings" };
+
+const formSchemas = {};
+for (const file of roots) {
+  const raw = JSON.parse(
+    await (await import("node:fs/promises")).readFile(path.join(SCHEMAS, file), "utf8"),
+  );
+  if (raw["x-firestore"]?.publicRead !== true) continue;
+
+  const deref = await $RefParser.dereference(path.join(SCHEMAS, file));
+  const collection = raw["x-firestore"].collection;
+  const required = deref.required ?? [];
+
+  formSchemas[pascal(file)] = {
+    title: deref.title,
+    collection,
+    apiDomain: API_DOMAIN_OVERRIDES[collection] ?? collection,
+    // Matches shared/crud.py's make_crud_router(slugged=...): the document id is the
+    // payload's own `slug` field rather than an auto-generated one.
+    slugged: required.includes("slug"),
+    // Matches make_crud_router(singleton_id="main"): one fixed document, no list/create/
+    // delete/reorder — profile and site-config are the only two.
+    singleton: collection === "profile" || collection === "site_config",
+    required,
+    properties: deref.properties,
+  };
+}
+
+await writeFile(
+  path.join(OUT, "admin-schemas.ts"),
+  await prettier.format(
+    `${BANNER}import type { JSONSchema7 } from "json-schema";
+
+export interface AdminSchemaEntry {
+  title: string;
+  collection: string;
+  apiDomain: string;
+  slugged: boolean;
+  singleton: boolean;
+  required: string[];
+  properties: Record<string, JSONSchema7>;
+}
+
+export const ADMIN_SCHEMAS = ${JSON.stringify(formSchemas)} as const satisfies Record<string, AdminSchemaEntry>;
+`,
+    { parser: "typescript" },
+  ),
+);
+
+console.log(
+  `  admin forms → frontend/src/generated/admin-schemas.ts (${Object.keys(formSchemas).length} collections)`,
+);
