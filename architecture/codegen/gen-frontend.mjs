@@ -63,6 +63,12 @@ let ts = await compile(combined, "Models", {
   additionalProperties: false,
   declareExternallyReferenced: true,
   unreachableDefinitions: false,
+  // Without this, every maxItems-constrained array (common/*.schema.json uses it
+  // throughout) compiles to a union of fixed-length tuples — one variant per length up
+  // to the max — instead of a plain T[]. On project.schema.json alone that inflated the
+  // output from a few hundred lines to nearly 3,700. maxLength/minLength on strings are
+  // unaffected; this option is specifically about array length bounds.
+  ignoreMinAndMaxItems: true,
   style: { singleQuote: false },
 });
 
