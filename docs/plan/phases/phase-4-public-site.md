@@ -70,9 +70,9 @@ The [progressive disclosure](../02-data-model.md#progressive-disclosure) page. E
 
 ### 4.6 · Remaining pages
 
-- [ ] `/about` — full bio, skill matrix, education, certifications, résumé download
-- [ ] `/experience` — timeline, achievements, tech per role
-- [ ] `/contact` — form (react-hook-form + generated Zod), Turnstile, honeypot, success/error states
+- [x] `/about` — full bio, skill matrix, education, certifications, résumé download
+- [x] `/experience` — timeline, achievements, tech per role
+- [x] `/contact` — form (react-hook-form + generated Zod), Turnstile, honeypot, success/error states
 
 ### 4.7 · SEO
 
