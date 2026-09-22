@@ -38,5 +38,9 @@ class AuditService:
             after=after,
             at=now_iso(),  # type: ignore[arg-type]
         )
-        payload = to_firestore(entry.model_dump(mode="json", exclude_none=True))
+        # No exclude_none: before/after are meaningfully nullable (a create has no
+        # before, a delete has no after), and exclude_none would drop the key entirely
+        # rather than store an explicit null — worse for anyone reading the trail later,
+        # since "missing" and "was null" would look identical.
+        payload = to_firestore(entry.model_dump(mode="json"))
         self._db.collection("audit_log").document().set(payload)

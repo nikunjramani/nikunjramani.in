@@ -5,6 +5,7 @@ its own Timestamp type. This is the *only* place that boundary is crossed — re
 call these on the way in and out, and nothing else needs to know Firestore's type exists.
 """
 
+import re
 from datetime import UTC, datetime
 from typing import Any
 
@@ -36,13 +37,15 @@ def from_firestore(data: dict[str, Any]) -> dict[str, Any]:
     return result
 
 
+# Only a full date-time ("2026-01-05T10:00:00Z") is treated as a timestamp. Anything looser
+# is ambiguous: the slug "20210601" and the ISO week "2021-W01" both parse as dates, so a
+# looser rule silently corrupts perfectly valid content. Schema fields that are dates use
+# format: date-time, which always serialises with a time part.
+_DATETIME_RE = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}")
+
+
 def _iso_to_datetime(value: Any) -> Any:
-    # Heuristic: try to parse every string as a datetime, keep it as-is if that fails.
-    # This model set has no field whose value coincidentally parses as ISO 8601 (a slug,
-    # a URL, a name), so the false-positive rate is zero today. If that ever changes, the
-    # right fix is deriving datetime field *paths* from the schema rather than sniffing
-    # values — more machinery, not worth it while it stays unnecessary.
-    if isinstance(value, str):
+    if isinstance(value, str) and _DATETIME_RE.match(value):
         try:
             return datetime.fromisoformat(value)
         except ValueError:

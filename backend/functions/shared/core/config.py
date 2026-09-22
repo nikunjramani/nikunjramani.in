@@ -21,6 +21,11 @@ class Settings(BaseSettings):
 
     allowed_origins: str = "http://localhost:3000"
 
+    # Where the Next.js app listens for cache-bust calls after a content write.
+    revalidate_url: str = "http://localhost:3000/api/revalidate"
+    storage_bucket: str = "nikunjramani-in-media"
+    site_url: str = "https://nikunjramani.in"
+
     @property
     def is_production(self) -> bool:
         return self.environment == "production"

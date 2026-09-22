@@ -46,3 +46,15 @@ def clean_collection(db: Client) -> Iterator[str]:
     yield name
     for doc in db.collection(name).stream():
         doc.reference.delete()
+
+
+@pytest.fixture
+def clean_audit_log(db: Client) -> Iterator[None]:
+    """`audit_log` is real, shared, and never wiped on its own — a test asserting on its
+    contents needs a clean slate first, or it sees every other test's entries too (all
+    tests share one emulator instance for the run)."""
+    for doc in db.collection("audit_log").stream():
+        doc.reference.delete()
+    yield
+    for doc in db.collection("audit_log").stream():
+        doc.reference.delete()
