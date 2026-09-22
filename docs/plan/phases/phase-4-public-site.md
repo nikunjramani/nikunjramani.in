@@ -1,6 +1,8 @@
 # Phase 4 · Public Site
 
-**~16 hours** · Status: ⬜ Not started
+**~16 hours** · Status: 🟡 Built and verified against seeded emulator data; two items
+remain genuinely blocked — real content (Phase 2) and a Lighthouse score (needs a
+production deploy, Phase 6) — not skipped, see their notes below.
 
 > **Goal:** Every public page built, rendering your real content, fast and accessible,
 > with SEO done properly — the thing Flutter couldn't give us.
