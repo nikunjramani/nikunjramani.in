@@ -45,10 +45,10 @@
 
 ### 4.4 · Projects
 
-- [ ] `/projects` — responsive grid
-- [ ] Filters: kind, tech, status — URL state, so filtered views are shareable
-- [ ] Empty and loading states
-- [ ] `ProjectCard` — cover, title, summary, stack chips, timeline label
+- [x] `/projects` — responsive grid
+- [x] Filters: kind, tech, status — URL state, so filtered views are shareable
+- [x] Empty and loading states
+- [x] `ProjectCard` — cover, title, summary, stack chips, timeline label
 
 ### 4.5 · Project detail — the important one
 
