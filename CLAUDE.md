@@ -12,8 +12,10 @@ with a Python API owning every write.
 employer names, client names, or anything from a private engagement. Reach for a placeholder and
 say so.
 
-**Status:** Phase 0 scaffold done, Phase 1 in progress. Billing is deferred, so development runs
-entirely against the **Firebase emulators** — that works for everything up to Phase 6.
+**Status:** Phases 0–1 done. Phase 3 (backend) in progress — `shared/`, `contact`, and all eight
+content domains (`projects`, `skills`, `experience`, `education`, `certifications`, `posts`,
+`profile`, `settings`) are built and tested. Billing is deferred, so development runs entirely
+against the **Firebase emulators** — that works for everything up to Phase 6.
 Full plan: [`docs/plan/`](./docs/plan/README.md) · Decisions: [`docs/adr/`](./docs/adr/README.md)
 
 ## Stack
@@ -87,6 +89,12 @@ One deployed function per domain, each owning its routes, service, repository, t
 in `backend/functions/src/<domain>/`. `shared/` may never import from `src/`, and no domain may
 import another domain's service or repository — use `shared/` or an event.
 → [ADR 0011](./docs/adr/0011-domain-wise-separate-functions.md)
+
+**Before writing a new content domain's CRUD by hand, check `shared/crud.py` first.**
+`ContentService` (audit trail, publish/unpublish transitions, RFC 7386 merge-patch) and
+`make_crud_router` (the FastAPI routes) already cover the standard shape — see `src/skills/` for
+the three-file minimum. Only write custom service logic for what's genuinely domain-specific
+(`ProjectService.duplicate`, say). → [ADR 0012](./docs/adr/0012-generic-content-crud-in-shared.md)
 
 **7 · Architectural changes get an ADR.**
 Anything a stranger would ask "why is it like this?" about. Copy `docs/adr/TEMPLATE.md`, add an

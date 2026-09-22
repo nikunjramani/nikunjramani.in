@@ -23,6 +23,7 @@ reader would reasonably ask "why on earth is it like this?", belongs here.
 | [0009](./0009-admin-panel-is-launch-scope.md) | Admin panel is launch scope | ✅ Accepted | 2026-09-06 |
 | [0010](./0010-no-monorepo-tooling.md) | No monorepo tooling | ✅ Accepted | 2026-09-06 |
 | [0011](./0011-domain-wise-separate-functions.md) | Domain-wise separate Firebase Functions | ✅ Accepted | 2026-09-06 |
+| [0012](./0012-generic-content-crud-in-shared.md) | Generic content CRUD lives in shared/, not per domain | ✅ Accepted | 2026-09-22 |
 
 **Status:** 🟡 Proposed · ✅ Accepted · ⛔ Rejected · 🔄 Superseded · ⚠️ Deprecated
 

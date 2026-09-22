@@ -33,6 +33,12 @@ exclude = ["shared/generated"]
 [tool.ruff.lint]
 select = ["E", "F", "I", "N", "UP", "B", "A", "C4", "SIM", "RUF"]
 
+[tool.ruff.lint.per-file-ignores]
+# "profile" is the correct, meaningful domain name here — it matches the Firestore
+# collection and the Profile schema used everywhere else. It's nested under src/, not a
+# top-level module, so it doesn't actually shadow the stdlib profiler in practice.
+"src/profile/**" = ["A005"]
+
 [tool.mypy]
 python_version = "3.13"
 strict = true
@@ -56,7 +62,9 @@ ignore_missing_imports = true
 [tool.pytest.ini_options]
 # "shared" is deliberate, not a typo of "src" — shared/repositories and shared/services
 # have their own tests/ directories too, and both need discovering by a bare `pytest`.
-testpaths = ["src", "shared"]
+# "tests" (top-level, not under shared/ or src/) holds cross-domain wiring tests that
+# import from multiple src.<domain> packages — import-linter forbids that from shared/.
+testpaths = ["src", "shared", "tests"]
 addopts = "-q --cov=src --cov=shared --cov-report=term-missing"
 asyncio_mode = "auto"
 
@@ -82,4 +90,12 @@ type = "independence"
 modules = [
     "src.system",
     "src.contact",
+    "src.projects",
+    "src.skills",
+    "src.experience",
+    "src.education",
+    "src.certifications",
+    "src.posts",
+    "src.profile",
+    "src.settings",
 ]

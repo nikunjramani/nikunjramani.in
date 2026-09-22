@@ -37,4 +37,39 @@ if _wanted("api_system"):
 if _wanted("api_contact"):
     from src.contact import api_contact
 
-__all__ = ["api_contact", "api_system"]
+if _wanted("api_projects"):
+    from src.projects import api_projects
+
+if _wanted("api_skills"):
+    from src.skills import api_skills
+
+if _wanted("api_experience"):
+    from src.experience import api_experience
+
+if _wanted("api_education"):
+    from src.education import api_education
+
+if _wanted("api_certifications"):
+    from src.certifications import api_certifications
+
+if _wanted("api_posts"):
+    from src.posts import api_posts
+
+if _wanted("api_profile"):
+    from src.profile import api_profile
+
+if _wanted("api_settings"):
+    from src.settings import api_settings
+
+__all__ = [
+    "api_certifications",
+    "api_contact",
+    "api_education",
+    "api_experience",
+    "api_posts",
+    "api_profile",
+    "api_projects",
+    "api_settings",
+    "api_skills",
+    "api_system",
+]
