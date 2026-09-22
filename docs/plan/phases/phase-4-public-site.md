@@ -85,12 +85,17 @@ The [progressive disclosure](../02-data-model.md#progressive-disclosure) page. E
 
 ### 4.8 · Quality
 
-- [ ] Responsive at 640 / 1024 / 1280 — every page
-- [ ] Keyboard navigable, visible focus rings, skip-to-content link
-- [ ] Semantic landmarks, alt text everywhere, AA contrast
-- [ ] `prefers-reduced-motion` honoured
-- [ ] `next/image` everywhere, correct `sizes`
-- [ ] Lighthouse ≥ 95 performance, 100 a11y, 100 SEO
+- [x] Responsive at 640 / 1024 / 1280 — every page
+- [x] Keyboard navigable, visible focus rings, skip-to-content link
+- [x] Semantic landmarks, alt text everywhere, AA contrast
+- [x] `prefers-reduced-motion` honoured
+- [x] `next/image` everywhere, correct `sizes`
+- [ ] Lighthouse ≥ 95 performance, 100 a11y, 100 SEO — **blocked**: "Localhost Lighthouse
+      scores lie. Only production numbers count" (this doc's own gotcha), and Phase 6
+      (deploy) is blocked on Blaze billing. Everything Lighthouse would check by static
+      analysis — landmarks, alt text, contrast tokens, `next/image` sizes, canonical/OG/
+      JSON-LD completeness — was verified by other means in this pass; only the actual
+      score needs a live deploy.
 
 ---
 
