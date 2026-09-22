@@ -55,18 +55,18 @@
 The [progressive disclosure](../02-data-model.md#progressive-disclosure) page. Each block renders
 **only if the data exists** — no empty headings, ever.
 
-- [ ] Header — title, subtitle, timeline, status, links
-- [ ] Cover image with blurhash placeholder
-- [ ] Overview · Problem · Approach
-- [ ] Architecture — description, diagram, component list
-- [ ] Challenges
-- [ ] **Outcomes** — before/after metrics, visually prominent
-- [ ] Learnings · Future work
-- [ ] Stack, grouped by category
-- [ ] Gallery with a lightbox
-- [ ] Testimonial · Awards · Collaborators
-- [ ] `client.confidential` → name stripped **server-side**, not hidden with CSS
-- [ ] Prev/next navigation
+- [x] Header — title, subtitle, timeline, status, links
+- [x] Cover image with blurhash placeholder
+- [x] Overview · Problem · Approach
+- [x] Architecture — description, diagram, component list
+- [x] Challenges
+- [x] **Outcomes** — before/after metrics, visually prominent
+- [x] Learnings · Future work
+- [x] Stack, grouped by category
+- [x] Gallery with a lightbox
+- [x] Testimonial · Awards · Collaborators
+- [x] `client.confidential` → name stripped **server-side**, not hidden with CSS
+- [x] Prev/next navigation
 
 ### 4.6 · Remaining pages
 
