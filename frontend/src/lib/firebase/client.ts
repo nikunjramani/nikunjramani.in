@@ -10,7 +10,7 @@
  * directly. Reads happen server-side (ADR 0005), writes go through the API (ADR 0007).
  */
 import { getApp, getApps, initializeApp } from "firebase/app";
-import { getAuth, type Auth } from "firebase/auth";
+import { connectAuthEmulator, getAuth, type Auth } from "firebase/auth";
 
 const config = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -20,6 +20,17 @@ const config = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
+let connectedToEmulator = false;
+
 export function auth(): Auth {
-  return getAuth(getApps().length ? getApp() : initializeApp(config));
+  const isNewApp = !getApps().length;
+  const instance = getAuth(isNewApp ? initializeApp(config) : getApp());
+
+  const emulatorHost = process.env.NEXT_PUBLIC_FIREBASE_AUTH_EMULATOR_HOST;
+  if (emulatorHost && !connectedToEmulator) {
+    connectAuthEmulator(instance, `http://${emulatorHost}`, { disableWarnings: true });
+    connectedToEmulator = true;
+  }
+
+  return instance;
 }
