@@ -36,6 +36,10 @@ export interface SchemaFormProps<T extends z.ZodTypeAny> {
   defaultValues: z.infer<T>;
   onSubmit: (values: z.infer<T>) => Promise<void>;
   submitLabel?: string;
+  /** Fires on every keystroke with the current (possibly invalid, possibly unsaved) form
+   * state — the project editor's live preview subscribes to this rather than SchemaForm
+   * needing any preview-specific concept of its own. */
+  onValuesChange?: (values: z.infer<T>) => void;
 }
 
 /**
@@ -51,6 +55,7 @@ export function SchemaForm<T extends z.ZodTypeAny>({
   defaultValues,
   onSubmit,
   submitLabel = "Save",
+  onValuesChange,
 }: SchemaFormProps<T>) {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -61,6 +66,15 @@ export function SchemaForm<T extends z.ZodTypeAny>({
   });
 
   const { isDirty } = form.formState;
+
+  useEffect(() => {
+    if (!onValuesChange) return;
+    const subscription = form.watch((values) => onValuesChange(values as z.infer<T>));
+    return () => subscription.unsubscribe();
+    // form.watch's callback identity doesn't need to be a dependency — react-hook-form's
+    // own subscription object is stable across renders.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form]);
 
   // Unsaved-changes guard: a tab close or refresh with unsaved edits gets a native confirm
   // prompt. App Router has no built-in way to intercept an in-app Link navigation the way
