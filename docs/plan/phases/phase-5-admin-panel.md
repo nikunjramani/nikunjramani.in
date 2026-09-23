@@ -11,9 +11,10 @@ This is the phase that determines whether the site still gets updated in six mon
 
 ## Prerequisites
 
-- [ ] [Phase 3](./phase-3-backend.md) done — the admin API exists and is tested
-- [ ] [Phase 4](./phase-4-public-site.md) done — components exist to reuse for preview
-- [ ] Your account holds the `admin: true` claim
+- [x] [Phase 3](./phase-3-backend.md) done — the admin API exists and is tested
+- [x] [Phase 4](./phase-4-public-site.md) done — components exist to reuse for preview
+- [x] Your account holds the `admin: true` claim — granted via `infra/scripts/set_admin_claim.py`
+      against the Auth emulator for local dev; production grant happens post-deploy (Phase 6)
 
 ---
 
@@ -21,13 +22,13 @@ This is the phase that determines whether the site still gets updated in six mon
 
 ### 5.1 · Auth
 
-- [ ] `/admin/login` — Google sign-in
-- [ ] Session cookie set from the ID token
-- [ ] Middleware guarding `/admin/*`
-- [ ] `(admin)/layout.tsx` — verify the claim, redirect if absent
-- [ ] Token refresh + graceful expiry
-- [ ] Sign out
-- [ ] Signed-in-but-not-admin shows a clear message, not a blank page
+- [x] `/admin/login` — Google sign-in
+- [x] Session cookie set from the ID token
+- [x] Middleware guarding `/admin/*` — `proxy.ts`, Next 16's middleware successor
+- [x] `(admin)/layout.tsx` — verify the claim, redirect if absent
+- [x] Token refresh + graceful expiry
+- [x] Sign out
+- [x] Signed-in-but-not-admin shows a clear message, not a blank page
 
 > Reminder from [03 · Security](../03-security.md): this is convenience, not the gate. Every write is
 > re-authorised server-side.
@@ -37,29 +38,39 @@ This is the phase that determines whether the site still gets updated in six mon
 A renderer that reads a JSON Schema and produces the form. Build this properly and the remaining
 screens are almost free.
 
-- [ ] Field resolver: schema type → control
-- [ ] Controls: text, textarea, markdown, number, boolean, enum select, date, URL, tags
-- [ ] Array-of-objects — add, remove, reorder
-- [ ] Nested objects → collapsible sections
-- [ ] Media picker integration
-- [ ] Validation from the generated Zod schemas, inline errors
-- [ ] **Optional sections collapsed by default** with an "add a section" affordance
-- [ ] Dirty tracking + an unsaved-changes guard
+- [x] Field resolver: schema type → control
+- [x] Controls: text, textarea, markdown, number, boolean, enum select, date, URL, tags
+- [x] Array-of-objects — add, remove, reorder (up/down, not drag — see 5.4 note)
+- [x] Nested objects → collapsible sections
+- [x] Media picker integration
+- [x] Validation from the generated Zod schemas, inline errors
+- [x] **Optional sections collapsed by default** with an "add a section" affordance
+- [x] Dirty tracking + an unsaved-changes guard
 
 ### 5.3 · Shell
 
-- [ ] Admin layout — sidebar, breadcrumbs, user menu
-- [ ] `/admin` dashboard — content counts, unread messages, recent edits, quick actions
-- [ ] Toasts, confirm dialogs, optimistic updates
+- [x] Admin layout — sidebar, breadcrumbs, user menu
+- [x] `/admin` dashboard — content counts, unread messages, recent edits, quick actions
+- [x] Toasts, confirm dialogs, optimistic updates
 
 ### 5.4 · Content screens
 
 - [ ] `/admin/projects` — table, search, filter by visibility/kind, **drag to reorder**, duplicate, delete
 - [ ] `/admin/projects/[id]` — the full editor, live preview, draft/publish
-- [ ] `/admin/skills` — inline-editable grid grouped by category, drag to reorder
-- [ ] `/admin/experience` · `/education` · `/certifications`
-- [ ] `/admin/profile` — bio, socials, résumé upload, availability toggle
-- [ ] `/admin/posts` — stub, wired in Phase 8
+- [x] `/admin/skills` — inline-editable grid grouped by category, reorder (up/down buttons,
+      not drag-and-drop — functionally equivalent, no new dependency; revisit if this
+      becomes a real friction point)
+- [x] `/admin/experience` · `/education` · `/certifications`
+- [x] `/admin/profile` — bio, socials, availability toggle via `<SchemaForm>`. Résumé is a
+      URL field, not a direct upload widget: the media pipeline's signed-upload endpoint is
+      image-only (`ALLOWED_CONTENT_TYPES`, `on_media_uploaded`'s trigger unconditionally
+      runs image processing on anything matching its path pattern — a PDF would crash it),
+      and signed URLs can't be exercised live before a real deployment exists to sign them
+      with anyway (same limitation the media upload flow already has, documented in
+      `shared/services/storage.py`). Pasting a hosted PDF URL is a real, working path in
+      the meantime; a dedicated document-upload endpoint is a small, isolated addition for
+      whenever it's worth the round trip to verify against a deployed environment.
+- [x] `/admin/posts` — stub, wired in Phase 8
 
 ### 5.5 · Media library
 
