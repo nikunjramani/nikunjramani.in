@@ -61,6 +61,35 @@ def test_valid_token_with_admin_claim_is_200() -> None:
     assert response.json() == {"uid": "admin-1"}
 
 
+def test_verify_token_ensures_a_firebase_app_exists_before_verifying() -> None:
+    """Regression test for a real bug, not a hypothetical one: require_admin runs before
+    any route body, so on a cold instance it's often the *first* Admin SDK call of the
+    whole request — nothing has necessarily called get_db() yet to create the default app
+    as a side effect. Without an explicit ensure_app() call first, verify_id_token raises
+    "the default Firebase app does not exist", indistinguishable from a bad token once the
+    broad except in verify_token wraps it as AuthError. Every other test in this file mocks
+    auth.verify_id_token directly, which is exactly why none of them caught this — it only
+    showed up testing against a genuinely cold Functions emulator, where every single
+    admin-gated request failed with "Invalid or expired token" no matter how fresh the
+    token actually was."""
+    call_order: list[str] = []
+
+    def _ensure_app() -> None:
+        call_order.append("ensure_app")
+
+    def _verify_id_token(token: str) -> dict[str, object]:
+        call_order.append("verify_id_token")
+        return {"uid": "admin-1", "admin": True}
+
+    with (
+        patch("shared.core.security.ensure_app", side_effect=_ensure_app),
+        patch("shared.core.security.auth.verify_id_token", side_effect=_verify_id_token),
+    ):
+        response = _client().get("/protected", headers={"Authorization": "Bearer valid"})
+    assert response.status_code == 200
+    assert call_order == ["ensure_app", "verify_id_token"]
+
+
 async def test_require_admin_returns_full_claims_for_the_audit_trail() -> None:
     with patch(
         "shared.core.security.auth.verify_id_token",

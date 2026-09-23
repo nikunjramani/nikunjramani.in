@@ -15,6 +15,7 @@ from fastapi import Depends, Header
 from firebase_admin import auth
 
 from shared.core.errors import PermissionDeniedError
+from shared.core.firebase import ensure_app
 
 
 class AuthError(PermissionDeniedError):
@@ -23,11 +24,19 @@ class AuthError(PermissionDeniedError):
 
 
 def verify_token(authorization: str | None) -> dict[str, object]:
-    """Verify a Bearer ID token. Raises AuthError if absent or invalid."""
+    """Verify a Bearer ID token. Raises AuthError if absent or invalid.
+
+    ensure_app() first: this runs before any route body, so on a cold instance it is
+    typically the first Admin SDK call of the whole request — nothing has necessarily
+    called get_db() yet to create the app as a side effect. Without this, verify_id_token
+    raises "the default Firebase app does not exist", indistinguishable from a bad token
+    once the broad except below wraps it. See shared/core/firebase.py's ensure_app docstring.
+    """
     if not authorization or not authorization.startswith("Bearer "):
         raise AuthError("Missing bearer token.")
     token = authorization.removeprefix("Bearer ").strip()
     try:
+        ensure_app()
         return dict(auth.verify_id_token(token))
     except Exception as exc:  # any verification failure is a 401, whatever the cause
         raise AuthError("Invalid or expired token.") from exc
