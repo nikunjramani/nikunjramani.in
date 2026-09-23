@@ -10,6 +10,7 @@ import "server-only";
  * Reads go through here, never through the Python API — see ADR 0005.
  */
 import { cert, getApps, initializeApp, type App } from "firebase-admin/app";
+import { getAuth, type Auth } from "firebase-admin/auth";
 import { getFirestore, type Firestore } from "firebase-admin/firestore";
 
 function app(): App {
@@ -28,4 +29,8 @@ function app(): App {
 
 export function db(): Firestore {
   return getFirestore(app());
+}
+
+export function adminAuth(): Auth {
+  return getAuth(app());
 }
