@@ -12,10 +12,12 @@ with a Python API owning every write.
 employer names, client names, or anything from a private engagement. Reach for a placeholder and
 say so.
 
-**Status:** Phases 0, 1 and 3 done — the whole backend (12 domains, 128 tests, verified live
-against the real functions emulator) is built. Next is Phase 2 (content — needs the site owner's
-own writing) and Phase 4 (frontend). Billing is deferred, so development runs entirely against the
-**Firebase emulators** — that works for everything up to Phase 6.
+**Status:** Phases 0, 1, 3 and 4 done, Phase 5 (admin panel) in progress. The backend
+(12 domains, 116 tests) and the whole public site are built and verified live against the
+real emulators. Genuinely blocked, not skipped: Phase 2 (content — needs the site owner's
+own writing) and the Lighthouse half of Phase 4.8 (needs a production deploy). Billing is
+deferred, so development runs entirely against the **Firebase emulators** — that works for
+everything up to Phase 6.
 Full plan: [`docs/plan/`](./docs/plan/README.md) · Decisions: [`docs/adr/`](./docs/adr/README.md)
 
 ## Stack
