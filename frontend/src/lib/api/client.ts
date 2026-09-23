@@ -23,7 +23,16 @@ export class ApiError extends Error {
 }
 
 async function authHeader(): Promise<string> {
-  const user = auth().currentUser;
+  // auth().currentUser is synchronously null for a moment on every fresh page load —
+  // restoring a persisted session from IndexedDB is itself async, and a component's first
+  // effect can easily fire before it resolves. authStateReady() is the SDK's own signal
+  // for "persistence restoration has finished, one way or the other" — without waiting on
+  // it, the very first fetch after any full navigation (not just a soft client transition)
+  // fails with a false "not signed in", even though the session cookie and the actual
+  // Firebase session are both perfectly valid.
+  const instance = auth();
+  await instance.authStateReady();
+  const user = instance.currentUser;
   if (!user) throw new ApiError(401, "Not signed in.");
   return `Bearer ${await user.getIdToken()}`;
 }
