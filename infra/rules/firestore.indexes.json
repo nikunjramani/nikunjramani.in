@@ -103,16 +103,6 @@
       ]
     },
     {
-      "collectionGroup": "media_assets",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "uploadedAt",
-          "order": "ASCENDING"
-        }
-      ]
-    },
-    {
       "collectionGroup": "posts",
       "queryScope": "COLLECTION",
       "fields": [

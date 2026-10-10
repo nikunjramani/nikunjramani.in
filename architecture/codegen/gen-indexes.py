@@ -29,6 +29,12 @@ def main() -> int:
             continue
 
         for fields in meta.get("indexes", []):
+            if len(fields) < 2:
+                # Firestore auto-manages single-field indexes via single-field index
+                # controls — the Admin API rejects a composite index entry with only
+                # one field ("not necessary, configure using single field index
+                # controls"). Only 2+ field combinations need to go here.
+                continue
             indexes.append(
                 {
                     "collectionGroup": collection,
