@@ -41,9 +41,27 @@ variable "functions_deployed" {
 variable "apphosting_github_connection_id" {
   description = <<-EOT
     Set only after the App Hosting GitHub connection is authorised in the Firebase
-    Console (Part E of docs/plan/09-deploy-cicd-implementation.md). Null keeps the
-    app-hosting module a no-op until then.
+    Console (Part E of docs/plan/09-deploy-cicd-implementation.md). Null uses local-source deployment without a GitHub connection.
   EOT
   type        = string
   default     = null
+}
+
+variable "apphosting_region" {
+  description = <<-EOT
+    App Hosting does not support every region Firestore/Functions do — confirmed via
+    the real API (`GET v1beta/.../locations`), asia-south1 (Mumbai, used everywhere
+    else) 403s with "Location ... is not found or access is unauthorized". The
+    supported set is asia-east1, asia-southeast1, europe-west4, us-central1, us-east4,
+    us-east5 — asia-southeast1 (Singapore) is the closest to India.
+  EOT
+  type        = string
+  default     = "asia-southeast1"
+}
+
+
+variable "health_host" {
+  description = "Public hostname for HTTPS health monitoring; set after the first rollout."
+  type        = string
+  default     = ""
 }

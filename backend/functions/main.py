@@ -24,6 +24,14 @@ from __future__ import annotations
 
 import os
 
+from firebase_functions.options import set_global_options
+
+# Apply before decorators run, including triggers and the scheduled backup.
+set_global_options(
+    service_account="functions-runtime@nikunjramani-in.iam.gserviceaccount.com",
+    max_instances=3,
+)
+
 _target = os.environ.get("FUNCTION_TARGET")
 
 

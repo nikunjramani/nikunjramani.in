@@ -77,10 +77,11 @@ test-frontend:
 build: ## Production build of both sides
 	cd $(FRONT) && npm run build
 
-deploy: ## terraform apply, then deploy rules + functions
+deploy: ## terraform apply, then deploy rules, functions and App Hosting
 	terraform -chdir=infra/terraform/envs/prod apply
 	firebase deploy --only firestore:rules,firestore:indexes,storage
 	firebase deploy --only functions
+	firebase deploy --only apphosting
 
 clean: ## Remove build artefacts and caches
 	rm -rf $(FRONT)/.next $(FRONT)/node_modules $(DEV_VENV) $(FN_VENV)

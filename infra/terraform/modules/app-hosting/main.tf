@@ -1,16 +1,10 @@
-# Firebase App Hosting backend for the Next.js app.
-#
-# The GitHub connection itself is a one-time OAuth/Developer-Connect handshake done in
-# the Firebase Console — Terraform cannot perform it (see docs/plan/04-infrastructure.md).
-# This module creates the Firebase Web App registration unconditionally (that part is
-# scriptable), but the actual backend resource only once the connection exists —
-# github_connection_id is null until then, so `count` keeps that half a no-op in the
-# meantime rather than failing the whole apply.
+# Firebase App Hosting backend. Local source deployments do not require GitHub.
+# A Developer Connect repository can be attached later for automatic rollouts.
 
 variable "project_id" { type = string }
 variable "region" {
   type    = string
-  default = "asia-south1"
+  default = "asia-southeast1"
 }
 variable "service_account" { type = string }
 
@@ -19,8 +13,7 @@ variable "github_connection_id" {
     Full resource name of the Developer Connect gitRepositoryLink created by the
     console "connect repository" step, in the form:
     projects/{project}/locations/{location}/connections/{connection}/gitRepositoryLinks/{link}
-    Null until that console step is done — the backend resource creates nothing until
-    it's set (Part E of docs/plan/09-deploy-cicd-implementation.md).
+    Optional: leave null for Firebase CLI local-source deployments.
   EOT
   type        = string
   default     = null
@@ -42,27 +35,59 @@ resource "google_firebase_web_app" "site" {
 
 resource "google_firebase_app_hosting_backend" "site" {
   provider = google-beta
-  count    = var.github_connection_id == null ? 0 : 1
 
   project          = var.project_id
   location         = var.region
   backend_id       = "nikunjramani-in"
   app_id           = google_firebase_web_app.site.app_id
   service_account  = var.service_account
-  serving_locality = "REGIONAL_STRICT" # keep everything in asia-south1, same as Firestore
+  serving_locality = "GLOBAL_ACCESS" # REGIONAL_STRICT is rejected by the live API.
 
-  codebase {
-    repository     = var.github_connection_id
-    root_directory = var.root_dir
+  dynamic "codebase" {
+    for_each = var.github_connection_id == null ? [] : [var.github_connection_id]
+    content {
+      repository     = codebase.value
+      root_directory = var.root_dir
+    }
   }
 }
 
 output "web_app_id" { value = google_firebase_web_app.site.app_id }
 
 output "note" {
-  value = var.github_connection_id == null ? "Web app registered. Backend waiting on the console GitHub connection — see Part E of docs/plan/09-deploy-cicd-implementation.md." : "Backend created."
+  value = var.github_connection_id == null ? "Deploy local source with firebase deploy --only apphosting." : "GitHub repository connected."
 }
 
 output "backend_id" {
-  value = length(google_firebase_app_hosting_backend.site) > 0 ? google_firebase_app_hosting_backend.site[0].backend_id : null
+  value = google_firebase_app_hosting_backend.site.backend_id
+}
+
+resource "google_firebase_app_hosting_domain" "apex" {
+  provider  = google-beta
+  project   = var.project_id
+  location  = var.region
+  backend   = google_firebase_app_hosting_backend.site.backend_id
+  domain_id = "nikunjramani.in"
+}
+
+resource "google_firebase_app_hosting_domain" "www" {
+  provider  = google-beta
+  project   = var.project_id
+  location  = var.region
+  backend   = google_firebase_app_hosting_backend.site.backend_id
+  domain_id = "www.nikunjramani.in"
+  serve {
+    redirect {
+      uri    = "https://nikunjramani.in"
+      status = "301"
+    }
+  }
+}
+
+output "uri" { value = google_firebase_app_hosting_backend.site.uri }
+output "domain_status" {
+  value = {
+    apex = google_firebase_app_hosting_domain.apex.custom_domain_status
+    www  = google_firebase_app_hosting_domain.www.custom_domain_status
+  }
 }

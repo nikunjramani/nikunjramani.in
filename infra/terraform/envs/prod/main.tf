@@ -64,6 +64,7 @@ module "monitoring" {
   source      = "../../modules/monitoring"
   project_id  = var.project_id
   alert_email = var.alert_email
+  health_url  = var.health_host
 
   depends_on = [module.project]
 }
@@ -80,7 +81,7 @@ module "functions" {
 module "app-hosting" {
   source               = "../../modules/app-hosting"
   project_id           = var.project_id
-  region               = var.region
+  region               = var.apphosting_region
   service_account      = module.iam.apphosting_sa
   github_connection_id = var.apphosting_github_connection_id
 

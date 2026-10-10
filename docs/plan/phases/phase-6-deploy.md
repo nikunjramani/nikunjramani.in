@@ -1,19 +1,19 @@
 # Phase 6 · Deploy & DNS
 
-**~5 hours** · Status: ⬜ Not started · **🚀 LAUNCH**
+**~5 hours** · Status: 🟡 In progress — 2026-10-10 · **🚀 LAUNCH**
 
 > **Goal:** nikunjramani.in live on your domain, over HTTPS, indexed by Google,
 > with link previews that look right.
 
 ⛔ **This is the phase that needs Blaze billing.** Everything before it runs on the emulators.
-See [Decisions](../decisions.md#-billing-is-deferred--and-that-is-fine-until-phase-6).
+Blaze is enabled. See [Deploy Progress](../DEPLOY-PROGRESS.md) for current state.
 
 ---
 
 ## Prerequisites
 
 - [ ] Phases 0–5 done
-- [ ] [07 · Domain Setup](../07-domain-setup.md) read
+- [x] [07 · Domain Setup](../07-domain-setup.md) read
 - [ ] GoDaddy DNS access to hand
 
 ---
@@ -22,27 +22,46 @@ See [Decisions](../decisions.md#-billing-is-deferred--and-that-is-fine-until-pha
 
 ### 6.1 · Infrastructure
 
-- [ ] Fill in `modules/functions` — `for_each` over the domain map, per-domain memory and
-      `max_instances = 3`, secrets bound
-- [ ] Fill in `modules/app-hosting` — backend, GitHub connection, env vars
-- [ ] `terraform plan` reviewed
-- [ ] `terraform apply`
-- [ ] Uptime check and alerts confirmed active
+- [x] Fill in `modules/functions` — `for_each` over the domain map, per-domain memory and
+      `max_instances = 3`, secrets bound. Took two real fixes once applied against the
+      actual project: the IAM binding was targeting the Cloud Run v1 API (2nd-gen
+      Functions are v2) and the underscored function id (`api_system`) isn't the real
+      Cloud Run service name (`api-system` — DNS-safe hyphenation).
+- [ ] Fill in `modules/app-hosting` — backend, GitHub connection, env vars. Module and
+      the Firebase Web App registration are done; the backend resource itself is still
+      a no-op pending the console GitHub connection (Part E).
+- [x] `terraform plan` reviewed
+- [x] `terraform apply` — budget alert (₹100/mo), WIF pool + deploy SA, Firestore
+      database, 2 storage buckets, 4 secret containers, error-rate alert, 12 public
+      invoker bindings, all live on `nikunjramani-in`
+- [ ] Uptime check and alerts confirmed active — error-rate alert is live and
+      confirmed (log-based metric + alert policy). The uptime check itself needs the
+      real public health path, which only exists once Part 6.3's rewrite is live —
+      deferred to 6.6's smoke tests rather than monitoring a throwaway raw-function URL
 
 ### 6.2 · Backend deploy
 
-- [ ] Secrets populated in Secret Manager (Resend, Turnstile)
-- [ ] `firebase deploy --only functions` — confirm **every** domain deployed, none silently skipped
-- [ ] `next.config.ts` rewrites resolve for every domain — a missing one 404s like a routing bug
-- [ ] `/health` responds on the deployed URL, via the rewrite
-- [ ] A real contact submission delivers an email
-- [ ] Scheduled backup job registered and manually triggered once
-- [ ] `/docs` confirmed **disabled** in production
+- [ ] Secrets populated in Secret Manager (Resend, Turnstile) — deliberately deferred;
+      `REVALIDATE_TOKEN` and `CONTACT_EMAIL_TO` are populated (no third-party account
+      needed for either)
+- [x] `firebase deploy --only functions` — all 12 domains + 2 triggers + the scheduled
+      backup, confirmed via `firebase functions:list`, none silently skipped
+- [ ] `next.config.ts` rewrites resolve for every domain — needs `FUNCTIONS_BASE_URL`
+      set in `apphosting.yaml` (6.3) before this is testable for real
+- [x] `/health` responds on the deployed URL — verified directly against the raw
+      Cloud Function (`.../api_system/health` → `{"environment":"production"}`); via
+      the rewrite specifically still needs 6.3
+- [ ] A real contact submission delivers an email — blocked on the deferred Resend key
+- [x] Scheduled backup manually triggered on 2026-10-10; HTTP 200 and all 11 JSON exports verified in the private backup bucket.
+- [x] `/docs` confirmed **disabled** in production — a real gap, not a formality: the
+      first deploy had `/docs` and `/openapi.json` publicly reachable on all 12
+      domains because nothing set `ENVIRONMENT=production` at deploy time. Fixed via
+      `backend/functions/.env.nikunjramani-in` and reverified — both now 404
 
 ### 6.3 · Frontend deploy
 
-- [ ] `apphosting.yaml` — build command, env vars, runtime config
-- [ ] Connect the GitHub repo to App Hosting
+- [x] `frontend/apphosting.yaml` — framework build detection, Node 22, build/runtime env, scale to zero, max 3 instances
+- [ ] Optional: connect GitHub for automatic rollouts. Manual deployment uses local source (ADR 0013).
 - [ ] First build succeeds
 - [ ] Site reachable on the default App Hosting URL
 - [ ] Server-side env vars confirmed **not** in the client bundle

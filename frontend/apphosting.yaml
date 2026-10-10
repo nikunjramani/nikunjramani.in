@@ -1,0 +1,57 @@
+# Firebase App Hosting runtime config for the Next.js frontend.
+# See docs/plan/09-deploy-cicd-implementation.md Part E and docs/plan/04-infrastructure.md.
+#
+# NEXT_PUBLIC_* values are public by design (ADR: security is in Firestore rules, not in
+# hiding this config) — safe to commit plaintext, same as this repo already does in
+# frontend/.env.example. REVALIDATE_TOKEN is the one real secret here, and it's a
+# Secret Manager reference, never a plaintext value.
+
+runConfig:
+  minInstances: 0
+  maxInstances: 3
+
+env:
+  - variable: NEXT_PUBLIC_FIREBASE_API_KEY
+    value: "AIzaSyCVgOxNSC5fPg5YIww2VJE7SgBxG9ZLXDM"
+    availability: [BUILD, RUNTIME]
+
+  - variable: NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
+    value: "nikunjramani-in.firebaseapp.com"
+    availability: [BUILD, RUNTIME]
+
+  - variable: NEXT_PUBLIC_FIREBASE_PROJECT_ID
+    value: "nikunjramani-in"
+    availability: [BUILD, RUNTIME]
+
+  - variable: NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
+    value: "nikunjramani-in-media"
+    availability: [BUILD, RUNTIME]
+
+  - variable: NEXT_PUBLIC_FIREBASE_APP_ID
+    value: "1:555631156536:web:e45f1ff9bebbb428a975cd"
+    availability: [BUILD, RUNTIME]
+
+  - variable: NEXT_PUBLIC_SITE_URL
+    value: "https://nikunjramani.in"
+    availability: [BUILD, RUNTIME]
+
+  # Next.js serializes rewrites at build time, so this must be available during BUILD.
+  - variable: FUNCTIONS_BASE_URL
+    value: "https://asia-south1-nikunjramani-in.cloudfunctions.net"
+    availability: [BUILD, RUNTIME]
+
+  # The shared secret Python calls this app with after every content write (see
+  # shared/services/revalidate.py and app/api/revalidate/route.ts). Same value as the
+  # REVALIDATE_TOKEN Secret Manager container the backend reads from.
+  - variable: REVALIDATE_TOKEN
+    secret: REVALIDATE_TOKEN
+    availability: [RUNTIME]
+
+  # FIREBASE_SERVICE_ACCOUNT is deliberately absent — App Hosting's runtime service
+  # account (apphosting-runtime@..., read-only) provides ambient credentials; see
+  # frontend/src/lib/firebase/admin.ts.
+
+  # NEXT_PUBLIC_TURNSTILE_SITE_KEY is deliberately absent — Turnstile is deferred
+  # (see docs/plan/09-deploy-cicd-implementation.md Part C). The contact form and its
+  # server-side check both have a documented skip when this and the matching
+  # TURNSTILE_SECRET_KEY are unset. Add both later and redeploy the frontend and contact function.

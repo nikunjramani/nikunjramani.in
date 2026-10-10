@@ -43,12 +43,16 @@ resource "google_project_service" "enabled" {
 
 # A budget alert is a smoke alarm, not a sprinkler: it notifies, it does not cap.
 # The real spend ceiling is max_instances on each function.
+data "google_project" "current" {
+  project_id = var.project_id
+}
+
 resource "google_billing_budget" "monthly" {
   billing_account = var.billing_account
   display_name    = "${var.project_id} monthly budget"
 
   budget_filter {
-    projects = ["projects/${var.project_id}"]
+    projects = ["projects/${data.google_project.current.number}"]
   }
 
   amount {

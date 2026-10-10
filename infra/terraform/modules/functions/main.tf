@@ -1,9 +1,10 @@
 # Per-domain function configuration — ADR 0011.
 #
-# Stub until Phase 6. The functions themselves are deployed by the Firebase CLI
+# The functions themselves are deployed by the Firebase CLI
 # (`firebase deploy --only functions`), which is what compiles the Python and wires the
 # triggers. This module owns the surrounding configuration Terraform is better at:
-# per-domain limits, IAM and public invoker bindings.
+# IAM and public/event invoker bindings. Runtime limits and secret bindings are
+# owned by the Python Firebase decorators, not this Terraform domain map.
 
 variable "project_id" { type = string }
 variable "region" {
@@ -72,3 +73,13 @@ resource "google_cloud_run_v2_service_iam_member" "public_invoker" {
 }
 
 output "configured_domains" { value = keys(var.domains) }
+
+# Eventarc delivers authenticated events as the configured runtime identity.
+resource "google_cloud_run_v2_service_iam_member" "event_invoker" {
+  for_each = var.services_deployed ? toset(["on-contact-created", "on-media-uploaded"]) : toset([])
+  project  = var.project_id
+  location = var.region
+  name     = each.value
+  role     = "roles/run.invoker"
+  member   = "serviceAccount:functions-runtime@${var.project_id}.iam.gserviceaccount.com"
+}
