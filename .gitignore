@@ -2,6 +2,10 @@
 .env
 .env.*
 !.env.example
+# Non-secret production runtime config for Cloud Functions — Firebase's own
+# per-project dotenv convention (https://firebase.google.com/docs/functions/config-env).
+# No credentials go in this file; those stay in Secret Manager.
+!backend/functions/.env.nikunjramani-in
 *.pem
 *.key
 service-account*.json
