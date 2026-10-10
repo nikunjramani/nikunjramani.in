@@ -1,12 +1,15 @@
 # Phase 6 · Deploy & DNS
 
-**~5 hours** · Status: 🟡 In progress — 2026-10-10 · **🚀 LAUNCH**
+**~5 hours** · Status: 🟡 Deployed & DNS live — 2026-10-10 · a few launch checks remain · **🚀 LAUNCH**
 
 > **Goal:** nikunjramani.in live on your domain, over HTTPS, indexed by Google,
 > with link previews that look right.
 
 ⛔ **This is the phase that needs Blaze billing.** Everything before it runs on the emulators.
-Blaze is enabled. See [Deploy Progress](../DEPLOY-PROGRESS.md) for current state.
+Blaze is enabled. `https://nikunjramani.in` is live with a valid certificate — see
+[ADR 0013](../../adr/0013-local-source-app-hosting.md) and
+[ADR 0014](../../adr/0014-request-scoped-content-cache.md) for what actually got built,
+and [docs/RUNBOOK.md](../../RUNBOOK.md) for operating it.
 
 ---
 
@@ -55,16 +58,22 @@ Blaze is enabled. See [Deploy Progress](../DEPLOY-PROGRESS.md) for current state
 
 ### 6.4 · DNS
 
-Use [the live API DNS records](../DNS-CUTOVER.md), which supersede the older domain plan.
+Real records differed from [07 · Domain Setup](../07-domain-setup.md)'s original plan
+in one important way — `www` needs its own A+TXT, not a CNAME to apex — now corrected
+in that doc, along with the GoDaddy gotchas hit along the way.
 
 - [x] Custom domain added in Firebase for apex and `www`
-- [ ] TXT verification record added at GoDaddy
-- [ ] Both A records added
-- [ ] Shared ACME authorization CNAME added (remove old www CNAME).
-- [ ] **GoDaddy parking records and forwarding deleted** ⚠️
-- [ ] Verification passed
-- [ ] SSL provisioned
-- [ ] `www` → apex redirect confirmed
+- [x] TXT verification record added at GoDaddy (one claim per host, not shared)
+- [x] Apex A record added; `www` A record added (its own record, not a CNAME)
+- [x] Shared ACME authorization CNAME added
+- [x] **GoDaddy parking records and forwarding deleted** ⚠️
+- [x] Verification passed on apex (`OWNERSHIP_ACTIVE`); `www` still finishing
+      reconciliation as of 2026-10-10 (DNS confirmed correct on both authoritative
+      nameservers — this is Firebase's own async catch-up, not a DNS problem)
+- [x] SSL provisioned on apex — `CERT_ACTIVE`, confirmed via `curl -I https://nikunjramani.in` (200)
+- [ ] `www` → apex redirect confirmed — `https://www.nikunjramani.in` currently 404s
+      (TLS/cert answers fine, routing doesn't yet); re-check once `www` finishes
+      reconciling, no further DNS action needed
 
 ### 6.5 · SEO go-live
 

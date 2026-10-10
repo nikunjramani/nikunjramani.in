@@ -17,23 +17,19 @@ The plan lives here, split by topic and phase. Start with the
 | 05 | [CI/CD](./05-cicd.md) | Workflows, Workload Identity Federation, branch protection |
 | 06 | [Content Checklist](./06-content-checklist.md) | **What you actually need to write** |
 | 07 | [Domain Setup](./07-domain-setup.md) | GoDaddy → Firebase DNS, step by step |
-| 08 | [Costs & Risks](./08-costs-and-risks.md) | Free-tier maths, guardrails, honest risk list |
-| 09 | [Deploy & CI/CD Implementation](./09-deploy-cicd-implementation.md) | The concrete, ordered execution plan for Phases 6 + 7 — what's already built, what's a real stub, exact command sequence |
-| — | [Deploy Progress](./DEPLOY-PROGRESS.md) | **Live status** — what's actually been run against the real project, and the next command to run |
-| — | [Decisions](./decisions.md) | The ten opening questions, answered |
 | — | [ADRs](../adr/README.md) | Architecture decision records — fourteen and counting |
 
 ## Phases — work these in order
 
 | Phase | Doc | Hours | Status |
 |---|---|---|---|
-| 0 | [Foundation & Infra](./phases/phase-0-foundation.md) | ~6h | 🟡 Local and cloud infrastructure deployed |
+| 0 | [Foundation & Infra](./phases/phase-0-foundation.md) | ~6h | ✅ Done |
 | 1 | [Schemas & Codegen](./phases/phase-1-schemas.md) | ~7h | ✅ Done |
 | 2 | [Content & Design](./phases/phase-2-content-design.md) | ~5h | ⬜ Not started |
 | 3 | [Backend](./phases/phase-3-backend.md) | ~14h | ✅ Done |
 | 4 | [Public Site](./phases/phase-4-public-site.md) | ~16h | 🟡 Built & verified; blocked on Phase 2 content + Phase 6 Lighthouse |
 | 5 | [Admin Panel](./phases/phase-5-admin-panel.md) | ~14h | 🟡 Built; production admin claim and signed uploads verified |
-| 6 | [Deploy & DNS](./phases/phase-6-deploy.md) | ~5h | 🟡 App Hosting and backend live; DNS and final launch checks pending |
+| 6 | [Deploy & DNS](./phases/phase-6-deploy.md) | ~5h | 🟡 `nikunjramani.in` live over HTTPS; a few launch checks remain |
 | 7 | [CI/CD Hardening](./phases/phase-7-cicd.md) | ~5h | ⬜ Not started |
 | 8 | [Post-Launch](./phases/phase-8-post-launch.md) | ongoing | ⬜ Not started |
 

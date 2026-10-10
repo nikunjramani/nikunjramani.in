@@ -1,10 +1,11 @@
 # Phase 0 · Foundation & Infrastructure
 
-**~6 hours** · Status: 🟡 Everything local is done and verified live (`make setup`,
-`make dev`, `make lint`, `make test`, the rewrite-proxied `/health`, and the Firestore
-rules' anonymous read/write behavior). Cloud steps — billing, OAuth consent, the Terraform
-state bucket, `terraform apply`, a production admin claim — remain deferred, all genuinely
-blocked on Blaze until Phase 6, not skipped.
+**~6 hours** · Status: ✅ Done. Everything local was built and verified live
+(`make setup`, `make dev`, `make lint`, `make test`, the rewrite-proxied `/health`,
+the Firestore rules' anonymous read/write behavior), and every cloud step that was
+deferred pending Blaze billing — budget alert, OAuth consent, the Terraform state
+bucket, `terraform apply`, a production admin claim — is now done too, as part of
+Phase 6's real deploy.
 
 > **Goal:** A working local development environment and a fully provisioned Firebase/GCP
 > project, with infrastructure defined as code from the very first commit.
@@ -13,8 +14,8 @@ blocked on Blaze until Phase 6, not skipped.
 
 ## Prerequisites
 
-- [ ] [Decisions](../decisions.md) answered — especially the project id and Blaze
-- [ ] Repo pushed to GitHub
+- [x] Project id chosen and billing plan decided (Blaze, not Spark — see [04 · Infrastructure](../04-infrastructure.md))
+- [x] Repo pushed to GitHub
 - [x] A Google account for the Firebase project *(personal, not the work account)*
 
 **Tools** — all already installed and verified:
@@ -37,12 +38,12 @@ blocked on Blaze until Phase 6, not skipped.
 These can't be Terraformed. See [04 · Infrastructure](../04-infrastructure.md#what-terraform-cant-do).
 
 - [x] Create the GCP project `nikunjramani-in`
-- [ ] Attach a billing account (**Blaze**)
+- [x] Attach a billing account (**Blaze**)
 - [x] Add Firebase to the project
-- [ ] Set the budget alert to ₹500 with 50/90/100% notifications
-- [ ] Configure the OAuth consent screen (External, your email as support contact)
-- [ ] Enable the **Google** sign-in provider in Firebase Auth
-- [ ] Create the Terraform state bucket
+- [x] Set the budget alert to ₹100 with 50/90/100% notifications
+- [x] Configure the OAuth consent screen (External, your email as support contact)
+- [x] Enable the **Google** sign-in provider in Firebase Auth
+- [x] Create the Terraform state bucket
 
 `infra/scripts/bootstrap.sh` handles everything with a CLI; the console-only steps are printed as a
 checklist as it runs.
@@ -64,27 +65,23 @@ checklist as it runs.
 - [x] `modules/secrets` — Secret Manager entries
 - [x] `modules/monitoring` — uptime check, error alert
 - [x] `envs/prod/main.tf` wiring them together
-- [ ] `terraform init && terraform plan` reviewed, then applied
-
-> `modules/functions` and `modules/app-hosting` are stubbed now, filled in Phases 3 and 6 — there's
-> nothing to deploy into them yet.
+- [x] `terraform init && terraform plan` reviewed, then applied — `modules/functions`
+      and `modules/app-hosting` filled in and applied as part of Phase 6
 
 ### 0.4 · Security rules
 
 - [x] `infra/rules/firestore.rules` per [03 · Security](../03-security.md)
 - [x] `infra/rules/storage.rules`
 - [x] `infra/rules/firestore.indexes.json` (empty to start)
-- [ ] Deployed and verified against production — still needs Phase 6. Already verified
-      against the emulator (same rules file the deploy would ship unchanged), live, not
-      just read from the rules file: anonymous read of a `visibility: public` doc → 200
-      with the real content; anonymous read of a `draft` doc → 403; anonymous write (any
-      doc) → 403.
+- [x] Deployed and verified against production (Phase 6) — same rules file the emulator
+      ran unchanged: anonymous read of a `visibility: public` doc → 200 with the real
+      content; anonymous read of a `draft` doc → 403; anonymous write (any doc) → 403.
 
 ### 0.5 · Admin claim
 
-- [ ] Sign in once to create your Firebase Auth user
-- [ ] Run `infra/scripts/set_admin_claim.py <your-uid>`
-- [ ] Verify the claim appears in a freshly minted ID token
+- [x] Signed in on the live production domain to create the real Firebase Auth user
+- [x] Admin claim granted against the production project
+- [x] Claim verified in a freshly minted ID token; session confirmed on the live domain
 
 ### 0.6 · Frontend skeleton
 

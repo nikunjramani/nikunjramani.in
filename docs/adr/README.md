@@ -60,6 +60,6 @@ anything trivially reversible
 
 ---
 
-Open questions not yet decided live in
-[`docs/plan/decisions.md`](../plan/decisions.md). Once answered, the ones that are
-architectural become ADRs here.
+Not every project decision needs one. Plain configuration or scope calls (a project id,
+which inbox gets contact-form mail, whether the repo is public) aren't architectural —
+only decisions a stranger would reasonably ask *"why is it like this?"* about belong here.
