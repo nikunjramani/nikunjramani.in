@@ -62,9 +62,13 @@ resource "google_cloud_run_v2_service_iam_member" "public_invoker" {
 
   project  = var.project_id
   location = var.region
-  name     = each.key
-  role     = "roles/run.invoker"
-  member   = "allUsers"
+  # Cloud Run service names must be DNS-safe — Firebase deploys function id
+  # "api_system" as Cloud Run service "api-system" (underscore -> hyphen).
+  # Confirmed against the real deploy: `gcloud run services list` only knows the
+  # hyphenated form, and the underscored name 404s even though the service exists.
+  name   = replace(each.key, "_", "-")
+  role   = "roles/run.invoker"
+  member = "allUsers"
 }
 
 output "configured_domains" { value = keys(var.domains) }
