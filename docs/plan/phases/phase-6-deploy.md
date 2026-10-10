@@ -67,13 +67,13 @@ in that doc, along with the GoDaddy gotchas hit along the way.
 - [x] Apex A record added; `www` A record added (its own record, not a CNAME)
 - [x] Shared ACME authorization CNAME added
 - [x] **GoDaddy parking records and forwarding deleted** ⚠️
-- [x] Verification passed on apex (`OWNERSHIP_ACTIVE`); `www` still finishing
-      reconciliation as of 2026-10-10 (DNS confirmed correct on both authoritative
-      nameservers — this is Firebase's own async catch-up, not a DNS problem)
-- [x] SSL provisioned on apex — `CERT_ACTIVE`, confirmed via `curl -I https://nikunjramani.in` (200)
-- [ ] `www` → apex redirect confirmed — `https://www.nikunjramani.in` currently 404s
-      (TLS/cert answers fine, routing doesn't yet); re-check once `www` finishes
-      reconciling, no further DNS action needed
+- [x] Verification passed on both domains — `OWNERSHIP_ACTIVE` on apex and `www`
+      (`www` took longer to reconcile than apex; DNS was confirmed correct on both
+      authoritative nameservers throughout — it was Firebase's own async catch-up,
+      never a DNS problem)
+- [x] SSL provisioned on both — `CERT_ACTIVE`, confirmed via `curl -I` on each host
+- [x] `www` → apex redirect confirmed — `https://www.nikunjramani.in` returns
+      `301 Location: https://nikunjramani.in/`
 
 ### 6.5 · SEO go-live
 
