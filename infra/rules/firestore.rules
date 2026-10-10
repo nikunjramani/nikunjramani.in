@@ -9,21 +9,71 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // ── BEGIN GENERATED: architecture/codegen/gen-rules.py — DO NOT EDIT BY HAND ──
+    // Derived from every schema's `x-firestore.publicRead` flag and `required` list.
+    // `make gen` regenerates this block; CI fails if it drifts from the schemas.
+    // See ADR 0006 and docs/plan/phases/phase-1-schemas.md §1.6.
+
     function isPublicCollection(col) {
-      return col in ['profile', 'projects', 'skills', 'experience', 'education',
-                     'certifications', 'posts', 'site_config'];
+      return col in ['certifications', 'education', 'experience', 'posts', 'profile', 'projects', 'site_config', 'skills'];
     }
 
-    // Every publicly-readable document must carry `visibility`, including the
-    // singletons profile/main and site_config/main. On a document missing the field
-    // this evaluates to null, the read is denied, and the site renders empty with no
-    // useful error anywhere. The schemas make it required for exactly this reason.
+    // A publicly-readable document must carry every field its own schema requires —
+    // on a doc missing one (a partial write caught mid-transaction, a bad manual
+    // console edit) this evaluates to false, the read is denied, and the site
+    // renders empty rather than serving a half-written document.
+    function hasRequiredFields(col, data) {
+      return col == 'certifications' ? isComplete_certifications(data) :
+               col == 'education' ? isComplete_education(data) :
+               col == 'experience' ? isComplete_experience(data) :
+               col == 'posts' ? isComplete_posts(data) :
+               col == 'profile' ? isComplete_profile(data) :
+               col == 'projects' ? isComplete_projects(data) :
+               col == 'site_config' ? isComplete_site_config(data) :
+               col == 'skills' ? isComplete_skills(data) :
+             false;
+    }
+
+    function isComplete_certifications(data) {
+      return 'title' in data && 'issuer' in data && 'visibility' in data;
+    }
+
+    function isComplete_education(data) {
+      return 'institution' in data && 'qualification' in data && 'visibility' in data;
+    }
+
+    function isComplete_experience(data) {
+      return 'company' in data && 'role' in data && 'startDate' in data && 'current' in data && 'visibility' in data;
+    }
+
+    function isComplete_posts(data) {
+      return 'slug' in data && 'title' in data && 'visibility' in data;
+    }
+
+    function isComplete_profile(data) {
+      return 'name' in data && 'headline' in data && 'visibility' in data;
+    }
+
+    function isComplete_projects(data) {
+      return 'slug' in data && 'title' in data && 'summary' in data && 'kind' in data && 'status' in data && 'visibility' in data;
+    }
+
+    function isComplete_site_config(data) {
+      return 'visibility' in data;
+    }
+
+    function isComplete_skills(data) {
+      return 'name' in data && 'category' in data && 'level' in data && 'visibility' in data;
+    }
+
+    // ── END GENERATED ──
+
     function isPublished() {
       return resource.data.visibility == 'public';
     }
 
     match /{col}/{id} {
-      allow read: if isPublicCollection(col) && isPublished();
+      allow read: if isPublicCollection(col) && isPublished() && hasRequiredFields(col, resource.data);
       allow write: if false;
     }
 

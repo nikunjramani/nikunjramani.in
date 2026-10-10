@@ -83,7 +83,14 @@ Each carries `x-firestore` metadata:
 
 ### 1.6 · Derived artefacts
 
-- [ ] Script generating required-field assertions into `firestore.rules`
+- [x] Script generating required-field assertions into `firestore.rules` —
+      `architecture/codegen/gen-rules.py`, wired into `make gen`. Replaces a marked
+      block between `BEGIN/END GENERATED` comments in `infra/rules/firestore.rules`
+      with a per-collection `isComplete_<collection>()` derived from each public
+      schema's `required` list, so a doc missing a required field is denied on read
+      rather than served half-written. Verified live against the real emulator: wrote
+      a `skills` doc missing `category`/`level` via the admin bypass, confirmed
+      anonymous read was 403, confirmed a complete doc still reads 200.
 - [x] Script generating `firestore.indexes.json` from `x-firestore.indexes`
 - [x] Script generating `architecture/docs/ERD.md`
 - [x] `VERSIONING.md` documenting the additive/breaking policy
