@@ -1,7 +1,7 @@
 # nikunjramani.in
 
 Source for my personal site — portfolio, projects and writing.
-Deployed at **[Firebase App Hosting](https://nikunjramani-in--nikunjramani-in.asia-southeast1.hosted.app)**. Custom-domain DNS is pending; see [deployment status](docs/plan/DEPLOY-PROGRESS.md).
+Live at **[nikunjramani.in](https://nikunjramani.in)**.
 
 > 📋 Full architecture and build plan: **[docs/plan/](./docs/plan/README.md)**
 
@@ -47,8 +47,6 @@ by hand — CI regenerates and fails on any diff.
 
 ## Getting started
 
-> Scaffolding lands in Phase 0 — these commands don't exist yet.
-
 ```bash
 make setup     # install frontend + backend deps
 make dev       # Next.js + Firebase emulators
@@ -71,17 +69,8 @@ make deploy    # terraform apply + deploy functions and App Hosting
 
 ## Status
 
-Pre-development. See [docs/plan/](./docs/plan/README.md) for the phase breakdown.
-
-- [x] Architecture and build plan
-- [ ] Phase 0 — Foundation & infra
-- [ ] Phase 1 — Schemas & codegen
-- [ ] Phase 2 — Content & design
-- [ ] Phase 3 — Backend
-- [ ] Phase 4 — Public site
-- [ ] Phase 5 — Admin panel
-- [ ] Phase 6 — Deploy & DNS
-- [ ] Phase 7 — CI/CD
+See the [phase table in docs/plan/](./docs/plan/README.md#phases--work-these-in-order) for
+current build status — kept in one place so it doesn't drift out of sync with reality.
 
 ## License
 

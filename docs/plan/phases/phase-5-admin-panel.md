@@ -150,8 +150,8 @@ screens are almost free.
 will scramble your form state the moment something moves.
 
 **Don't let the editor become a CMS.** No rich-text WYSIWYG, no revision history, no collaborative
-editing. Markdown in a textarea with a preview toggle. Scope creep here is the top risk in
-[08 · Costs & Risks](../08-costs-and-risks.md).
+editing. Markdown in a textarea with a preview toggle. Scope creep here is the easiest way to turn
+a five-week build into a five-month one — resist it.
 
 **Session cookies and App Hosting.** Set `httpOnly`, `secure`, `sameSite=lax`, and check the flow
 works on the deployed environment, not just localhost.

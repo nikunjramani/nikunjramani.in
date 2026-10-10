@@ -3,6 +3,12 @@
 Designed now so the repo structure supports it; wired up in
 [Phase 7](./phases/phase-7-cicd.md).
 
+> **As-built note:** the first production deploy used `firebase deploy --only
+> apphosting` (local source) rather than a GitHub connection — see
+> [ADR 0013](../adr/0013-local-source-app-hosting.md). `deploy.yml` below can either
+> keep deploying App Hosting the same way from CI, or trigger an automatic rollout if
+> a GitHub connection is added later; both are valid, the connection is optional.
+
 ---
 
 ## Workflows

@@ -15,7 +15,7 @@ infra/
 │   │   ├── firestore/     # database, indexes, rules release, TTL policies
 │   │   ├── storage/       # buckets, rules, CORS, lifecycle
 │   │   ├── functions/     # per-domain functions via for_each, runtime SA, limits
-│   │   ├── app-hosting/   # Next.js backend, GitHub link, env vars
+│   │   ├── app-hosting/   # Next.js backend, optional GitHub link, env vars
 │   │   ├── iam/           # least-privilege SAs + WIF pool for GitHub
 │   │   ├── secrets/       # Secret Manager entries + accessor bindings
 │   │   └── monitoring/    # budget alert, uptime check, error-rate alert
@@ -49,9 +49,13 @@ minutes**, and `bootstrap.sh` scripts the parts that have a CLI:
 | Create the Terraform state bucket | Chicken-and-egg: state has to live somewhere before state exists | ✅ `gsutil` |
 | OAuth consent screen | Console-only | ❌ |
 | Enable the Google auth provider | Console-only | ❌ |
-| Authorise the GitHub connection for App Hosting | OAuth handshake needs a human | ❌ |
 
 Everything after that is `terraform apply`, reviewable as a plan diff in a PR.
+
+> **As-built ([ADR 0013](../adr/0013-local-source-app-hosting.md)):** the GitHub
+> connection turned out not to be a blocker at all — `firebase deploy --only
+> apphosting` uploads local source directly, no OAuth handshake needed for the first
+> deploy. A GitHub connection is optional, for automatic rollouts later (Phase 7).
 
 ---
 
@@ -61,11 +65,11 @@ These exist so a mistake costs nothing:
 
 | Guardrail | Value | Why |
 |---|---|---|
-| Function `max_instances` | 3 **per domain** | A runaway loop can't scale into a bill |
+| Function `max_instances` | 3 **per domain** (2 for `api_media`) | A runaway loop can't scale into a bill |
 | Function `min_instances` | 0 | Scale to zero; cold start is fine on the write path |
-| Budget alert | ₹500, notify at 50/90/100% | Early warning, not a surprise invoice |
+| Budget alert | ₹100, notify at 50/90/100% | Early warning, not a surprise invoice |
 | Storage lifecycle | Backups deleted after 30 days | Bounded growth |
-| Uptime check | `/health` every 5 min | You hear about an outage before a visitor does |
+| Uptime check | `/api/v1/system/health` every 5 min | You hear about an outage before a visitor does |
 | Log-based alert | Error rate > 5/min | Catches a bad deploy |
 | Firestore TTL | `contact_messages` after 2 years | Data minimisation |
 
@@ -110,14 +114,17 @@ Dependencies run in one direction, so this order is not optional:
 2. terraform apply       APIs, IAM, Firestore, Storage, secrets, monitoring
 3. firebase deploy       rules + indexes
 4. firebase deploy       functions  (needs secrets to exist)
-5. App Hosting           auto-builds from the git push
+5. firebase deploy       --only apphosting (local source) — or auto-builds from a
+                         git push, once a GitHub connection exists (ADR 0013)
 6. DNS                   see 07 · Domain Setup
 ```
 
-Rollback: `firebase functions:rollback` — and because functions are split by domain
-([ADR 0011](../adr/0011-domain-wise-separate-functions.md)), a single domain can be rolled back
-without touching the rest. App Hosting keeps previous releases one click away, and Terraform state
-is versioned in the bucket.
+Rollback: **there is no `firebase functions:rollback` command** — redeploy the affected
+domain(s) from a known-good source revision instead (`docs/RUNBOOK.md` has the exact
+steps). Because functions are split by domain
+([ADR 0011](../adr/0011-domain-wise-separate-functions.md)), a single domain can be
+redeployed without touching the rest. App Hosting keeps previous releases one click
+away, and Terraform state is versioned in the bucket.
 
 ### Per-domain configuration
 

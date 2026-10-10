@@ -12,12 +12,12 @@ with a Python API owning every write.
 employer names, client names, or anything from a private engagement. Reach for a placeholder and
 say so.
 
-**Status:** Phases 0, 1, 3, 4 and 5 are implemented. Phase 6 is deployed on the
-Firebase App Hosting default hostname; custom DNS and launch checks remain pending.
-Production admin claim and signed uploads are verified. Backend: 134 passing tests.
-Billing is enabled. Local development still uses emulators. Phase 2 needs the owner's
-content. Read `docs/plan/DEPLOY-PROGRESS.md` before continuing deployment work.
-Full plan: [`docs/plan/`](./docs/plan/README.md) · Decisions: [`docs/adr/`](./docs/adr/README.md)
+**Status:** Phases 0, 1, 3, 4 and 5 are implemented. Phase 6 is deployed —
+`https://nikunjramani.in` is live over HTTPS, with a few launch checks still open
+(see [Phase 6](./docs/plan/phases/phase-6-deploy.md)). Production admin claim and
+signed uploads are verified. Backend: 134 passing tests. Billing is enabled. Local
+development still uses emulators. Phase 2 needs the owner's content.
+Full plan: [`docs/plan/`](./docs/plan/README.md) · ADRs: [`docs/adr/`](./docs/adr/README.md)
 
 ## Stack
 
