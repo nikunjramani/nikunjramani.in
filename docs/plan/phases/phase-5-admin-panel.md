@@ -1,6 +1,10 @@
 # Phase 5 · Admin Panel
 
-**~14 hours** · Status: ⬜ Not started
+**~14 hours** · Status: 🟡 Built and verified against the real emulators (Auth, Firestore,
+Functions, Storage) through actual signed-in browser sessions — every screen, both
+real-bug fixes it surfaced along the way, and the two things that genuinely can't run
+locally: the signed-upload PUT itself (needs a deployed service account — Phase 6) and a
+production admin claim grant (same).
 
 > **Goal:** Go to `nikunjramani.in/admin`, sign in with Google, and edit every piece of
 > content on the site. No Firebase console, no redeploy.
@@ -97,11 +101,27 @@ screens are almost free.
 
 ### 5.7 · Settings & publishing
 
-- [ ] `/admin/settings` — feature flags, announcement banner, maintenance mode
-- [ ] **Preview before publish** — renders the real public component with draft data
-- [ ] Publish triggers revalidation; the change is live within seconds
-- [ ] Autosave drafts to localStorage
-- [ ] Audit trail visible per document
+- [x] `/admin/settings` — feature flags, announcement banner, maintenance mode (5.4's commit)
+- [x] **Preview before publish** — renders the real public component with draft data.
+      Built for Projects specifically, which is also the only content type that has one: it's
+      the only public model with its own standalone detail page to preview against (skills/
+      experience/etc. only ever render embedded in other pages, not as their own route)
+- [x] Publish triggers revalidation; the change is live within seconds — unchanged backend
+      behavior from Phase 3 (visibility → public in a PATCH auto-triggers it in
+      shared/crud.py), reverified live in the 5.4 commit: GET /projects/test-project-editor
+      on the public site returned 200 with the right content immediately after save
+- [x] Autosave drafts to localStorage — built into `<SchemaForm>` itself via an
+      `autosaveKey` prop, so every screen gets it for free rather than each one wiring its
+      own. Restore-on-reload shows a dismissible banner; discard resets to the last saved
+      version. Finding and fixing this took two real bugs: a hydration mismatch from
+      reading `localStorage` inside a `useState` initializer (SSR has no `localStorage`;
+      moved the read into a `useEffect` so server and first client render agree), and a
+      stale uncontrolled `<input>` after `form.reset()` that react-hook-form's own internal
+      state didn't reflect — worked around by remounting the field tree on discard rather
+      than fighting the sync, plus an `isDirty` guard so the autosave timer scheduled by
+      reset's own change-event doesn't resurrect the draft it was just asked to clear.
+- [x] Audit trail visible per document — one `<AuditTrail>` component, used by the
+      Projects editor, every `ContentCollectionScreen` edit dialog, and `SingletonScreen`
 
 ---
 

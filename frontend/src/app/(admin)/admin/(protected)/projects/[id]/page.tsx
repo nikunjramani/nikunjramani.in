@@ -79,8 +79,9 @@ export default function AdminProjectEditorPage() {
               onSubmit={isNew ? handleCreate : handleUpdate}
               onValuesChange={(values) => setPreview(values as unknown as Project)}
               submitLabel={isNew ? "Create" : "Save"}
+              autosaveKey={`projects:${params.id}`}
             />
-            {!isNew ? <AuditTrail collection="projects" docId={params.id} /> : null}
+            {!isNew ? <AuditTrail collection={entry.collection} docId={params.id} /> : null}
           </div>
 
           <div className="lg:sticky lg:top-6 lg:self-start">

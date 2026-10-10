@@ -208,6 +208,7 @@ export function ContentCollectionScreen<T extends z.ZodTypeAny>({
           onSubmit={handleCreate}
           onClose={() => setDialog(null)}
           submitLabel="Create"
+          autosaveKey={`${entry.apiDomain}:new`}
         />
       ) : null}
       {dialog?.mode === "edit" ? (
@@ -218,6 +219,8 @@ export function ContentCollectionScreen<T extends z.ZodTypeAny>({
           defaultValues={dialog.record.data as z.infer<T>}
           onSubmit={(values) => handleEdit(dialog.record.id, values)}
           onClose={() => setDialog(null)}
+          autosaveKey={`${entry.apiDomain}:${dialog.record.id}`}
+          auditTrail={{ collection: entry.collection, docId: dialog.record.id }}
         />
       ) : null}
     </div>

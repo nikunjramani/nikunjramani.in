@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import type { z } from "zod";
 
+import { AuditTrail } from "@/components/admin/audit-trail";
 import { SchemaForm } from "@/components/admin/schema-form/schema-form";
 import { useFeedback } from "@/components/admin/ui-feedback";
 import type { AdminSchemaEntry } from "@/generated/admin-schemas";
@@ -78,7 +79,9 @@ export function SingletonScreen<T extends z.ZodTypeAny>({
             zodSchema={zodSchema}
             defaultValues={data as z.infer<T>}
             onSubmit={handleSubmit}
+            autosaveKey={`${entry.apiDomain}:main`}
           />
+          {exists ? <AuditTrail collection={entry.collection} docId="main" /> : null}
         </>
       )}
     </div>
