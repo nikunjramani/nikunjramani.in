@@ -1,6 +1,6 @@
 import "server-only";
 
-import { unstable_cache } from "next/cache";
+import { cache } from "react";
 
 import { db } from "@/lib/firebase/admin";
 import type { Project } from "@/generated/types";
@@ -21,7 +21,7 @@ function stripConfidentialClient(project: WithId<Project>): WithId<Project> {
   return { ...project, client };
 }
 
-export const getFeaturedProjects = unstable_cache(
+export const getFeaturedProjects = cache(
   async (): Promise<WithId<Project>[]> => {
     const snap = await db()
       .collection("projects")
@@ -34,11 +34,9 @@ export const getFeaturedProjects = unstable_cache(
       .filter((doc): doc is WithId<Project> => doc !== null)
       .map(stripConfidentialClient);
   },
-  ["projects-featured"],
-  { tags: ["projects"], revalidate: 3600 },
 );
 
-export const getAllProjects = unstable_cache(
+export const getAllProjects = cache(
   async (): Promise<WithId<Project>[]> => {
     const snap = await db()
       .collection("projects")
@@ -50,11 +48,9 @@ export const getAllProjects = unstable_cache(
       .filter((doc): doc is WithId<Project> => doc !== null)
       .map(stripConfidentialClient);
   },
-  ["projects-all"],
-  { tags: ["projects"], revalidate: 3600 },
 );
 
-export const getProjectBySlug = unstable_cache(
+export const getProjectBySlug = cache(
   async (slug: string): Promise<WithId<Project> | null> => {
     const snap = await db().collection("projects").doc(slug).get();
     const project = fromSnapshot<Project>(snap);
@@ -62,6 +58,4 @@ export const getProjectBySlug = unstable_cache(
     if (!project || project.visibility !== "public") return null;
     return stripConfidentialClient(project);
   },
-  ["project-by-slug"],
-  { tags: ["projects"], revalidate: 3600 },
 );

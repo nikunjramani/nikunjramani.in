@@ -1,3 +1,6 @@
+// Content changes must reach visitors without a stale CDN response (ADR 0014).
+export const revalidate = 0;
+
 import type { MetadataRoute } from "next";
 
 import { getAllProjects } from "@/lib/data/projects";

@@ -25,11 +25,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   }
 
   for (const tag of tags as string[]) {
-    // Next 16 deprecated the single-argument form. "max" is Next's own recommended
-    // profile: visitors get stale-while-revalidate (never blocked on a slow read) rather
-    // than an immediate hard miss — an admin edit becoming visible within seconds is fine
-    // for this site; a visitor never waiting on a blocking Firestore read matters more.
-    revalidateTag(tag, "max");
+    // External write webhooks expire any tagged cache immediately.
+    revalidateTag(tag, { expire: 0 });
   }
 
   return NextResponse.json({ revalidated: tags });
