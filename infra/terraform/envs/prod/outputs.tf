@@ -9,3 +9,6 @@ output "wif_provider" {
 
 output "media_bucket" { value = module.storage.media_bucket }
 output "backups_bucket" { value = module.storage.backups_bucket }
+
+output "apphosting_backend_note" { value = module.app-hosting.note }
+output "configured_function_domains" { value = module.functions.configured_domains }

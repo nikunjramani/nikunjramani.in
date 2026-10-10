@@ -11,6 +11,19 @@ variable "region" {
   default = "asia-south1"
 }
 
+variable "services_deployed" {
+  description = <<-EOT
+    The IAM invoker binding below targets a Cloud Run service by name, and that
+    service doesn't exist until `firebase deploy --only functions` has run at least
+    once (2nd-gen Functions deploy as Cloud Run under the hood) — so this stays false
+    for the first `terraform apply`, then flips to true for a second apply right
+    after the first functions deploy. False keeps this module a no-op instead of
+    failing the whole apply on a service that isn't there yet.
+  EOT
+  type        = bool
+  default     = false
+}
+
 variable "domains" {
   description = "One entry per domain. Limits are per domain, not shared — that is the point of the split."
   type = map(object({
@@ -41,7 +54,7 @@ variable "domains" {
 # Public endpoints (contact, health) need unauthenticated invocation.
 # Admin endpoints do their own auth in-process, but still need to be reachable.
 resource "google_cloud_run_service_iam_member" "public_invoker" {
-  for_each = { for k, v in var.domains : k => v if v.public }
+  for_each = var.services_deployed ? { for k, v in var.domains : k => v if v.public } : {}
 
   project  = var.project_id
   location = var.region
