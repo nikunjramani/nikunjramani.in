@@ -42,6 +42,8 @@ coverage.xml
 *.tfstate.*
 *.tfvars
 !*.tfvars.example
+*.tfplan
+tfplan.out
 crash.log
 override.tf
 override.tf.json

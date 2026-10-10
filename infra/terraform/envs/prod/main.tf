@@ -57,3 +57,22 @@ module "monitoring" {
 
   depends_on = [module.project]
 }
+
+module "functions" {
+  source            = "../../modules/functions"
+  project_id        = var.project_id
+  region            = var.region
+  services_deployed = var.functions_deployed
+
+  depends_on = [module.project, module.iam]
+}
+
+module "app-hosting" {
+  source               = "../../modules/app-hosting"
+  project_id           = var.project_id
+  region               = var.region
+  service_account      = module.iam.apphosting_sa
+  github_connection_id = var.apphosting_github_connection_id
+
+  depends_on = [module.project, module.iam]
+}

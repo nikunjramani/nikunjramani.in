@@ -19,6 +19,7 @@ The plan lives here, split by topic and phase. Start with the
 | 07 | [Domain Setup](./07-domain-setup.md) | GoDaddy → Firebase DNS, step by step |
 | 08 | [Costs & Risks](./08-costs-and-risks.md) | Free-tier maths, guardrails, honest risk list |
 | 09 | [Deploy & CI/CD Implementation](./09-deploy-cicd-implementation.md) | The concrete, ordered execution plan for Phases 6 + 7 — what's already built, what's a real stub, exact command sequence |
+| — | [Deploy Progress](./DEPLOY-PROGRESS.md) | **Live status** — what's actually been run against the real project, and the next command to run |
 | — | [Decisions](./decisions.md) | The ten opening questions, answered |
 | — | [ADRs](../adr/README.md) | Architecture decision records — eleven and counting |
 
