@@ -3,13 +3,20 @@
 import { X } from "lucide-react";
 import type { z } from "zod";
 
+import { AuditTrail } from "@/components/admin/audit-trail";
 import { SchemaForm, type SchemaFormProps } from "@/components/admin/schema-form/schema-form";
 
 export function RecordFormDialog<T extends z.ZodTypeAny>({
   title,
   onClose,
+  auditTrail,
   ...schemaFormProps
-}: SchemaFormProps<T> & { title: string; onClose: () => void }) {
+}: SchemaFormProps<T> & {
+  title: string;
+  onClose: () => void;
+  /** Omitted for a not-yet-created record — nothing to show history for yet. */
+  auditTrail?: { collection: string; docId: string };
+}) {
   return (
     <div
       role="dialog"
@@ -29,6 +36,7 @@ export function RecordFormDialog<T extends z.ZodTypeAny>({
           </button>
         </div>
         <SchemaForm {...schemaFormProps} />
+        {auditTrail ? <AuditTrail collection={auditTrail.collection} docId={auditTrail.docId} /> : null}
       </div>
     </div>
   );
