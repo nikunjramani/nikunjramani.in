@@ -1,4 +1,7 @@
 # ── Secrets — never commit ───────────────────────────────────────
+.secret.local
+.secrets.local
+*.secret.local
 .env
 .env.*
 !.env.example

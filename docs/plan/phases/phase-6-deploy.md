@@ -22,22 +22,12 @@ Blaze is enabled. See [Deploy Progress](../DEPLOY-PROGRESS.md) for current state
 
 ### 6.1 · Infrastructure
 
-- [x] Fill in `modules/functions` — `for_each` over the domain map, per-domain memory and
-      `max_instances = 3`, secrets bound. Took two real fixes once applied against the
-      actual project: the IAM binding was targeting the Cloud Run v1 API (2nd-gen
-      Functions are v2) and the underscored function id (`api_system`) isn't the real
-      Cloud Run service name (`api-system` — DNS-safe hyphenation).
-- [ ] Fill in `modules/app-hosting` — backend, GitHub connection, env vars. Module and
-      the Firebase Web App registration are done; the backend resource itself is still
-      a no-op pending the console GitHub connection (Part E).
-- [x] `terraform plan` reviewed
-- [x] `terraform apply` — budget alert (₹100/mo), WIF pool + deploy SA, Firestore
-      database, 2 storage buckets, 4 secret containers, error-rate alert, 12 public
-      invoker bindings, all live on `nikunjramani-in`
-- [ ] Uptime check and alerts confirmed active — error-rate alert is live and
-      confirmed (log-based metric + alert policy). The uptime check itself needs the
-      real public health path, which only exists once Part 6.3's rewrite is live —
-      deferred to 6.6's smoke tests rather than monitoring a throwaway raw-function URL
+- [x] Terraform IAM, storage, budget, secrets, Firestore and App Hosting applied.
+- [x] App Hosting backend in Singapore; local-source deploy (ADR 0013).
+- [x] Function runtime settings and secrets configured in Firebase Python decorators.
+- [x] `terraform plan` reviewed and applied.
+- [x] Uptime check on `/api/v1/system/health` and error/uptime policies active.
+- [ ] Alert notification delivery verified in the owner's inbox.
 
 ### 6.2 · Backend deploy
 
@@ -46,11 +36,8 @@ Blaze is enabled. See [Deploy Progress](../DEPLOY-PROGRESS.md) for current state
       needed for either)
 - [x] `firebase deploy --only functions` — all 12 domains + 2 triggers + the scheduled
       backup, confirmed via `firebase functions:list`, none silently skipped
-- [ ] `next.config.ts` rewrites resolve for every domain — needs `FUNCTIONS_BASE_URL`
-      set in `apphosting.yaml` (6.3) before this is testable for real
-- [x] `/health` responds on the deployed URL — verified directly against the raw
-      Cloud Function (`.../api_system/health` → `{"environment":"production"}`); via
-      the rewrite specifically still needs 6.3
+- [x] All twelve production rewrites configured; health and admin routes tested live.
+- [x] Rewritten `/api/v1/system/health` responds with production environment.
 - [ ] A real contact submission delivers an email — blocked on the deferred Resend key
 - [x] Scheduled backup manually triggered on 2026-10-10; HTTP 200 and all 11 JSON exports verified in the private backup bucket.
 - [x] `/docs` confirmed **disabled** in production — a real gap, not a formality: the
@@ -62,50 +49,49 @@ Blaze is enabled. See [Deploy Progress](../DEPLOY-PROGRESS.md) for current state
 
 - [x] `frontend/apphosting.yaml` — framework build detection, Node 22, build/runtime env, scale to zero, max 3 instances
 - [ ] Optional: connect GitHub for automatic rollouts. Manual deployment uses local source (ADR 0013).
-- [ ] First build succeeds
-- [ ] Site reachable on the default App Hosting URL
-- [ ] Server-side env vars confirmed **not** in the client bundle
+- [x] Production build succeeds
+- [x] Site reachable on the default App Hosting URL
+- [x] Server-side env vars confirmed **not** in the client bundle
 
 ### 6.4 · DNS
 
-Follow [07 · Domain Setup](../07-domain-setup.md).
+Use [the live API DNS records](../DNS-CUTOVER.md), which supersede the older domain plan.
 
-- [ ] Custom domain added in Firebase for apex and `www`
+- [x] Custom domain added in Firebase for apex and `www`
 - [ ] TXT verification record added at GoDaddy
 - [ ] Both A records added
-- [ ] `CNAME www → nikunjramani.in`
+- [ ] Shared ACME authorization CNAME added (remove old www CNAME).
 - [ ] **GoDaddy parking records and forwarding deleted** ⚠️
 - [ ] Verification passed
 - [ ] SSL provisioned
 - [ ] `www` → apex redirect confirmed
-- [ ] Optional: `api.nikunjramani.in` CNAME
 
 ### 6.5 · SEO go-live
 
 - [ ] Google Search Console — property verified
 - [ ] `sitemap.xml` submitted
-- [ ] `robots.txt` correct and reachable
+- [x] `robots.txt` correct and reachable on hosted URL
 - [ ] Rich Results Test passes on the JSON-LD
 - [ ] LinkedIn Post Inspector shows the right preview
 - [ ] WhatsApp / iMessage previews checked on a phone
-- [ ] Canonical URLs consistent across every page
+- [x] Canonical base configured as `https://nikunjramani.in` (DNS pending)
 
 ### 6.6 · Smoke tests
 
-- [ ] Every public route loads over HTTPS
-- [ ] A project detail page renders fully
+- [x] Static public routes load over HTTPS on hosted URL
+- [x] Temporary project detail rendered with real Firestore content (fixture removed)
 - [ ] Contact form → email received
 - [ ] Résumé download works
-- [ ] `/admin` login works on the live domain
-- [ ] An edit in `/admin` appears on the public site within seconds
-- [ ] Lighthouse run against **production**, not localhost
-- [ ] 404 page works
+- [x] Google sign-in and admin session verified on hosted URL; owner admin claim granted
+- [x] Authenticated API publish/edit/unpublish visible immediately; sitemap follows changes (ADR 0014).
+- [x] Production hosted homepage Lighthouse after cache fix: 99 / 100 / 100.
+- [x] 404 page works
 - [ ] Mobile check on a real device
 
 ### 6.7 · Runbook
 
-- [ ] `docs/RUNBOOK.md` — deploy, rollback, rotate secrets, restore a backup
-- [ ] Rollback tested at least once, deliberately
+- [x] `docs/RUNBOOK.md` — deploy, rollback, rotate secrets, restore a backup
+- [x] App Hosting rollback to build 003 and restoration to build 004 rehearsed; health 200 at each step.
 
 ---
 

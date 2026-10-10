@@ -1,7 +1,7 @@
 # nikunjramani.in
 
 Source for my personal site — portfolio, projects and writing.
-Live at **[nikunjramani.in](https://nikunjramani.in)** *(not deployed yet)*.
+Deployed at **[Firebase App Hosting](https://nikunjramani-in--nikunjramani-in.asia-southeast1.hosted.app)**. Custom-domain DNS is pending; see [deployment status](docs/plan/DEPLOY-PROGRESS.md).
 
 > 📋 Full architecture and build plan: **[docs/plan/](./docs/plan/README.md)**
 
@@ -56,7 +56,7 @@ make gen       # regenerate models from architecture/schemas
 make validate  # validate schemas + example fixtures
 make lint      # eslint + ruff + mypy + import-linter
 make test      # frontend + backend test suites
-make deploy    # terraform apply + deploy functions
+make deploy    # terraform apply + deploy functions and App Hosting
 ```
 
 **Prerequisites:** Node 22+, Python 3.13, Terraform 1.9+, Firebase CLI, gcloud CLI.

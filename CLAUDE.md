@@ -12,14 +12,11 @@ with a Python API owning every write.
 employer names, client names, or anything from a private engagement. Reach for a placeholder and
 say so.
 
-**Status:** Phases 0, 1, 3, 4 and 5 done. The backend (12 domains, 133 tests), the whole
-public site, and the whole admin panel (auth, `<SchemaForm>`, every content screen, media
-library, messages, settings, autosave, audit trail) are built and verified live against the
-real emulators through actual signed-in browser sessions. Genuinely blocked, not skipped:
-Phase 2 (content — needs the site owner's own writing), the Lighthouse half of Phase 4.8,
-and two Phase 5 items that need a real deployed service account (signed media uploads, a
-production admin claim grant) — all four need Phase 6. Billing is deferred, so development
-runs entirely against the **Firebase emulators** — that works for everything up to Phase 6.
+**Status:** Phases 0, 1, 3, 4 and 5 are implemented. Phase 6 is deployed on the
+Firebase App Hosting default hostname; custom DNS and launch checks remain pending.
+Production admin claim and signed uploads are verified. Backend: 134 passing tests.
+Billing is enabled. Local development still uses emulators. Phase 2 needs the owner's
+content. Read `docs/plan/DEPLOY-PROGRESS.md` before continuing deployment work.
 Full plan: [`docs/plan/`](./docs/plan/README.md) · Decisions: [`docs/adr/`](./docs/adr/README.md)
 
 ## Stack
@@ -125,6 +122,10 @@ in the repository layer, in exactly one place.
 
 **Secrets** live in Secret Manager, injected by Terraform. Never in `.env` files, never in git.
 `NEXT_PUBLIC_*` Firebase config is public by design — the security is in the rules, not in hiding it.
+If a real secret ever genuinely needs to touch disk (a local scratch value, a one-off credential),
+it goes in `.secret.local` (or `.secrets.local` / `*.secret.local`) — gitignored, never committed,
+never pasted into a doc or commit message. Prefer not writing it to disk at all when a command can
+take it piped or as an env var instead.
 
 ## Gotchas
 
