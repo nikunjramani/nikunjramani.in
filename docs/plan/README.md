@@ -18,6 +18,7 @@ The plan lives here, split by topic and phase. Start with the
 | 06 | [Content Checklist](./06-content-checklist.md) | **What you actually need to write** |
 | 07 | [Domain Setup](./07-domain-setup.md) | GoDaddy → Firebase DNS, step by step |
 | 08 | [Costs & Risks](./08-costs-and-risks.md) | Free-tier maths, guardrails, honest risk list |
+| 09 | [Deploy & CI/CD Implementation](./09-deploy-cicd-implementation.md) | The concrete, ordered execution plan for Phases 6 + 7 — what's already built, what's a real stub, exact command sequence |
 | — | [Decisions](./decisions.md) | The ten opening questions, answered |
 | — | [ADRs](../adr/README.md) | Architecture decision records — eleven and counting |
 
