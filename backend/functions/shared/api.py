@@ -94,5 +94,18 @@ def make_function(
         memory=memory,
         max_instances=max_instances,
         region=region,
+        secrets=["REVALIDATE_TOKEN"]
+        if name
+        in {
+            "api_projects",
+            "api_skills",
+            "api_experience",
+            "api_education",
+            "api_certifications",
+            "api_posts",
+            "api_profile",
+            "api_settings",
+        }
+        else [],
     )
     return decorate(_handler)

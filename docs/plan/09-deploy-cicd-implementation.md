@@ -1,5 +1,13 @@
 # 09 · Deploy & CI/CD Implementation Plan
 
+> **Execution update, 2026-10-10:** This is the original plan. Current verified state is
+> in [DEPLOY-PROGRESS.md](./DEPLOY-PROGRESS.md). Billing and backend deployment are done;
+> budget is ₹100. App Hosting uses Singapore and local-source CLI deployment (ADR 0013),
+> so GitHub OAuth is optional for the first deploy. Config lives in `frontend/apphosting.yaml`.
+> Runtime limits and secret bindings belong to Python decorators, not the Terraform domain map.
+> Secret changes require redeploying their consumers. Function rollback means redeploying
+> a known-good source revision; `firebase functions:rollback` does not exist.
+
 A concrete, step-by-step execution plan for taking Phase 6 (Deploy & DNS) and Phase 7
 (CI/CD Hardening) from "designed" to "done" — grounded in what's actually in the repo
 today, not just what the phase checklists say. Written before execution starts, per the

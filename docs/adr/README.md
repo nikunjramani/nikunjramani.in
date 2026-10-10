@@ -61,3 +61,5 @@ anything trivially reversible
 Open questions not yet decided live in
 [`docs/plan/decisions.md`](../plan/decisions.md). Once answered, the ones that are
 architectural become ADRs here.
+
+- [0013 · Local-source App Hosting deployment](./0013-local-source-app-hosting.md) — accepted 2026-10-10.

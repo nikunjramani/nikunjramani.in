@@ -25,7 +25,7 @@ resource "google_monitoring_uptime_check_config" "health" {
   period       = "300s"
 
   http_check {
-    path         = "/health"
+    path         = "/api/v1/system/health"
     port         = 443
     use_ssl      = true
     validate_ssl = true
@@ -75,5 +75,28 @@ resource "google_monitoring_alert_policy" "error_rate" {
     }
   }
 
+  notification_channels = [google_monitoring_notification_channel.email.id]
+}
+
+resource "google_monitoring_alert_policy" "uptime" {
+  count        = var.health_url == "" ? 0 : 1
+  project      = var.project_id
+  display_name = "Public API health unavailable"
+  combiner     = "OR"
+  conditions {
+    display_name = "Health check failing for five minutes"
+    condition_threshold {
+      filter          = "metric.type = \"monitoring.googleapis.com/uptime_check/check_passed\" AND resource.type = \"uptime_url\" AND metric.label.check_id = \"${google_monitoring_uptime_check_config.health[0].uptime_check_id}\""
+      comparison      = "COMPARISON_GT"
+      threshold_value = 1
+      duration        = "300s"
+      aggregations {
+        alignment_period     = "60s"
+        per_series_aligner   = "ALIGN_NEXT_OLDER"
+        cross_series_reducer = "REDUCE_COUNT_FALSE"
+        group_by_fields      = ["resource.label.host"]
+      }
+    }
+  }
   notification_channels = [google_monitoring_notification_channel.email.id]
 }

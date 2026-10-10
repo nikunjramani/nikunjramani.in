@@ -25,11 +25,43 @@
     "rules": "infra/rules/storage.rules"
   },
   "emulators": {
-    "auth": { "port": 9099 },
-    "functions": { "port": 5001 },
-    "firestore": { "port": 8080 },
-    "storage": { "port": 9199 },
-    "ui": { "enabled": true, "port": 4040 },
+    "auth": {
+      "port": 9099
+    },
+    "functions": {
+      "port": 5001
+    },
+    "firestore": {
+      "port": 8080
+    },
+    "storage": {
+      "port": 9199
+    },
+    "ui": {
+      "enabled": true,
+      "port": 4040
+    },
     "singleProjectMode": true
-  }
+  },
+  "apphosting": [
+    {
+      "backendId": "nikunjramani-in",
+      "rootDir": "frontend",
+      "ignore": [
+        "node_modules",
+        ".git",
+        ".next",
+        "backend",
+        "infra",
+        "docs",
+        ".claude",
+        ".emulator-data",
+        "**/.env*",
+        "**/*.log",
+        "**/*.tfvars",
+        "**/*.tfstate*"
+      ],
+      "alwaysDeployFromSource": true
+    }
+  ]
 }

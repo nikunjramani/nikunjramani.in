@@ -32,7 +32,9 @@ _ORIGINAL_PATTERN = re.compile(r"^public/media/[^/]+/original\.[a-z0-9]+$")
 _MEDIA_BUCKET = get_settings().storage_bucket
 
 
-@storage_fn.on_object_finalized(bucket=_MEDIA_BUCKET, region="asia-south1", memory=1024)
+@storage_fn.on_object_finalized(
+    bucket=_MEDIA_BUCKET, region="asia-south1", memory=1024, max_instances=2
+)
 def on_media_uploaded(event: CloudEvent[storage_fn.StorageObjectData]) -> None:
     data = event.data
     if not _ORIGINAL_PATTERN.match(data.name):

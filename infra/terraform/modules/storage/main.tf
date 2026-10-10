@@ -13,7 +13,7 @@ resource "google_storage_bucket" "media" {
   force_destroy               = false
 
   cors {
-    origin          = ["https://nikunjramani.in", "https://www.nikunjramani.in", "http://localhost:3000"]
+    origin          = ["https://nikunjramani.in", "https://www.nikunjramani.in", "http://localhost:3000", "https://nikunjramani-in--nikunjramani-in.asia-southeast1.hosted.app"]
     method          = ["GET", "HEAD", "PUT", "POST"]
     response_header = ["Content-Type", "Authorization"]
     max_age_seconds = 3600
@@ -37,3 +37,16 @@ resource "google_storage_bucket" "backups" {
 
 output "media_bucket" { value = google_storage_bucket.media.name }
 output "backups_bucket" { value = google_storage_bucket.backups.name }
+
+# A managed folder scopes public reads to public/ without exposing private objects.
+resource "google_storage_managed_folder" "public_media" {
+  bucket = google_storage_bucket.media.name
+  name   = "public/"
+}
+
+resource "google_storage_managed_folder_iam_member" "public_media" {
+  bucket         = google_storage_bucket.media.name
+  managed_folder = google_storage_managed_folder.public_media.name
+  role           = "roles/storage.objectViewer"
+  member         = "allUsers"
+}

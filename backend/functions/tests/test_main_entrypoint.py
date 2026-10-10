@@ -82,3 +82,23 @@ def test_function_target_narrows_to_exactly_one_domain() -> None:
     assert has_system == "True"
     assert has_contact == "False"
     assert has_media_trigger == "False"
+
+
+def test_production_manifest_has_runtime_identity_secrets_and_limits() -> None:
+    """Inspect fresh deploy discovery, where missing options silently ship bad config."""
+    code = """
+import main
+for name in main.__all__:
+    endpoint = getattr(main, name).__firebase_endpoint__
+    expected_sa = 'functions-runtime@nikunjramani-in.iam.gserviceaccount.com'
+    assert endpoint.serviceAccountEmail == expected_sa, name
+    assert endpoint.maxInstances == (2 if name in {'api_media', 'on_media_uploaded'} else 3), name
+for name in ['api_projects', 'api_skills', 'api_experience', 'api_education',
+             'api_certifications', 'api_posts', 'api_profile', 'api_settings']:
+    secrets = getattr(main, name).__firebase_endpoint__.secretEnvironmentVariables
+    assert {'key': 'REVALIDATE_TOKEN'} in secrets, name
+secrets = main.on_contact_created.__firebase_endpoint__.secretEnvironmentVariables
+assert {'key': 'CONTACT_EMAIL_TO'} in secrets
+"""
+    env = {k: v for k, v in os.environ.items() if k != "FUNCTION_TARGET"}
+    subprocess.run([sys.executable, "-c", code], cwd=BACKEND_ROOT, env=env, check=True)

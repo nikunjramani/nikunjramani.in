@@ -12,3 +12,6 @@ output "backups_bucket" { value = module.storage.backups_bucket }
 
 output "apphosting_backend_note" { value = module.app-hosting.note }
 output "configured_function_domains" { value = module.functions.configured_domains }
+
+output "apphosting_uri" { value = module.app-hosting.uri }
+output "domain_status" { value = module.app-hosting.domain_status }

@@ -83,7 +83,7 @@ make deploy
 # 1. terraform apply     infra, IAM, secrets, indexes
 # 2. firebase deploy     rules + indexes
 # 3. firebase deploy     functions (needs secrets to exist)
-# 4. App Hosting         auto-builds from the git push
+# 4. firebase deploy --only apphosting   local source → Cloud Build → rollout
 ```
 
 ### Pre-flight
@@ -114,7 +114,7 @@ costs an afternoon.
 
 | Broken | Fix |
 |---|---|
-| One domain's function | `firebase functions:rollback` |
+| One domain's function | Redeploy that domain from a known-good source revision (below) |
 | Frontend | App Hosting console → previous release |
 | Rules | `git revert` → `firebase deploy --only firestore:rules` |
 | Infra | `git revert` → `terraform apply` |
@@ -124,6 +124,31 @@ Because functions are split per domain (ADR 0011), one domain rolls back without
 the rest.
 
 ---
+
+### Function rollback
+
+There is no `firebase functions:rollback` command. Record a known-good commit before
+releasing, check it out in a separate worktree, run `make setup-backend`, then deploy
+only the affected entrypoints with `firebase deploy --project nikunjramani-in --only
+functions:api_system`. For shared-code changes, restore all affected domains and triggers.
+Do not reset a working checkout with uncommitted edits. Verify `/health` and the affected
+feature after redeploying. A procedure written here is not evidence of a tested rollback.
+
+### App Hosting
+
+The app root is `frontend`; configuration belongs in `frontend/apphosting.yaml`.
+`FUNCTIONS_BASE_URL` must be available at BUILD time because Next.js serializes rewrites.
+Node 22 is pinned in `frontend/package.json`. Use:
+
+```bash
+firebase deploy --only apphosting --project nikunjramani-in --non-interactive
+```
+
+The backend is in `asia-southeast1` (Mumbai is not offered for App Hosting), with
+`GLOBAL_ACCESS` serving locality (`REGIONAL_STRICT` is rejected by the live API).
+The custom compute identity needs `roles/firebaseapphosting.computeRunner` for builds
+and artifacts, Firestore viewer for SSR, and the custom session-auth role for cookies.
+It has no Firestore write permission. GitHub OAuth is optional for local-source deploys.
 
 ## Secrets
 
@@ -137,9 +162,10 @@ echo -n "value" | gcloud secrets versions add RESEND_API_KEY --data-file=- --pro
 ### Rotation
 
 1. Add the new version
-2. Redeploy functions so they pick it up
+2. Bind the secret in the consuming Python decorator, then redeploy those functions so they pick it up
 3. Verify the dependent path (send a test email)
-4. Disable the old version — don't delete until the new one is proven
+4. Redeploy App Hosting too when rotating `REVALIDATE_TOKEN`; both sides must use the same value
+5. Disable the old version — don't delete until the new one is proven
 
 ---
 
@@ -156,7 +182,24 @@ The claim lands in the **next** token issued — sign out and back in to pick it
 
 ## Backups
 
-Nightly Firestore export → `nikunjramani-in-backups`, 30-day lifecycle.
+Nightly JSON export → `nikunjramani-in-backups`, 30-day lifecycle. This is **not**
+GCP's native Firestore export format; `gcloud firestore import` cannot restore it.
+The format is one `<UTC timestamp>/<collection>.json` file per collection, containing
+`[{"id": "document-id", "data": {...}}]`. Only the 11 named top-level collections are
+included; subcollections and rate-limit counters are not backed up.
+
+```bash
+gcloud scheduler jobs run firebase-schedule-nightly_backup-asia-south1 \
+  --location=asia-south1 --project=nikunjramani-in
+gcloud storage ls --recursive gs://nikunjramani-in-backups/
+```
+
+Verify all 11 files for the same timestamp, valid JSON, and sensible document counts.
+Restore by reading those files, applying `shared.core.timestamps.to_firestore` to each
+`data` object, and writing it to the original collection/document ID using the Admin SDK.
+Set `FIRESTORE_EMULATOR_HOST` explicitly and use an isolated emulator project first.
+A production restore must follow a fresh backup and a reviewed collection/document diff;
+it is not part of an ordinary code rollback.
 **Restore into the emulator first and verify** before touching production, always.
 
 ---

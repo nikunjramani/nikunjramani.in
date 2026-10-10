@@ -19,10 +19,12 @@ locals {
     "roles/storage.objectAdmin", # media + backups
     "roles/secretmanager.secretAccessor",
     "roles/logging.logWriter",
+    "roles/eventarc.eventReceiver",
   ]
 
-  # App Hosting renders pages, so it reads content. It must never write.
+  # Firestore stays read-only. App Hosting uses this identity for builds too.
   apphosting_roles = [
+    "roles/firebaseapphosting.computeRunner", # required build/artifact/source access
     "roles/datastore.viewer",
     "roles/secretmanager.secretAccessor",
     "roles/logging.logWriter",
@@ -108,3 +110,24 @@ output "functions_sa" { value = google_service_account.functions.email }
 output "apphosting_sa" { value = google_service_account.apphosting.email }
 output "deploy_sa" { value = google_service_account.deploy.email }
 output "wif_provider" { value = google_iam_workload_identity_pool_provider.github.name }
+
+# Keyless signed upload URLs: the runtime may sign only as itself.
+resource "google_service_account_iam_member" "functions_sign_blob" {
+  service_account_id = google_service_account.functions.name
+  role               = "roles/iam.serviceAccountTokenCreator"
+  member             = "serviceAccount:${google_service_account.functions.email}"
+}
+
+# Session cookies require this Auth permission, not Firestore write access.
+resource "google_project_iam_custom_role" "apphosting_auth" {
+  project     = var.project_id
+  role_id     = "apphostingSessionAuth"
+  title       = "App Hosting session authentication"
+  permissions = ["firebaseauth.users.createSession", "firebaseauth.users.get"]
+}
+
+resource "google_project_iam_member" "apphosting_auth" {
+  project = var.project_id
+  role    = google_project_iam_custom_role.apphosting_auth.name
+  member  = "serviceAccount:${google_service_account.apphosting.email}"
+}

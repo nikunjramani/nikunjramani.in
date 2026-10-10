@@ -14,7 +14,9 @@ from shared.services.email import send_email
 log = get_logger(__name__)
 
 
-@firestore_fn.on_document_created(document="contact_messages/{message_id}", region="asia-south1")
+@firestore_fn.on_document_created(
+    document="contact_messages/{message_id}", region="asia-south1", secrets=["CONTACT_EMAIL_TO"]
+)
 def on_contact_created(event: firestore_fn.Event[DocumentSnapshot | None]) -> None:
     settings = get_settings()
     if not settings.contact_email_to:
