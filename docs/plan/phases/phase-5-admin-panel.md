@@ -59,8 +59,11 @@ screens are almost free.
 
 ### 5.4 · Content screens
 
-- [ ] `/admin/projects` — table, search, filter by visibility/kind, **drag to reorder**, duplicate, delete
-- [ ] `/admin/projects/[id]` — the full editor, live preview, draft/publish
+- [x] `/admin/projects` — table, search, filter by visibility/kind, reorder (up/down
+      buttons, same scope decision as `/admin/skills` below — no drag-and-drop
+      dependency), duplicate, delete
+- [x] `/admin/projects/[id]` — the full editor, live preview (via the same
+      `ProjectDetailView` the public page renders), draft/publish, autosave, audit trail
 - [x] `/admin/skills` — inline-editable grid grouped by category, reorder (up/down buttons,
       not drag-and-drop — functionally equivalent, no new dependency; revisit if this
       becomes a real friction point)

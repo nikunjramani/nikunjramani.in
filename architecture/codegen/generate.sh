@@ -59,8 +59,9 @@ cd "$ROOT/architecture/codegen"
 [ -d node_modules ] || npm install --silent
 node gen-frontend.mjs
 
-# ── Firestore indexes ───────────────────────────────────────────────
+# ── Firestore indexes + rules ───────────────────────────────────────
 python3 "$ROOT/architecture/codegen/gen-indexes.py"
+python3 "$ROOT/architecture/codegen/gen-rules.py"
 python3 "$ROOT/architecture/codegen/gen-docs.py"
 
 echo "✓ done"

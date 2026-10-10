@@ -46,8 +46,8 @@ Everything below depends on it, and it's the only code more than one domain may 
 - [x] Firestore `Timestamp` ↔ ISO string conversion, in exactly one place (`shared/core/timestamps.py`)
 - [x] `shared/services/audit.py`, `shared/services/email.py` — Resend + retry, with a
       dev-mode skip when no key is configured
-- [ ] `shared/services/storage.py`, `shared/services/image.py` — needed by the `media` domain
-      (§3.4), not yet built
+- [x] `shared/services/storage.py`, `shared/services/image.py` — built alongside the
+      `media` domain (§3.4); this checkbox just hadn't been ticked
 - [x] **`shared/api.py` — `make_function()`**: FastAPI + CORS wrapper, written once. **Not**
       `a2wsgi`'s own `ASGIMiddleware` — see the gotcha below and
       [ADR 0003](../../adr/0003-fastapi-in-a-single-function.md)'s implementation note
