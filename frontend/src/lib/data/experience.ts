@@ -1,14 +1,12 @@
 import "server-only";
 
-import { unstable_cache } from "next/cache";
+import { cache } from "react";
 
 import type { Experience } from "@/generated/types";
 
 import type { WithId } from "./convert";
 import { listPublished } from "./shared";
 
-export const getExperience = unstable_cache(
+export const getExperience = cache(
   (): Promise<WithId<Experience>[]> => listPublished<Experience>("experience"),
-  ["experience-all"],
-  { tags: ["experience"], revalidate: 3600 },
 );

@@ -85,6 +85,9 @@ class MediaService:
         # Best-effort: if the Storage delete fails partway, the Firestore record is gone
         # too rather than left dangling and pointing at nothing — an orphaned Storage blob
         # costs a few KB; an admin panel entry pointing at a 404'd image is worse.
-        with contextlib.suppress(Exception):
-            self._storage.delete(asset.data.path)
+        folder = asset.data.path.rsplit("/", 1)[0]
+        for path in (asset.data.path, f"{folder}/processed.webp", f"{folder}/thumbnail.webp"):
+            # Attempt every variant even if an earlier object is already missing.
+            with contextlib.suppress(Exception):
+                self._storage.delete(path)
         self.repo.delete(doc_id)

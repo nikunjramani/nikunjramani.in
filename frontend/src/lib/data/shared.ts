@@ -1,11 +1,7 @@
 import "server-only";
 
-// Uses `unstable_cache` throughout this data layer, not Next 16's newer `'use cache'`
-// directive + Cache Components. Cache Components is opt-in via the `cacheComponents` flag
-// in next.config.ts, which this project does not set — so `unstable_cache` is the current,
-// fully-supported "Previous Model" API, not a deprecated one in practice, even though its
-// own doc comment points at the newer directive as the longer-term direction. Worth
-// revisiting once Cache Components is more battle-tested; not a blocker for Phase 4.
+// React cache deduplicates reads within a request. Persistent content caching is
+// intentionally disabled so publication changes reach every instance (ADR 0014).
 
 import { db } from "@/lib/firebase/admin";
 

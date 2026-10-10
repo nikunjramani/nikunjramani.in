@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, call
 
 import pytest
 from google.cloud.firestore_v1 import Client
@@ -89,7 +89,11 @@ def test_delete_removes_both_storage_and_firestore(db: Client, clean_collection:
         uploaded_by=None,
     )
     svc.delete(record.id)
-    storage.delete.assert_called_once_with("public/media/1/original.webp")
+    assert storage.delete.call_args_list == [
+        call("public/media/1/original.webp"),
+        call("public/media/1/processed.webp"),
+        call("public/media/1/thumbnail.webp"),
+    ]
     assert svc.repo.get(record.id) is None
 
 
@@ -112,4 +116,5 @@ def test_delete_still_removes_firestore_record_if_storage_delete_fails(
         uploaded_by=None,
     )
     svc.delete(record.id)  # must not raise
+    assert storage.delete.call_count == 3
     assert svc.repo.get(record.id) is None

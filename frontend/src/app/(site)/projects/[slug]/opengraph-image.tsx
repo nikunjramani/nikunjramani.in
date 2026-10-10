@@ -1,3 +1,6 @@
+// Content changes must reach visitors without a stale CDN response (ADR 0014).
+export const revalidate = 0;
+
 import { ImageResponse } from "next/og";
 
 import { getProjectBySlug } from "@/lib/data/projects";
