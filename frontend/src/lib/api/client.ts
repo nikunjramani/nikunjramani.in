@@ -56,7 +56,7 @@ async function parseErrorMessage(res: Response): Promise<string> {
   return `Request failed with status ${res.status}.`;
 }
 
-export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
+async function rawFetch(path: string, init?: RequestInit): Promise<Response> {
   const headers = new Headers(init?.headers);
   headers.set("Authorization", await authHeader());
   if (init?.body && !headers.has("Content-Type")) {
@@ -81,6 +81,19 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
   if (!res.ok) {
     throw new ApiError(res.status, await parseErrorMessage(res));
   }
+  return res;
+}
+
+export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
+  const res = await rawFetch(path, init);
   if (res.status === 204) return undefined as T;
   return res.json() as Promise<T>;
+}
+
+/** For endpoints that don't return JSON — messages/export.csv being the only one so far.
+ * A plain <a href> can't carry the Authorization header this needs, so the download has to
+ * go through fetch + a Blob object URL instead of a real navigation. */
+export async function apiFetchBlob(path: string, init?: RequestInit): Promise<Blob> {
+  const res = await rawFetch(path, init);
+  return res.blob();
 }

@@ -74,18 +74,26 @@ screens are almost free.
 
 ### 5.5 · Media library
 
-- [ ] `/admin/media` — grid, upload via signed URL, progress
-- [ ] Drag-and-drop, multi-file
-- [ ] Alt text editing *(required before an image can be used)*
-- [ ] Copy URL, delete with usage check
-- [ ] Automatic WebP + thumbnails from the Phase 3 trigger
+- [x] `/admin/media` — grid, upload via signed URL, progress. The signed-URL round trip
+      itself can't run end-to-end locally (IAM signBlob needs a real deployed service
+      account — `shared/services/storage.py`'s own docstring says so); verified up to that
+      exact boundary instead: POST /media/upload-url passes validation against the live
+      Functions emulator with a real admin token and fails only on the outbound signing
+      call. One real check for Phase 6.
+- [x] Drag-and-drop, multi-file
+- [x] Alt text editing *(required before an image can be used)*
+- [x] Copy URL, delete with usage check
+- [x] Automatic WebP + thumbnails from the Phase 3 trigger — unchanged since Phase 3,
+      exercised by this screen's list/grid rendering the trigger's output shape
 
 ### 5.6 · Messages
 
-- [ ] `/admin/messages` — inbox, read/unread
-- [ ] Detail view, mark replied, spam flag
-- [ ] `mailto:` reply with the subject pre-filled
-- [ ] Export to CSV
+- [x] `/admin/messages` — inbox, read/unread
+- [x] Detail view, mark replied, spam flag
+- [x] `mailto:` reply with the subject pre-filled
+- [x] Export to CSV — via a Blob download (apiFetchBlob), not a plain `<a href>`: the
+      export endpoint needs the same Bearer auth as everything else, which a real
+      navigation can't carry
 
 ### 5.7 · Settings & publishing
 
