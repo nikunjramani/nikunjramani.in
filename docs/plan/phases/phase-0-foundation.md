@@ -1,7 +1,10 @@
 # Phase 0 · Foundation & Infrastructure
 
-**~6 hours** · Status: 🟡 Local scaffold done. Cloud steps deferred with billing — they are not
-needed until Phase 6, so this does not block Phases 1–5.
+**~6 hours** · Status: 🟡 Everything local is done and verified live (`make setup`,
+`make dev`, `make lint`, `make test`, the rewrite-proxied `/health`, and the Firestore
+rules' anonymous read/write behavior). Cloud steps — billing, OAuth consent, the Terraform
+state bucket, `terraform apply`, a production admin claim — remain deferred, all genuinely
+blocked on Blaze until Phase 6, not skipped.
 
 > **Goal:** A working local development environment and a fully provisioned Firebase/GCP
 > project, with infrastructure defined as code from the very first commit.
@@ -71,7 +74,11 @@ checklist as it runs.
 - [x] `infra/rules/firestore.rules` per [03 · Security](../03-security.md)
 - [x] `infra/rules/storage.rules`
 - [x] `infra/rules/firestore.indexes.json` (empty to start)
-- [ ] Deployed and verified: an anonymous client read succeeds, a write fails
+- [ ] Deployed and verified against production — still needs Phase 6. Already verified
+      against the emulator (same rules file the deploy would ship unchanged), live, not
+      just read from the rules file: anonymous read of a `visibility: public` doc → 200
+      with the real content; anonymous read of a `draft` doc → 403; anonymous write (any
+      doc) → 403.
 
 ### 0.5 · Admin claim
 
@@ -98,14 +105,22 @@ checklist as it runs.
 - [x] `main.py` importing and re-exporting it
 - [x] Rewrite for it in `frontend/next.config.ts`
 - [x] `ruff` + `mypy --strict` + `import-linter` configured and clean
-- [ ] Firebase emulators (Firestore, Auth, Storage, Functions) start
-- [ ] `/health` responds through the emulator **via the rewrite**, not the raw function URL
+- [x] Firebase emulators (Firestore, Auth, Storage, Functions) start — verified via `make dev`
+- [x] `/health` responds through the emulator **via the rewrite**, not the raw function URL —
+      `curl localhost:3000/api/v1/system/health` and the raw `127.0.0.1:5001/.../api_system/health`
+      both return the same `{"status":"ok",...}`, confirming the rewrite actually proxies rather
+      than coincidentally matching
 
 ### 0.8 · Wire it together
 
-- [ ] `make setup` installs both sides from scratch
-- [ ] `make dev` runs Next.js + emulators together
-- [x] `make lint` and `make test` pass on the empty projects
+- [x] `make setup` installs both sides from scratch — also surfaced a real critical RCE in
+      `next/og` (fixed separately, see the security commit) that hadn't been caught before
+      because nothing had run a fresh `npm install` with this exact lockfile in a while
+- [x] `make dev` runs Next.js + emulators together — one command, confirmed both come up and
+      the rewrite above works against it
+- [x] `make lint` and `make test` pass — true from the original empty scaffold, and
+      reverified now that both sides are fully built (backend: 133 tests; frontend: tsc +
+      eslint clean)
 - [x] `docs/RUNBOOK.md` documents local setup end to end
 
 ---
