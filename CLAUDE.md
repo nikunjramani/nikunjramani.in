@@ -12,7 +12,7 @@ with a Python API owning every write.
 employer names, client names, or anything from a private engagement. Reach for a placeholder and
 say so.
 
-**Status:** Phases 0, 1, 3, 4 and 5 done. The backend (12 domains, 116 tests), the whole
+**Status:** Phases 0, 1, 3, 4 and 5 done. The backend (12 domains, 133 tests), the whole
 public site, and the whole admin panel (auth, `<SchemaForm>`, every content screen, media
 library, messages, settings, autosave, audit trail) are built and verified live against the
 real emulators through actual signed-in browser sessions. Genuinely blocked, not skipped:
