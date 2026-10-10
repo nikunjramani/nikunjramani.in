@@ -24,6 +24,8 @@ reader would reasonably ask "why on earth is it like this?", belongs here.
 | [0010](./0010-no-monorepo-tooling.md) | No monorepo tooling | ✅ Accepted | 2026-09-06 |
 | [0011](./0011-domain-wise-separate-functions.md) | Domain-wise separate Firebase Functions | ✅ Accepted | 2026-09-06 |
 | [0012](./0012-generic-content-crud-in-shared.md) | Generic content CRUD lives in shared/, not per domain | ✅ Accepted | 2026-09-22 |
+| [0013](./0013-local-source-app-hosting.md) | Deploy App Hosting from local source | ✅ Accepted | 2026-10-10 |
+| [0014](./0014-request-scoped-content-cache.md) | Render mutable content per request | ✅ Accepted | 2026-10-10 |
 
 **Status:** 🟡 Proposed · ✅ Accepted · ⛔ Rejected · 🔄 Superseded · ⚠️ Deprecated
 
@@ -61,5 +63,3 @@ anything trivially reversible
 Open questions not yet decided live in
 [`docs/plan/decisions.md`](../plan/decisions.md). Once answered, the ones that are
 architectural become ADRs here.
-
-- [0013 · Local-source App Hosting deployment](./0013-local-source-app-hosting.md) — accepted 2026-10-10.

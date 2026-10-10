@@ -125,6 +125,15 @@ the rest.
 
 ---
 
+### Rehearsal evidence — 2026-10-10
+
+App Hosting rollout `phase6-rollback-rehearsal` restored build
+`build-2026-10-10-003`; health returned 200. Rollout `phase6-restore-verified` then
+restored `build-2026-10-10-004`; health returned 200. The latter contains ADR 0014's
+cache correction and is the preferred recovery build. Repeated publish/edit/unpublish
+checks passed after restoration. Do not roll back to build 003 for normal recovery:
+it retains the known stale-CDN behavior. Function rollback has not been rehearsed.
+
 ### Function rollback
 
 There is no `firebase functions:rollback` command. Record a known-good commit before
