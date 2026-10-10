@@ -1,11 +1,21 @@
 provider "google" {
   project = var.project_id
   region  = var.region
+
+  # google_billing_budget is scoped to the billing account, not a project, so the
+  # provider has no project argument on that resource to infer quota from. Without
+  # this override it falls back to the ADC OAuth client's own project (not ours) and
+  # billingbudgets.googleapis.com calls fail with a misleading SERVICE_DISABLED error.
+  user_project_override = true
+  billing_project       = var.project_id
 }
 
 provider "google-beta" {
   project = var.project_id
   region  = var.region
+
+  user_project_override = true
+  billing_project       = var.project_id
 }
 
 module "project" {
