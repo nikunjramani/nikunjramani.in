@@ -53,12 +53,16 @@ variable "domains" {
 
 # Public endpoints (contact, health) need unauthenticated invocation.
 # Admin endpoints do their own auth in-process, but still need to be reachable.
-resource "google_cloud_run_service_iam_member" "public_invoker" {
+#
+# 2nd-gen Cloud Functions deploy as Cloud Run v2 services, not v1 — the v1 IAM
+# resource (google_cloud_run_service_iam_member) 404s against them even though the
+# service genuinely exists, because it's querying the wrong API generation.
+resource "google_cloud_run_v2_service_iam_member" "public_invoker" {
   for_each = var.services_deployed ? { for k, v in var.domains : k => v if v.public } : {}
 
   project  = var.project_id
   location = var.region
-  service  = each.key
+  name     = each.key
   role     = "roles/run.invoker"
   member   = "allUsers"
 }
