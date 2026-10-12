@@ -10,10 +10,20 @@ import { ContactMessageSchema } from "@/generated/schemas.zod";
 import { Turnstile } from "@/components/site/turnstile";
 import { cn } from "@/lib/utils";
 
-const FormSchema = ContactMessageSchema.pick({ name: true, email: true, subject: true, message: true });
-// honeypot isn't part of the Zod schema (it's not content, and the resolver shouldn't
-// validate it), but react-hook-form still needs it typed to register an uncontrolled field.
-type FormValues = z.infer<typeof FormSchema> & { honeypot?: string };
+// ContactMessageSchema is `.strict()` (ADR: server-set fields can never be client-supplied),
+// and `.pick()` carries that strictness into the picked schema too — so the honeypot field,
+// which react-hook-form always includes in the submitted values once registered, has to be
+// declared here or every real submission fails resolver validation with an "unrecognized
+// key" error that attaches to the form root, not any field, and never renders anywhere.
+// Reproduced directly: with .pick() alone, a filled-out form silently fails to submit with
+// zero visible feedback — no success, no error, no progress.
+const FormSchema = ContactMessageSchema.pick({
+  name: true,
+  email: true,
+  subject: true,
+  message: true,
+}).extend({ honeypot: z.string().optional() });
+type FormValues = z.infer<typeof FormSchema>;
 
 type Status = "idle" | "submitting" | "success" | "error";
 
@@ -116,6 +126,18 @@ export function ContactForm() {
       </div>
 
       <Turnstile onVerify={setTurnstileToken} />
+
+      {/* Safety net: a resolver error that isn't on name/email/message (a root-level Zod
+          issue, say) would otherwise be silently swallowed — the exact failure mode this
+          form shipped with once already. Surface anything unaccounted for rather than
+          trust the known fields to cover every case forever. */}
+      {Object.entries(errors)
+        .filter(([key]) => !["name", "email", "message", "subject", "honeypot"].includes(key))
+        .map(([key, err]) => (
+          <p key={key} className="text-sm text-red-500">
+            {err?.message?.toString() ?? "Please check the form and try again."}
+          </p>
+        ))}
 
       {status === "error" ? (
         <p className="text-sm text-red-500">Something went wrong — please try again in a moment.</p>
