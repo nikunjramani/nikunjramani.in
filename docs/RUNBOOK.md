@@ -176,6 +176,27 @@ echo -n "value" | gcloud secrets versions add RESEND_API_KEY --data-file=- --pro
 4. Redeploy App Hosting too when rotating `REVALIDATE_TOKEN`; both sides must use the same value
 5. Disable the old version — don't delete until the new one is proven
 
+### The Firebase browser API key isn't a secret, but GitHub will flag it anyway
+
+`frontend/apphosting.yaml`'s `NEXT_PUBLIC_FIREBASE_API_KEY` is committed in plaintext
+on purpose — Firebase client API keys identify the project, they don't authorize
+anything, and security is enforced by Firestore/Storage rules, not by hiding this
+key. GitHub's secret scanner doesn't know that and will open a "Google API Key"
+alert on it regardless; resolve it as a false positive with a comment explaining why.
+
+Still worth hardening for real, independent of the alert: check
+`gcloud services api-keys list --project=nikunjramani-in` for an empty
+`browserKeyRestrictions` — an unrestricted key can be embedded on *any* site and
+used to call Firebase Auth against your project from there. Fix once:
+
+```bash
+gcloud services api-keys update <key-id> --project=nikunjramani-in \
+  --allowed-referrers="https://nikunjramani.in/*,https://www.nikunjramani.in/*,https://nikunjramani-in--nikunjramani-in.asia-southeast1.hosted.app/*"
+```
+
+Verify: a request carrying one of those as `Referer` succeeds; one with no referrer
+gets `403 API_KEY_HTTP_REFERRER_BLOCKED`.
+
 ---
 
 ## Admin access
