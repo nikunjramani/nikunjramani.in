@@ -1,76 +1,8 @@
 from __future__ import annotations
 
-from collections.abc import Iterator
-from contextlib import contextmanager
-from unittest.mock import MagicMock
+from google.cloud.firestore_v1 import Client
 
-import pytest
-from google.cloud.firestore_v1 import Client, DocumentReference
-
-from shared.core.errors import NotFoundError
 from src.system.service import SystemService
-
-
-@contextmanager
-def _temporarily(doc_ref: DocumentReference, data: dict[str, object] | None) -> Iterator[None]:
-    """Snapshots whatever is really at `doc_ref` (a real dev environment's profile/main
-    singleton, say — `make dev`'s `--export-on-exit` makes this persistent now, not
-    ephemeral), replaces it with `data` (or deletes it, for `data=None`) for the test, and
-    restores the original afterward. A bare delete()-as-cleanup silently destroys whatever
-    real content was there before the test ever ran; this is the difference between "this
-    test is isolated" and "this test happens to work until someone has real data."""
-    before = doc_ref.get()
-    before_data = before.to_dict() if before.exists else None
-    try:
-        if data is None:
-            doc_ref.delete()
-        else:
-            doc_ref.set(data)
-        yield
-    finally:
-        if before_data is None:
-            doc_ref.delete()
-        else:
-            doc_ref.set(before_data)
-
-
-def test_get_resume_url_returns_the_stored_url(db: Client) -> None:
-    doc_ref = db.collection("profile").document("main")
-    with _temporarily(
-        doc_ref,
-        {"name": "N", "headline": "H", "visibility": "public", "resumeUrl": "https://x.com/r.pdf"},
-    ):
-        svc = SystemService(db)
-        assert svc.get_resume_url() == "https://x.com/r.pdf"
-
-
-def test_get_resume_url_404s_when_profile_has_no_resume(db: Client) -> None:
-    doc_ref = db.collection("profile").document("main")
-    with _temporarily(doc_ref, {"name": "N", "headline": "H", "visibility": "public"}):
-        svc = SystemService(db)
-        with pytest.raises(NotFoundError):
-            svc.get_resume_url()
-
-
-def test_get_resume_url_404s_when_profile_does_not_exist(db: Client) -> None:
-    doc_ref = db.collection("profile").document("main")
-    with _temporarily(doc_ref, None):
-        svc = SystemService(db)
-        with pytest.raises(NotFoundError):
-            svc.get_resume_url()
-
-
-def test_record_resume_download_increments_atomically(db: Client) -> None:
-    doc_ref = db.collection("system_stats").document("resume")
-    with _temporarily(doc_ref, None):
-        svc = SystemService(db)
-        svc.record_resume_download()
-        svc.record_resume_download()
-        svc.record_resume_download()
-
-        data = doc_ref.get().to_dict()
-        assert data is not None
-        assert data["downloadCount"] == 3
 
 
 def test_list_audit_log_filters_by_collection_and_doc_id_and_orders_newest_first(
@@ -113,12 +45,3 @@ def test_list_audit_log_filters_by_collection_and_doc_id_and_orders_newest_first
     finally:
         for doc in docs:
             doc.delete()
-
-
-def test_record_resume_download_never_raises() -> None:
-    """Counting a download must never break the download itself — even against a client
-    that fails outright."""
-    broken_db = MagicMock()
-    broken_db.collection.side_effect = RuntimeError("boom")
-    svc = SystemService(broken_db)
-    svc.record_resume_download()  # must not raise

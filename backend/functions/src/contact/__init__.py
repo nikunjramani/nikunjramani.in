@@ -4,6 +4,6 @@ from shared.api import make_function
 
 from .routes import router
 
-api_contact = make_function(router, name="api_contact")
+api_contact = make_function(router, name="api_contact", secrets=["TURNSTILE_SECRET_KEY"])
 
 __all__ = ["api_contact"]

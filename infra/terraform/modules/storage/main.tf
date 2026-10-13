@@ -3,6 +3,10 @@ variable "location" {
   type    = string
   default = "ASIA-SOUTH1"
 }
+variable "cors_origins" {
+  description = "Origins allowed to PUT to signed upload URLs from the browser."
+  type        = list(string)
+}
 
 # Media: public assets served to the site.
 resource "google_storage_bucket" "media" {
@@ -13,13 +17,20 @@ resource "google_storage_bucket" "media" {
   force_destroy               = false
 
   cors {
-    origin          = ["https://nikunjramani.in", "https://www.nikunjramani.in", "http://localhost:3000", "https://nikunjramani-in--nikunjramani-in.asia-southeast1.hosted.app"]
+    origin          = var.cors_origins
     method          = ["GET", "HEAD", "PUT", "POST"]
     response_header = ["Content-Type", "Authorization"]
     max_age_seconds = 3600
   }
 
+  # Versioning guards against an accidental overwrite; deleted or replaced media is
+  # recoverable for 30 days, then actually gone (otherwise a delete never frees anything).
   versioning { enabled = true }
+
+  lifecycle_rule {
+    condition { days_since_noncurrent_time = 30 }
+    action { type = "Delete" }
+  }
 }
 
 # Backups: nightly Firestore exports, aged out so growth stays bounded.

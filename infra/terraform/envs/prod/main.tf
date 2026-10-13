@@ -1,3 +1,14 @@
+locals {
+  # Browser origins the site is served from — the custom domains plus App Hosting's own
+  # URL, which keeps working before (and independently of) DNS.
+  site_origins = [
+    "https://nikunjramani.in",
+    "https://www.nikunjramani.in",
+    "https://${var.apphosting_backend_host}",
+    "http://localhost:3000",
+  ]
+}
+
 provider "google" {
   project = var.project_id
   region  = var.region
@@ -42,8 +53,9 @@ module "firestore" {
 }
 
 module "storage" {
-  source     = "../../modules/storage"
-  project_id = var.project_id
+  source       = "../../modules/storage"
+  project_id   = var.project_id
+  cors_origins = local.site_origins
 
   depends_on = [module.project]
 }
@@ -52,10 +64,9 @@ module "secrets" {
   source     = "../../modules/secrets"
   project_id = var.project_id
 
-  accessor_service_accounts = [
-    module.iam.functions_sa,
-    module.iam.apphosting_sa,
-  ]
+  # Only the functions read secrets. App Hosting needs none since the revalidation
+  # webhook was removed (ADR 0015).
+  accessor_service_accounts = [module.iam.functions_sa]
 
   depends_on = [module.project]
 }
@@ -74,6 +85,7 @@ module "functions" {
   project_id        = var.project_id
   region            = var.region
   services_deployed = var.functions_deployed
+  service_account   = module.iam.functions_sa
 
   depends_on = [module.project, module.iam]
 }

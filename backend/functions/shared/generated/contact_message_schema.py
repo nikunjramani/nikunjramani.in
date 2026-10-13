@@ -28,7 +28,7 @@ class ContactMessage(BaseModel):
     """
     spamScore: confloat(ge=0.0, le=1.0) | None = None
     """
-    Server-set by the on_contact_created trigger. Flags rather than deletes.
+    Server-set by the contact service when the message is stored. Flags rather than deletes.
     """
     read: bool | None = False
     replied: bool | None = False

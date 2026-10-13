@@ -62,6 +62,18 @@ def list_media(
     return [{"id": r.id, "data": r.data} for r in service.list_all()]
 
 
+class UsageOut(BaseModel):
+    references: list[str]
+
+
+@router.get("/{doc_id}/usage", response_model=UsageOut)
+def get_media_usage(
+    doc_id: str, claims: AdminClaims, service: Annotated[MediaService, Depends(get_media_service)]
+) -> UsageOut:
+    """Content documents still referencing this asset — checked before a delete."""
+    return UsageOut(references=service.usage(doc_id))
+
+
 @router.get("/{doc_id}", response_model=RecordOut)
 def get_media(
     doc_id: str, claims: AdminClaims, service: Annotated[MediaService, Depends(get_media_service)]
@@ -77,7 +89,9 @@ def update_media_metadata(
     claims: AdminClaims,
     service: Annotated[MediaService, Depends(get_media_service)],
 ) -> dict[str, object]:
-    record = service.update_metadata(doc_id, alt=payload.alt, caption=payload.caption)
+    record = service.update_metadata(
+        doc_id, alt=payload.alt, caption=payload.caption, claims=claims
+    )
     return {"id": record.id, "data": record.data}
 
 
@@ -85,5 +99,5 @@ def update_media_metadata(
 def delete_media(
     doc_id: str, claims: AdminClaims, service: Annotated[MediaService, Depends(get_media_service)]
 ) -> Response:
-    service.delete(doc_id)
+    service.delete(doc_id, claims)
     return Response(status_code=204)

@@ -8,7 +8,6 @@ pattern every content domain will reuse.
 from __future__ import annotations
 
 from typing import Any
-from unittest.mock import MagicMock
 
 import pytest
 from google.cloud.firestore_v1 import Client, DocumentSnapshot
@@ -35,7 +34,7 @@ def _dict(snapshot: DocumentSnapshot) -> dict[str, Any]:
 
 @pytest.fixture
 def service(db: Client, clean_collection: str) -> ContentService[Skill]:
-    return ContentService(SkillRepository(db), bust_cache=MagicMock())
+    return ContentService(SkillRepository(db))
 
 
 def _skill(**overrides: object) -> Skill:
@@ -93,12 +92,11 @@ def test_create_with_explicit_id_conflicts_on_reuse(service: ContentService[Skil
         service.create(_skill(), CLAIMS, doc_id="python")
 
 
-def test_create_audits_and_busts_cache(service: ContentService[Skill]) -> None:
+def test_create_writes_an_audit_entry(service: ContentService[Skill]) -> None:
     service.create(_skill(), CLAIMS)
     audit_entries = list(service.repo.db.collection("audit_log").stream())
     assert len(audit_entries) == 1
     assert _dict(audit_entries[0])["action"] == "create"
-    service._bust_cache.assert_called_once_with("_test_scratch")  # type: ignore[attr-defined]
 
 
 # ── patch ────────────────────────────────────────────────────────────
@@ -152,6 +150,32 @@ def test_patch_republish_keeps_the_original_published_at(service: ContentService
     assert republished.data.audit.publishedAt == first_published_at  # type: ignore[union-attr]
 
 
+# ── upsert (singletons) ───────────────────────────────────────────
+
+
+def test_upsert_keeps_created_and_first_published_stamps(service: ContentService[Skill]) -> None:
+    first = service.upsert("main", _skill(), CLAIMS)
+    second = service.upsert("main", _skill(name="Renamed"), CLAIMS)
+    assert first.data.audit is not None
+    assert second.data.audit is not None
+    assert second.data.audit.createdAt == first.data.audit.createdAt
+    assert second.data.audit.publishedAt == first.data.audit.publishedAt
+    assert second.data.name == "Renamed"
+
+
+def test_upsert_records_publish_and_unpublish(service: ContentService[Skill]) -> None:
+    service.upsert("main", _skill(visibility="draft"), CLAIMS)
+    published = service.upsert("main", _skill(visibility="public"), CLAIMS)
+    service.upsert("main", _skill(visibility="draft"), CLAIMS)
+    assert published.data.audit is not None
+    assert published.data.audit.publishedAt is not None
+    actions = sorted(
+        (_dict(e) for e in service.repo.db.collection("audit_log").stream()),
+        key=lambda e: e["at"],
+    )
+    assert [e["action"] for e in actions] == ["create", "publish", "unpublish"]
+
+
 def test_patch_rejects_changing_the_slug(db: Client, clean_collection: str) -> None:
     from shared.generated import Project
 
@@ -159,7 +183,7 @@ def test_patch_rejects_changing_the_slug(db: Client, clean_collection: str) -> N
         collection = clean_collection
         model = Project
 
-    svc: ContentService[Project] = ContentService(ProjectRepository(db), bust_cache=MagicMock())
+    svc: ContentService[Project] = ContentService(ProjectRepository(db))
     proj: Project = Project.model_validate(
         {
             "slug": "aa",

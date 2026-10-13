@@ -5,18 +5,8 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { downloadMessagesCsv, listMessages, type MessageRecordOut } from "@/lib/api/messages";
+import { timeAgo } from "@/lib/format";
 import { cn } from "@/lib/utils";
-
-function timeAgo(iso: string | null | undefined): string {
-  if (!iso) return "";
-  const diffMs = Date.now() - new Date(iso).getTime();
-  const minutes = Math.round(diffMs / 60_000);
-  if (minutes < 1) return "just now";
-  if (minutes < 60) return `${minutes}m ago`;
-  const hours = Math.round(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
-  return `${Math.round(hours / 24)}d ago`;
-}
 
 export default function AdminMessagesPage() {
   const [messages, setMessages] = useState<MessageRecordOut[] | null>(null);

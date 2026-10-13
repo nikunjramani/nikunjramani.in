@@ -95,9 +95,10 @@ subsequent domain silently:
 Each is the same shape: `routes · service · repository · tests`, exporting one function.
 Most subclass `BaseRepository` and add little more than a collection name — and now that
 `shared/crud.py` exists (`ContentService` + `make_crud_router`), most add *nothing else at
-all*. Audit trail, publish/unpublish transitions, RFC 7386 merge-patch semantics and
-best-effort cache revalidation are shared, tested once in `shared/tests/test_crud.py`, and
-reused by every domain below rather than re-implemented per domain.
+all*. Audit trail, publish/unpublish transitions and RFC 7386 merge-patch semantics are
+shared, tested once in `shared/tests/test_crud.py`, and reused by every domain below rather
+than re-implemented per domain. *(Since ADR 0016 a standard content domain is a single
+`__init__.py` calling `shared.crud.content_domain`.)*
 
 - [x] `src/projects/` — CRUD + reorder + duplicate + slug uniqueness + publish transitions.
       `duplicate` is the one thing genuinely specific to this domain (fresh slug, resets
@@ -127,18 +128,16 @@ per domain shape in `tests/test_domain_routers.py` and `tests/test_singleton_rou
       server-side** — Firestore's `.order_by()` silently excludes any document missing that
       field, which would make a message vanish from the admin inbox with no error. Fetches
       unordered and sorts client-side with a null-safe key instead
-- [x] `src/system/` — `health`, `resume` (302 + a download counter increment — a write,
-      which is why this stays in Python rather than moving to Next.js). **Not** `sitemap`:
+- [x] `src/system/` — `health`, `audit-log` (admin). `resume` (302 + a download counter)
+      was built here too, then removed: the site links straight to `resumeUrl` and nothing
+      called it. **Not** `sitemap`:
       that's a pure content read, and belongs in Next.js's `app/sitemap.ts` per
       [ADR 0005](../../adr/0005-reads-bypass-python.md) — its presence here in earlier
       drafts of this doc, `01-repo-architecture.md`, `03-security.md` and ADR 0011 was
       simply wrong, and all four are now corrected
 - [x] `src/system/scheduled.py` — `nightly_backup`
-- [x] Cache revalidation on every content write — not a separate `on_content_published`
-      trigger "living with projects" as originally planned, but a direct call from
-      `ContentService` (ADR 0012), since it's shared across all eight content domains, not
-      just projects. Firestore-trigger-based revalidation would add an extra write→trigger
-      hop for no benefit over calling it inline where the write already happens
+- [x] ~~Cache revalidation on every content write~~ — built as a direct call from
+      `ContentService`, then removed once pages stopped being cached (ADR 0014, ADR 0015)
 
 ### 3.5 · Wiring
 

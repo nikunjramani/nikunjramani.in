@@ -4,8 +4,7 @@ export const revalidate = 0;
 import type { MetadataRoute } from "next";
 
 import { getAllProjects } from "@/lib/data/projects";
-
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://nikunjramani.in";
+import { SITE_URL } from "@/lib/site";
 
 // Reads Firestore directly, same as every other page — sitemap generation is a read, and
 // reads never go through Python. See ADR 0005.

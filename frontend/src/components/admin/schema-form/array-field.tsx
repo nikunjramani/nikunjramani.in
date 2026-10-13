@@ -4,14 +4,10 @@ import { ChevronDown, ChevronUp, Plus, Trash2 } from "lucide-react";
 import { useFieldArray, useFormContext } from "react-hook-form";
 import type { JSONSchema7 } from "json-schema";
 
+import { fieldLabel } from "./field-utils";
 import { formFieldEntries } from "./resolve-field";
 import type { ResolvedField } from "./resolve-field";
 import { FieldRenderer } from "./field-renderer";
-
-function sectionLabel(key: string): string {
-  const spaced = key.replace(/([A-Z])/g, " $1");
-  return spaced.charAt(0).toUpperCase() + spaced.slice(1);
-}
 
 /** Add, remove, reorder — with useFieldArray's own stable `id` as the React key, never the
  * array index. An index-based key scrambles form state the instant an item moves, since
@@ -34,7 +30,7 @@ export function ArrayOfObjectsField({ name, field }: { name: string; field: Reso
     <div className="flex flex-col gap-3">
       <div className="flex items-center justify-between">
         <span className="text-sm font-medium">
-          {sectionLabel(field.key)}
+          {fieldLabel(field.key)}
           {field.required ? <span className="text-accent"> *</span> : null}
         </span>
         <button

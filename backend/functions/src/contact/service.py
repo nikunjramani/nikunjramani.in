@@ -49,15 +49,18 @@ class ContactService:
         if honeypot:
             return  # a real visitor never fills this field; a bot's form-filler always does
 
+        # Turnstile before the rate limiter: counting unverified requests would let anyone
+        # exhaust the global window with a loop of curl calls and silently block every
+        # real visitor for the rest of the hour.
+        if not verify_turnstile(turnstile_token, remote_ip=ip):
+            return
+
         try:
             self._limiter.check(scope="contact_ip", identifier=ip, limit=3, window_seconds=3600)
             self._limiter.check(
                 scope="contact_global", identifier="all", limit=20, window_seconds=3600
             )
         except RateLimitedError:
-            return
-
-        if not verify_turnstile(turnstile_token, remote_ip=ip):
             return
 
         now = datetime.now(UTC)

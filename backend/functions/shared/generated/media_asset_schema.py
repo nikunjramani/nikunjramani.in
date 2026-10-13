@@ -19,7 +19,7 @@ class MediaAsset(BaseModel):
     url: AnyUrl
     path: constr(min_length=1, max_length=500)
     """
-    Storage object path, e.g. public/media/<id>/original.webp — needed to delete the underlying object, not just the Firestore record.
+    Storage path of the private original upload, e.g. uploads/media/<id>/original.jpg (older assets: public/media/<id>/original.jpg). <id> is also this document's id and locates the public derivatives to delete with it.
     """
     alt: constr(max_length=200) | None = None
     """
@@ -35,7 +35,7 @@ class MediaAsset(BaseModel):
     thumbnailUrl: AnyUrl | None = None
     usageCount: conint(ge=0) | None = 0
     """
-    Best-effort reference count the admin panel can use to warn before deleting an asset still in use elsewhere.
+    Deprecated and never maintained — kept so existing documents still validate. The admin panel asks GET /media/{id}/usage instead.
     """
     uploadedBy: constr(max_length=128) | None = None
     uploadedAt: AwareDatetime

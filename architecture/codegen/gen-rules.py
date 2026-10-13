@@ -36,7 +36,7 @@ def main() -> int:
     collections: dict[str, list[str]] = {}
 
     for path in sorted(SCHEMAS.glob("*.schema.json")):
-        schema = json.loads(path.read_text())
+        schema = json.loads(path.read_text(encoding="utf-8"))
         meta = schema.get("x-firestore", {})
         if meta.get("publicRead") is not True:
             continue
@@ -93,13 +93,13 @@ def main() -> int:
 
     generated = "\n".join(body)
 
-    current = OUT.read_text()
+    current = OUT.read_text(encoding="utf-8")
     pattern = re.compile(re.escape(BEGIN) + r".*?" + re.escape(END), re.DOTALL)
     if not pattern.search(current):
         print(f"error: {OUT} has no BEGIN/END GENERATED markers to replace", file=sys.stderr)
         return 1
 
-    OUT.write_text(pattern.sub(generated, current))
+    OUT.write_text(pattern.sub(generated, current), encoding="utf-8", newline="\n")
     print(f"  rules       → infra/rules/firestore.rules ({len(names)} public collections)")
     return 0
 

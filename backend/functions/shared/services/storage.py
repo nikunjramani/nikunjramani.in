@@ -15,7 +15,6 @@ billing is on.
 
 from __future__ import annotations
 
-import uuid
 from datetime import timedelta
 from typing import Any
 
@@ -41,11 +40,6 @@ def validate_upload(content_type: str, size_bytes: int) -> None:
         raise ValidationError(f"Unsupported content type '{content_type}'. Allowed: {allowed}.")
     if size_bytes <= 0 or size_bytes > MAX_UPLOAD_BYTES:
         raise ValidationError(f"File size must be between 1 byte and {MAX_UPLOAD_BYTES} bytes.")
-
-
-def new_object_path(content_type: str) -> str:
-    ext = ALLOWED_CONTENT_TYPES[content_type]
-    return f"public/media/{uuid.uuid4().hex}/original.{ext}"
 
 
 class StorageService:

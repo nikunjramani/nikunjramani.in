@@ -21,7 +21,8 @@ export function createRecord<T>(apiDomain: string, payload: unknown): Promise<Re
   return apiFetch(`/${apiDomain}/`, { method: "POST", body: JSON.stringify(payload) });
 }
 
-/** RFC 7386 JSON merge patch — a top-level `null` deletes that key. */
+/** RFC 7386 JSON merge patch — `null` deletes a key. Build it with lib/merge-patch.ts's
+ * toMergePatch, never by sending form values directly (a cleared field would be dropped). */
 export function patchRecord<T>(
   apiDomain: string,
   id: string,

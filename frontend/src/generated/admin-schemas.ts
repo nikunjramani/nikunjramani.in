@@ -68,7 +68,7 @@ export const ADMIN_SCHEMAS = {
         $id: "enums/visibility.json",
         title: "Visibility",
         description:
-          "public renders on the site. unlisted is reachable by URL but absent from indexes and sitemaps. draft is admin-only.",
+          "public renders on the site. unlisted is reachable by its direct URL (a project page) but absent from listings, sitemaps and search indexes. draft is admin-only.",
         type: "string",
         enum: ["public", "unlisted", "draft"],
       },
@@ -151,7 +151,7 @@ export const ADMIN_SCHEMAS = {
         $id: "enums/visibility.json",
         title: "Visibility",
         description:
-          "public renders on the site. unlisted is reachable by URL but absent from indexes and sitemaps. draft is admin-only.",
+          "public renders on the site. unlisted is reachable by its direct URL (a project page) but absent from listings, sitemaps and search indexes. draft is admin-only.",
         type: "string",
         enum: ["public", "unlisted", "draft"],
       },
@@ -295,7 +295,7 @@ export const ADMIN_SCHEMAS = {
         $id: "enums/visibility.json",
         title: "Visibility",
         description:
-          "public renders on the site. unlisted is reachable by URL but absent from indexes and sitemaps. draft is admin-only.",
+          "public renders on the site. unlisted is reachable by its direct URL (a project page) but absent from listings, sitemaps and search indexes. draft is admin-only.",
         type: "string",
         enum: ["public", "unlisted", "draft"],
       },
@@ -381,7 +381,7 @@ export const ADMIN_SCHEMAS = {
         $id: "enums/visibility.json",
         title: "Visibility",
         description:
-          "public renders on the site. unlisted is reachable by URL but absent from indexes and sitemaps. draft is admin-only.",
+          "public renders on the site. unlisted is reachable by its direct URL (a project page) but absent from listings, sitemaps and search indexes. draft is admin-only.",
         type: "string",
         enum: ["public", "unlisted", "draft"],
       },
@@ -556,7 +556,7 @@ export const ADMIN_SCHEMAS = {
         $id: "enums/visibility.json",
         title: "Visibility",
         description:
-          "public renders on the site. unlisted is reachable by URL but absent from indexes and sitemaps. draft is admin-only.",
+          "public renders on the site. unlisted is reachable by its direct URL (a project page) but absent from listings, sitemaps and search indexes. draft is admin-only.",
         type: "string",
         enum: ["public", "unlisted", "draft"],
       },
@@ -656,7 +656,7 @@ export const ADMIN_SCHEMAS = {
         $id: "enums/visibility.json",
         title: "Visibility",
         description:
-          "public renders on the site. unlisted is reachable by URL but absent from indexes and sitemaps. draft is admin-only.",
+          "public renders on the site. unlisted is reachable by its direct URL (a project page) but absent from listings, sitemaps and search indexes. draft is admin-only.",
         type: "string",
         enum: ["public", "unlisted", "draft"],
       },
@@ -858,7 +858,7 @@ export const ADMIN_SCHEMAS = {
       client: {
         type: "object",
         description:
-          "When confidential is true the name is stripped server-side in lib/data/ and never reaches the browser. Filtering in a component would still ship it in the RSC payload.",
+          "When confidential is true the name and logo are stripped server-side in lib/data/ and never reach the browser. Filtering in a component would still ship them in the RSC payload.",
         properties: {
           name: { type: "string", maxLength: 100 },
           logoUrl: { type: "string", format: "uri" },
@@ -1153,7 +1153,7 @@ export const ADMIN_SCHEMAS = {
         $id: "enums/visibility.json",
         title: "Visibility",
         description:
-          "public renders on the site. unlisted is reachable by URL but absent from indexes and sitemaps. draft is admin-only.",
+          "public renders on the site. unlisted is reachable by its direct URL (a project page) but absent from listings, sitemaps and search indexes. draft is admin-only.",
         type: "string",
         enum: ["public", "unlisted", "draft"],
       },
@@ -1225,7 +1225,7 @@ export const ADMIN_SCHEMAS = {
         $id: "enums/visibility.json",
         title: "Visibility",
         description:
-          "public renders on the site. unlisted is reachable by URL but absent from indexes and sitemaps. draft is admin-only.",
+          "public renders on the site. unlisted is reachable by its direct URL (a project page) but absent from listings, sitemaps and search indexes. draft is admin-only.",
         type: "string",
         enum: ["public", "unlisted", "draft"],
       },

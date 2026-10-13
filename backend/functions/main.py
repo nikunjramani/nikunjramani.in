@@ -26,9 +26,12 @@ import os
 
 from firebase_functions.options import set_global_options
 
-# Apply before decorators run, including triggers and the scheduled backup.
+from shared.core.config import get_settings
+
+# Apply before decorators run, including triggers and the scheduled backup. The account is
+# created by infra/terraform/modules/iam.
 set_global_options(
-    service_account="functions-runtime@nikunjramani-in.iam.gserviceaccount.com",
+    service_account=f"functions-runtime@{get_settings().firebase_project_id}.iam.gserviceaccount.com",
     max_instances=3,
 )
 

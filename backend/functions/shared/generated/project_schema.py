@@ -93,7 +93,7 @@ class Team(BaseModel):
 
 class Client(BaseModel):
     """
-    When confidential is true the name is stripped server-side in lib/data/ and never reaches the browser. Filtering in a component would still ship it in the RSC payload.
+    When confidential is true the name and logo are stripped server-side in lib/data/ and never reach the browser. Filtering in a component would still ship them in the RSC payload.
     """
 
     model_config = ConfigDict(
@@ -169,7 +169,7 @@ class Project(BaseModel):
     team: Team | None = None
     client: Client | None = None
     """
-    When confidential is true the name is stripped server-side in lib/data/ and never reaches the browser. Filtering in a component would still ship it in the RSC payload.
+    When confidential is true the name and logo are stripped server-side in lib/data/ and never reach the browser. Filtering in a component would still ship them in the RSC payload.
     """
     cover: media_schema.Media | None = None
     gallery: list[media_schema.Media] | None = Field(default=None, max_length=20)

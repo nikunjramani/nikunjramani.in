@@ -1,12 +1,10 @@
 "use client";
 
 import { apiFetch, apiFetchBlob } from "@/lib/api/client";
+import type { RecordOut } from "@/lib/api/content";
 import type { ContactMessage } from "@/generated/types";
 
-export interface MessageRecordOut {
-  id: string;
-  data: ContactMessage;
-}
+export type MessageRecordOut = RecordOut<ContactMessage>;
 
 export function listMessages(unreadOnly = false): Promise<MessageRecordOut[]> {
   const qs = unreadOnly ? "?unread_only=true" : "";

@@ -15,7 +15,7 @@ say so.
 **Status:** Phases 0, 1, 3, 4 and 5 are implemented. Phase 6 is deployed —
 `https://nikunjramani.in` is live over HTTPS, with a few launch checks still open
 (see [Phase 6](./docs/plan/phases/phase-6-deploy.md)). Production admin claim and
-signed uploads are verified. Backend: 134 passing tests. Billing is enabled. Local
+signed uploads are verified. Backend: 150 tests (63 need the Firestore emulator). Billing is enabled. Local
 development still uses emulators. Phase 2 needs the owner's content.
 Full plan: [`docs/plan/`](./docs/plan/README.md) · ADRs: [`docs/adr/`](./docs/adr/README.md)
 
@@ -52,7 +52,8 @@ make test    # vitest + pytest
 make deploy  # terraform apply + firebase deploy
 ```
 
-CI runs these exact targets. If it passes locally it passes in CI.
+CI today is only `.github/workflows/schemas.yml` (validate + codegen drift). Lint and test
+workflows are Phase 7 — until then, run `make lint` and `make test` yourself before pushing.
 
 ---
 
@@ -61,7 +62,7 @@ CI runs these exact targets. If it passes locally it passes in CI.
 These are load-bearing. Each has an ADR behind it — read it before proposing a change.
 
 **1 · Never hand-edit generated code.**
-`frontend/src/generated/` and `backend/functions/generated/` come from `architecture/schemas/`.
+`frontend/src/generated/` and `backend/functions/shared/generated/` come from `architecture/schemas/`.
 Edit the schema, run `make gen`. CI fails on drift. → [ADR 0006](./docs/adr/0006-json-schema-source-of-truth.md)
 
 **2 · Reads never touch Python.**
@@ -84,18 +85,20 @@ pulls the whole subtree into the browser bundle.
 
 **6 · Backend layering is one-way, and domains don't cross.**
 `router → service → repository → Firestore`. Routers do HTTP only. Services hold business rules and
-don't know what HTTP is. Repositories are the only code importing the Firestore SDK.
+don't know what HTTP is. Repositories (`src/<domain>/repository.py`, `shared/repositories/`) are the
+only code importing the Firestore SDK — the single exception is `shared/core/rate_limit.py`'s
+transaction. → [ADR 0016](./docs/adr/0016-content-domains-from-a-factory.md)
 
 One deployed function per domain, each owning its routes, service, repository, triggers and tests
 in `backend/functions/src/<domain>/`. `shared/` may never import from `src/`, and no domain may
 import another domain's service or repository — use `shared/` or an event.
 → [ADR 0011](./docs/adr/0011-domain-wise-separate-functions.md)
 
-**Before writing a new content domain's CRUD by hand, check `shared/crud.py` first.**
-`ContentService` (audit trail, publish/unpublish transitions, RFC 7386 merge-patch) and
-`make_crud_router` (the FastAPI routes) already cover the standard shape — see `src/skills/` for
-the three-file minimum. Only write custom service logic for what's genuinely domain-specific
-(`ProjectService.duplicate`, say). → [ADR 0012](./docs/adr/0012-generic-content-crud-in-shared.md)
+**A standard content domain is one file.** `shared.crud.content_domain(Model, collection=...)`
+builds its repository, `ContentService` (audit trail, publish/unpublish transitions, RFC 7386
+merge-patch) and routes — see `src/skills/__init__.py`. Only hand-write routes/service/repository
+for what's genuinely domain-specific (`ProjectService.duplicate`, say).
+→ [ADR 0012](./docs/adr/0012-generic-content-crud-in-shared.md), [ADR 0016](./docs/adr/0016-content-domains-from-a-factory.md)
 
 **7 · Architectural changes get an ADR.**
 Anything a stranger would ask "why is it like this?" about. Copy `docs/adr/TEMPLATE.md`, add an
@@ -110,12 +113,17 @@ ones. A section appears only when its data exists — no empty headings, no `nul
 "coming soon". This applies to the public page and the admin form alike.
 → [ADR 0008](./docs/adr/0008-projects-drop-start-end-dates.md)
 
-**Confidential data is stripped server-side.** `client.confidential: true` means the name must never
-reach the browser. Filter it in `lib/data/`, not in a component — component-level filtering still
+**Confidential data is stripped server-side.** `client.confidential: true` means the name and logo
+must never reach the browser. Filter it in `lib/data/`, not in a component — component-level filtering still
 ships the value in the RSC payload.
 
 **Every content collection has `visibility` and `order`.** Public queries filter
-`visibility == "public"` and sort by `order`.
+`visibility == "public"` and sort by `order`. `unlisted` projects are served at their own URL
+(with `noindex`) but never listed or put in the sitemap.
+
+**Admin saves send a real merge patch.** Build it with `lib/merge-patch.ts`'s `toMergePatch`
+(original vs. edited) — sending form values directly can't clear a field, because a cleared
+field is `undefined` and `JSON.stringify` drops it.
 
 **Timestamps** are ISO strings in schemas, Firestore `Timestamp` in the database. Conversion happens
 in the repository layer, in exactly one place.
@@ -129,18 +137,23 @@ take it piped or as an env var instead.
 
 ## Gotchas
 
-- **System Python is 3.9.** `python3` resolves to `/usr/bin/python3`. Use the Homebrew 3.13
-  explicitly, or `uv` silently builds against 3.9 and it fails at deploy time.
+- **System Python may be 3.9** (macOS). The Makefile asks `uv python find 3.13`; override with
+  `make PYTHON=...` if that finds nothing, or `uv` silently builds against 3.9 and it fails at
+  deploy time.
 - **Firebase resources need the `google-beta` provider.** A 404 on the standard provider usually
   means this, not a bug.
 - **Firestore composite queries need composite indexes.** Generated from `x-firestore.indexes` —
   add the index when you add the query.
 - **Cold starts scale with top-level imports.** Keep `main.py` thin; import heavy things inside the
   function that needs them.
-- **A new domain needs a rewrite in `frontend/next.config.ts`** (not Firebase Hosting — App Hosting
-  has no rewrites). Without it the function deploys fine and looks healthy, but the frontend gets a
-  404 that reads like a routing bug. It also needs adding to the `importlinter` contract in
-  `backend/functions/pyproject.toml`, or its boundaries go unchecked.
+- **A new domain needs four registrations**: its `main.py` line, a rewrite in
+  `frontend/next.config.ts` (App Hosting has no rewrites of its own), the `importlinter` contract in
+  `backend/functions/pyproject.toml`, and `http_functions` in `infra/terraform/modules/functions`.
+  Each failure is silent in production; `tests/test_domain_registry.py` fails `make test` instead.
+- **A secret bound in a decorator must have a version before deploy.** `secrets=[...]` on
+  `make_function` / a trigger makes `firebase deploy` reject the function otherwise. The contact
+  domain binds `TURNSTILE_SECRET_KEY`, `CONTACT_EMAIL_TO` and `RESEND_API_KEY`, and fails closed
+  in production without Turnstile — see docs/RUNBOOK.md (Contact form keys).
 - **Never construct `a2wsgi.ASGIMiddleware` directly.** It starts a persistent background thread
   at construction time, and Werkzeug's dev-server reloader (which `functions-framework` uses
   locally) forks — the child inherits a dead copy of that thread, and every request hangs forever.

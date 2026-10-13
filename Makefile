@@ -4,7 +4,8 @@
 SHELL := /bin/bash
 .DEFAULT_GOAL := help
 
-PYTHON     := /opt/homebrew/bin/python3.13
+# Python 3.13 as uv resolves it — never a system 3.9. Override with `make PYTHON=...`.
+PYTHON     ?= $(shell uv python find 3.13 2>/dev/null || echo python3.13)
 BACKEND    := backend/functions
 FRONT      := frontend
 DEV_VENV   := $(BACKEND)/.venv
@@ -63,7 +64,7 @@ lint-frontend:
 	cd $(FRONT) && npx tsc --noEmit && npm run lint
 
 lint-infra:
-	terraform -chdir=infra/terraform/envs/prod fmt -check -recursive
+	terraform -chdir=infra/terraform fmt -check -recursive
 
 test: test-backend test-frontend ## Run all tests
 

@@ -9,12 +9,16 @@ from shared.core.errors import ValidationError
 from src.media.repository import MediaRepository
 from src.media.service import MediaService
 
+CLAIMS = {"uid": "admin-1", "email": "admin@example.com", "admin": True}
+
 
 def _service(db: Client, collection_name: str, storage: MagicMock) -> MediaService:
     class ScratchRepo(MediaRepository):
         collection = collection_name
 
-    return MediaService(repo=ScratchRepo(db), storage=storage)
+    return MediaService(
+        repo=ScratchRepo(db), storage=storage, audit=MagicMock(), references=MagicMock()
+    )
 
 
 def test_request_upload_rejects_bad_content_type(db: Client, clean_collection: str) -> None:
@@ -30,13 +34,14 @@ def test_request_upload_returns_the_signed_url_and_path(db: Client, clean_collec
 
     result = svc.request_upload(content_type="image/webp", size_bytes=1000)
     assert result["uploadUrl"] == "https://signed.example.com/x"
-    assert result["path"].startswith("public/media/")
+    assert result["path"].startswith("uploads/media/")  # private until processed
 
 
 def test_create_from_processed_upload_persists_the_asset(db: Client, clean_collection: str) -> None:
     svc = _service(db, clean_collection, MagicMock())
     record = svc.create_from_processed_upload(
-        original_path="public/media/1/original.webp",
+        asset_id="a1",
+        original_path="uploads/media/a1/original.webp",
         url="https://x/processed.webp",
         thumbnail_url="https://x/thumbnail.webp",
         width=1600,
@@ -56,7 +61,8 @@ def test_create_from_processed_upload_persists_the_asset(db: Client, clean_colle
 def test_update_metadata_sets_alt_and_caption(db: Client, clean_collection: str) -> None:
     svc = _service(db, clean_collection, MagicMock())
     record = svc.create_from_processed_upload(
-        original_path="public/media/1/original.webp",
+        asset_id="a1",
+        original_path="uploads/media/a1/original.webp",
         url="https://x/processed.webp",
         thumbnail_url="https://x/thumbnail.webp",
         width=100,
@@ -66,7 +72,9 @@ def test_update_metadata_sets_alt_and_caption(db: Client, clean_collection: str)
         size_bytes=1,
         uploaded_by=None,
     )
-    updated = svc.update_metadata(record.id, alt="A dashboard screenshot", caption="v2")
+    updated = svc.update_metadata(
+        record.id, alt="A dashboard screenshot", caption="v2", claims=CLAIMS
+    )
     assert updated.data.alt == "A dashboard screenshot"
     assert updated.data.caption == "v2"
 
@@ -78,7 +86,8 @@ def test_delete_removes_both_storage_and_firestore(db: Client, clean_collection:
     storage = MagicMock()
     svc = _service(db, clean_collection, storage)
     record = svc.create_from_processed_upload(
-        original_path="public/media/1/original.webp",
+        asset_id="a1",
+        original_path="uploads/media/a1/original.webp",
         url="https://x/processed.webp",
         thumbnail_url="https://x/thumbnail.webp",
         width=100,
@@ -88,11 +97,11 @@ def test_delete_removes_both_storage_and_firestore(db: Client, clean_collection:
         size_bytes=1,
         uploaded_by=None,
     )
-    svc.delete(record.id)
+    svc.delete(record.id, CLAIMS)
     assert storage.delete.call_args_list == [
-        call("public/media/1/original.webp"),
-        call("public/media/1/processed.webp"),
-        call("public/media/1/thumbnail.webp"),
+        call("uploads/media/a1/original.webp"),
+        call("public/media/a1/processed.webp"),
+        call("public/media/a1/thumbnail.webp"),
     ]
     assert svc.repo.get(record.id) is None
 
@@ -105,7 +114,8 @@ def test_delete_still_removes_firestore_record_if_storage_delete_fails(
     storage.delete.side_effect = Exception("not found")
     svc = _service(db, clean_collection, storage)
     record = svc.create_from_processed_upload(
-        original_path="public/media/1/original.webp",
+        asset_id="a1",
+        original_path="uploads/media/a1/original.webp",
         url="https://x/processed.webp",
         thumbnail_url="https://x/thumbnail.webp",
         width=100,
@@ -115,6 +125,6 @@ def test_delete_still_removes_firestore_record_if_storage_delete_fails(
         size_bytes=1,
         uploaded_by=None,
     )
-    svc.delete(record.id)  # must not raise
+    svc.delete(record.id, CLAIMS)  # must not raise
     assert storage.delete.call_count == 3
     assert svc.repo.get(record.id) is None
