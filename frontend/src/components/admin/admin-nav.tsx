@@ -10,6 +10,7 @@ import {
   LayoutDashboard,
   Mail,
   Settings,
+  ShieldCheck,
   Sparkles,
   User,
 } from "lucide-react";
@@ -30,6 +31,7 @@ const SECTIONS = [
   { href: "/admin/media", label: "Media", icon: ImageIcon, exact: false },
   { href: "/admin/messages", label: "Messages", icon: Mail, exact: false },
   { href: "/admin/settings", label: "Settings", icon: Settings, exact: false },
+  { href: "/admin/access", label: "Access", icon: ShieldCheck, exact: false },
 ] as const;
 
 export function AdminNav() {

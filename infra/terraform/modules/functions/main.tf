@@ -1,4 +1,4 @@
-# Per-domain function configuration — ADR 0011.
+# Per-subdomain function configuration — ADR 0017.
 #
 # The functions themselves are deployed by the Firebase CLI
 # (`firebase deploy --only functions`), which is what compiles the Python and wires the
@@ -32,26 +32,28 @@ variable "service_account" {
 
 variable "http_functions" {
   description = <<-EOT
-    Every deployed HTTP function. All are reachable at the Cloud Run IAM layer — admin
-    routes authenticate in-process with Depends(require_admin), and media needs to be
-    reachable for signed-upload URLs to be requested at all. Memory and instance limits
-    live in the Python decorators, not here. tests/test_domain_registry.py checks this
-    list against backend/functions/main.py.
+    Every deployed HTTP function — one per backend subdomain, api_<domain>_<subdomain>
+    (ADR 0017). All are reachable at the Cloud Run IAM layer; admin routes authenticate
+    in-process with AdminClaims. Memory and instance limits live in each subdomain's
+    main.py, not here. tests/test_domain_registry.py checks this list against the code.
   EOT
   type        = set(string)
   default = [
-    "api_system",
-    "api_contact",
-    "api_projects",
-    "api_skills",
-    "api_experience",
-    "api_education",
-    "api_certifications",
-    "api_posts",
-    "api_profile",
-    "api_settings",
-    "api_media",
-    "api_messages",
+    "api_content_profile",
+    "api_content_projects",
+    "api_content_skills",
+    "api_content_experience",
+    "api_content_education",
+    "api_content_certifications",
+    "api_content_posts",
+    "api_content_settings",
+    "api_identity_admins",
+    "api_inbox_contact",
+    "api_inbox_messages",
+    "api_media_upload",
+    "api_media_library",
+    "api_ops_health",
+    "api_ops_audit",
   ]
 }
 

@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from "react";
 
-import { listAuditLog, type AuditEntry } from "@/lib/api/system";
+import { listAuditLog, type AuditEntry } from "@/lib/api/audit";
 
-/** Per-document history — GET /system/audit-log, filtered to this one record. Every admin
+/** Per-document history — GET /ops/audit, filtered to this one record. Every admin
  * mutation already writes one of these (shared/services/audit.py); this is just the first
  * thing that ever reads them back. */
 export function AuditTrail({ collection, docId }: { collection: string; docId: string }) {

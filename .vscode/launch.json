@@ -2,19 +2,19 @@
   "version": "0.2.0",
   "inputs": [
     {
-      "id": "domain",
+      "id": "function",
       "type": "promptString",
-      "description": "Domain to debug (a directory under backend/functions/src/, e.g. system, contact)",
-      "default": "contact"
+      "description": "Subdomain to debug, as <domain>_<subdomain> (e.g. content_projects, inbox_contact)",
+      "default": "inbox_contact"
     }
   ],
   "configurations": [
     {
-      "name": "Backend: debug a domain",
+      "name": "Backend: debug a subdomain",
       "type": "debugpy",
       "request": "launch",
       "module": "functions_framework",
-      "args": ["--target=api_${input:domain}", "--port=8091"],
+      "args": ["--target=api_${input:function}", "--port=8091"],
       "cwd": "${workspaceFolder}/backend/functions",
       "env": {
         "FIRESTORE_EMULATOR_HOST": "127.0.0.1:8080",
@@ -69,8 +69,8 @@
   ],
   "compounds": [
     {
-      "name": "Full stack: backend domain + frontend",
-      "configurations": ["Backend: debug a domain", "Frontend: debug full stack"],
+      "name": "Full stack: backend subdomain + frontend",
+      "configurations": ["Backend: debug a subdomain", "Frontend: debug full stack"],
       "stopAll": true,
       "presentation": { "group": "compound", "order": 1 }
     }

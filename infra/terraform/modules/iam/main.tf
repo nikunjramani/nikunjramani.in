@@ -20,6 +20,7 @@ locals {
     "roles/secretmanager.secretAccessor",
     "roles/logging.logWriter",
     "roles/eventarc.eventReceiver",
+    "roles/firebaseauth.admin", # identity/admins grants and revokes the admin custom claim
   ]
 
   # Firestore stays read-only. App Hosting uses this identity for builds too.

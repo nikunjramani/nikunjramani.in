@@ -41,7 +41,7 @@ export default function AdminProjectsPage() {
 
   async function handleDuplicate(record: RecordOut<Project>) {
     try {
-      await apiFetch(`/projects/${record.id}/duplicate`, { method: "POST" });
+      await apiFetch(`/${entry.apiDomain}/${record.id}/duplicate`, { method: "POST" });
       toast("Project duplicated.");
       load();
     } catch (err) {

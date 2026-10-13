@@ -13,16 +13,16 @@ import { useEffect, useState } from "react";
 
 import { listRecords } from "@/lib/api/content";
 import { listMessages } from "@/lib/api/messages";
-import { listAuditLog, type AuditEntry } from "@/lib/api/system";
+import { listAuditLog, type AuditEntry } from "@/lib/api/audit";
 import { ADMIN_SCHEMAS } from "@/generated/admin-schemas";
 import { timeAgo } from "@/lib/format";
 
 const COUNTED = [
-  { key: "Project", label: "Projects", icon: FolderKanban },
-  { key: "Skill", label: "Skills", icon: Sparkles },
-  { key: "Experience", label: "Experience", icon: Briefcase },
-  { key: "Education", label: "Education", icon: GraduationCap },
-  { key: "Certification", label: "Certifications", icon: Award },
+  { key: "Project", label: "Projects", icon: FolderKanban, href: "/admin/projects" },
+  { key: "Skill", label: "Skills", icon: Sparkles, href: "/admin/skills" },
+  { key: "Experience", label: "Experience", icon: Briefcase, href: "/admin/experience" },
+  { key: "Education", label: "Education", icon: GraduationCap, href: "/admin/education" },
+  { key: "Certification", label: "Certifications", icon: Award, href: "/admin/certifications" },
 ] as const;
 
 export default function AdminDashboardPage() {
@@ -71,10 +71,10 @@ export default function AdminDashboardPage() {
       ) : (
         <>
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
-            {COUNTED.map(({ key, label, icon: Icon }) => (
+            {COUNTED.map(({ key, label, icon: Icon, href }) => (
               <Link
                 key={key}
-                href={`/admin/${ADMIN_SCHEMAS[key as keyof typeof ADMIN_SCHEMAS].apiDomain}`}
+                href={href}
                 className="rounded-lg border border-border bg-surface p-4 transition-colors hover:border-accent"
               >
                 <Icon className="mb-2 h-4 w-4 text-muted-foreground" aria-hidden="true" />

@@ -15,7 +15,7 @@ say so.
 **Status:** Phases 0, 1, 3, 4 and 5 are implemented. Phase 6 is deployed —
 `https://nikunjramani.in` is live over HTTPS, with a few launch checks still open
 (see [Phase 6](./docs/plan/phases/phase-6-deploy.md)). Production admin claim and
-signed uploads are verified. Backend: 150 tests (63 need the Firestore emulator). Billing is enabled. Local
+signed uploads are verified. Backend: 172 tests (61 need the Firestore emulator). Billing is enabled. Local
 development still uses emulators. Phase 2 needs the owner's content.
 Full plan: [`docs/plan/`](./docs/plan/README.md) · ADRs: [`docs/adr/`](./docs/adr/README.md)
 
@@ -34,7 +34,7 @@ Full plan: [`docs/plan/`](./docs/plan/README.md) · ADRs: [`docs/adr/`](./docs/a
 ```
 architecture/   JSON Schemas — the single source of truth for every model
 frontend/       Next.js app: (site) public + (admin) private
-backend/        Python Firebase Functions — shared/ + one domain per function
+backend/        Python Firebase Functions — src/<domain>/<subdomain>, kernel/, shared/ (models)
 infra/          Terraform modules + Firestore/Storage rules
 docs/plan/      The build plan, per phase
 docs/adr/       Architecture decision records
@@ -83,22 +83,22 @@ leaked credential, not a build error.
 A client `<ThemeToggle>` inside a server `<Nav>`, never a client `<Nav>`. One misplaced directive
 pulls the whole subtree into the browser bundle.
 
-**6 · Backend layering is one-way, and domains don't cross.**
-`router → service → repository → Firestore`. Routers do HTTP only. Services hold business rules and
-don't know what HTTP is. Repositories (`src/<domain>/repository.py`, `shared/repositories/`) are the
-only code importing the Firestore SDK — the single exception is `shared/core/rate_limit.py`'s
-transaction. → [ADR 0016](./docs/adr/0016-content-domains-from-a-factory.md)
+**6 · Domains and subdomains are isolated; layering is one-way.**
+`backend/functions/src/<domain>/<subdomain>/` — each subdomain does one job, deploys as its own
+function (`api_<domain>_<sub>`) and owns all its files: `main.py` (the Firebase function),
+`routes.py` (HTTP only), `schemas.py`, `service.py` (rules, no HTTP), `repository.py` (the only
+Firestore SDK user; `inbox/contact/rate_limit.py`'s transaction is the one exception). Domains never
+import each other, subdomains never import siblings, and there is **no `common/` folder**.
+`kernel/` holds only domain-free infrastructure (HTTP adapter, auth, `AuditWriter`, the `kernel.crud`
+base classes); `shared/generated` holds the models. Tests live only in `backend/functions/tests/`;
+there are no `__init__.py` files outside `shared/generated`.
+Read [backend/functions/README.md](./backend/functions/README.md) before backend work.
+→ [ADR 0017](./docs/adr/0017-bounded-context-domains.md)
 
-One deployed function per domain, each owning its routes, service, repository, triggers and tests
-in `backend/functions/src/<domain>/`. `shared/` may never import from `src/`, and no domain may
-import another domain's service or repository — use `shared/` or an event.
-→ [ADR 0011](./docs/adr/0011-domain-wise-separate-functions.md)
-
-**A standard content domain is one file.** `shared.crud.content_domain(Model, collection=...)`
-builds its repository, `ContentService` (audit trail, publish/unpublish transitions, RFC 7386
-merge-patch) and routes — see `src/skills/__init__.py`. Only hand-write routes/service/repository
-for what's genuinely domain-specific (`ProjectService.duplicate`, say).
-→ [ADR 0012](./docs/adr/0012-generic-content-crud-in-shared.md), [ADR 0016](./docs/adr/0016-content-domains-from-a-factory.md)
+**A content subdomain subclasses the CRUD base.** Its repository extends
+`kernel.crud.repository.BaseRepository`, its service extends `kernel.crud.service.CrudService`
+(audit trail, publish/unpublish transitions, RFC 7386 merge-patch, reorder), and its routes are
+written out — copy `src/content/skills/`. Add only what's specific (`ProjectService.duplicate`).
 
 **7 · Architectural changes get an ADR.**
 Anything a stranger would ask "why is it like this?" about. Copy `docs/adr/TEMPLATE.md`, add an
@@ -144,12 +144,13 @@ take it piped or as an env var instead.
   means this, not a bug.
 - **Firestore composite queries need composite indexes.** Generated from `x-firestore.indexes` —
   add the index when you add the query.
-- **Cold starts scale with top-level imports.** Keep `main.py` thin; import heavy things inside the
-  function that needs them.
-- **A new domain needs four registrations**: its `main.py` line, a rewrite in
-  `frontend/next.config.ts` (App Hosting has no rewrites of its own), the `importlinter` contract in
-  `backend/functions/pyproject.toml`, and `http_functions` in `infra/terraform/modules/functions`.
-  Each failure is silent in production; `tests/test_domain_registry.py` fails `make test` instead.
+- **Cold starts scale with top-level imports.** The root `main.py` imports only the subdomain
+  `FUNCTION_TARGET` names; keep each subdomain's imports to what it uses.
+- **A new subdomain needs four registrations**: its domain's `FUNCTIONS` table
+  (`src/<domain>/main.py`), the `ROUTES` rewrite in `frontend/next.config.ts` (App Hosting has no
+  rewrites of its own), the import-linter contracts in `backend/functions/pyproject.toml`, and
+  `http_functions` in `infra/terraform/modules/functions`. Each failure is silent in production;
+  `tests/test_domain_registry.py` fails `make test` instead.
 - **A secret bound in a decorator must have a version before deploy.** `secrets=[...]` on
   `make_function` / a trigger makes `firebase deploy` reject the function otherwise. The contact
   domain binds `TURNSTILE_SECRET_KEY`, `CONTACT_EMAIL_TO` and `RESEND_API_KEY`, and fails closed
@@ -157,7 +158,7 @@ take it piped or as an env var instead.
 - **Never construct `a2wsgi.ASGIMiddleware` directly.** It starts a persistent background thread
   at construction time, and Werkzeug's dev-server reloader (which `functions-framework` uses
   locally) forks — the child inherits a dead copy of that thread, and every request hangs forever.
-  Reproduced directly with `os.fork()`. Use `shared/wsgi_bridge.py` (`wsgi_from_asgi`), which drives
+  Reproduced directly with `os.fork()`. Use `kernel/wsgi_bridge.py` (`wsgi_from_asgi`), which drives
   each request with a fresh `asyncio.run()` instead. See ADR 0003's implementation note.
 - **Firebase's own tooling needs `backend/functions/requirements.txt` and a stdlib `venv/`**,
   separate from the `uv`-managed `.venv/` used for lint/test — `make setup-backend` generates both.
@@ -167,13 +168,12 @@ take it piped or as an env var instead.
   a2wsgi bug above type-checked cleanly and passed every unit test; it only appeared against the
   real emulator. Phase 3's "deploy `make_function()` to the emulator before building further
   domains" step exists for exactly this gap.
-- **A trigger or scheduled function needs its own `main.py` line, separate from the domain's
-  `api_<domain>` HTTP route.** `on_contact_created` and `on_media_uploaded` both shipped as fully
-  tested, working code that was never actually imported into `main.py` — deploy discovery only
-  sees what `main.py` imports, so both would have silently deployed nothing. No unit or route test
-  catches this, because none of them import `main.py` itself.
-  `tests/test_main_entrypoint.py` does, by actually importing it and cross-checking every decorated
-  function against it — run it (or `make test`) after adding any trigger or scheduled job.
+- **Every Firebase function — HTTP, trigger or scheduled — must be listed in its domain's
+  `FUNCTIONS` table.** Deploy discovery only sees what the root `main.py` exposes; a function defined
+  in a subdomain's `main.py` but not listed silently never deploys. `tests/test_main_entrypoint.py`
+  cross-checks every function defined in `src/*/*/main.py` against the tables.
+- **Emulator-backed tests need no `gcloud` login** — `tests/conftest.py` gives the Admin SDK
+  anonymous credentials. Without the emulator they skip.
 - **Localhost Lighthouse scores lie.** Only production numbers count.
 - **Debug a function directly via `functions-framework`, never through
   `firebase emulators:start --only functions`.** Breakpoints don't reliably hit through that

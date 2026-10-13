@@ -19,7 +19,7 @@ export const ADMIN_SCHEMAS = {
   Certification: {
     title: "Certification",
     collection: "certifications",
-    apiDomain: "certifications",
+    apiDomain: "content/certifications",
     slugged: false,
     singleton: false,
     required: ["title", "issuer", "visibility"],
@@ -96,7 +96,7 @@ export const ADMIN_SCHEMAS = {
   Education: {
     title: "Education",
     collection: "education",
-    apiDomain: "education",
+    apiDomain: "content/education",
     slugged: false,
     singleton: false,
     required: ["institution", "qualification", "visibility"],
@@ -179,7 +179,7 @@ export const ADMIN_SCHEMAS = {
   Experience: {
     title: "Experience",
     collection: "experience",
-    apiDomain: "experience",
+    apiDomain: "content/experience",
     slugged: false,
     singleton: false,
     required: ["company", "role", "startDate", "current", "visibility"],
@@ -323,7 +323,7 @@ export const ADMIN_SCHEMAS = {
   Post: {
     title: "Post",
     collection: "posts",
-    apiDomain: "posts",
+    apiDomain: "content/posts",
     slugged: true,
     singleton: false,
     required: ["slug", "title", "visibility"],
@@ -433,7 +433,7 @@ export const ADMIN_SCHEMAS = {
   Profile: {
     title: "Profile",
     collection: "profile",
-    apiDomain: "profile",
+    apiDomain: "content/profile",
     slugged: false,
     singleton: true,
     required: ["name", "headline", "visibility"],
@@ -608,7 +608,7 @@ export const ADMIN_SCHEMAS = {
   Project: {
     title: "Project",
     collection: "projects",
-    apiDomain: "projects",
+    apiDomain: "content/projects",
     slugged: true,
     singleton: false,
     required: ["slug", "title", "summary", "kind", "status", "visibility"],
@@ -1107,7 +1107,7 @@ export const ADMIN_SCHEMAS = {
   SiteConfig: {
     title: "SiteConfig",
     collection: "site_config",
-    apiDomain: "settings",
+    apiDomain: "content/settings",
     slugged: false,
     singleton: true,
     required: ["visibility"],
@@ -1181,7 +1181,7 @@ export const ADMIN_SCHEMAS = {
   Skill: {
     title: "Skill",
     collection: "skills",
-    apiDomain: "skills",
+    apiDomain: "content/skills",
     slugged: false,
     singleton: false,
     required: ["name", "category", "level", "visibility"],

@@ -110,11 +110,10 @@ console.log(`  zod         → frontend/src/generated/schemas.zod.ts`);
 // each has its own hand-built admin UI instead, for reasons documented in their own
 // service.py files).
 //
-// One exception the schema can't tell you: `x-firestore.collection` is the Firestore
-// collection name, but the site-config domain's API route is mounted as `/settings`, not
-// `/site_config` — see backend/functions/src/settings/. Every other domain's route matches
-// its collection name exactly.
-const API_DOMAIN_OVERRIDES = { site_config: "settings" };
+// Every content collection is a subdomain of the backend's `content` domain (ADR 0017),
+// served at /api/v1/content/<subdomain>. The subdomain matches the collection name except
+// site_config, whose subdomain is `settings` (backend/functions/src/content/settings/).
+const CONTENT_SUBDOMAIN_OVERRIDES = { site_config: "settings" };
 
 const formSchemas = {};
 for (const file of roots) {
@@ -130,7 +129,7 @@ for (const file of roots) {
   formSchemas[pascal(file)] = {
     title: deref.title,
     collection,
-    apiDomain: API_DOMAIN_OVERRIDES[collection] ?? collection,
+    apiDomain: `content/${CONTENT_SUBDOMAIN_OVERRIDES[collection] ?? collection}`,
     // Matches shared/crud.py's make_crud_router(slugged=...): the document id is the
     // payload's own `slug` field rather than an auto-generated one.
     slugged: required.includes("slug"),
