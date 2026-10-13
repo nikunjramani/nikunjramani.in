@@ -109,7 +109,8 @@ screens are almost free.
       Built for Projects specifically, which is also the only content type that has one: it's
       the only public model with its own standalone detail page to preview against (skills/
       experience/etc. only ever render embedded in other pages, not as their own route)
-- [x] Publish triggers revalidation; the change is live within seconds — unchanged backend
+- [x] Publish is live on the next page load (since ADR 0014/0015 pages render per request
+      and nothing needs revalidating) — originally verified via revalidation, unchanged backend
       behavior from Phase 3 (visibility → public in a PATCH auto-triggers it in
       shared/crud.py), reverified live in the 5.4 commit: GET /projects/test-project-editor
       on the public site returned 200 with the right content immediately after save

@@ -39,12 +39,17 @@ select = ["E", "F", "I", "N", "UP", "B", "A", "C4", "SIM", "RUF"]
 # "profile" is the correct, meaningful domain name here — it matches the Firestore
 # collection and the Profile schema used everywhere else. It's nested under src/, not a
 # top-level module, so it doesn't actually shadow the stdlib profiler in practice.
-"src/profile/**" = ["A005"]
+"src/content/profile/**" = ["A005"]
+# kernel/logging.py and kernel/http.py are kernel-namespaced, never top-level imports.
+"kernel/**" = ["A005"]
 
 [tool.mypy]
 python_version = "3.13"
 strict = true
 warn_unreachable = true
+# No __init__.py anywhere but the generated models (ADR 0017): module names come from the
+# path relative to this directory, so the many main.py / service.py files stay distinct.
+explicit_package_bases = true
 # `exclude` only applies to mypy's own directory-discovery, and is a no-op once a directory
 # is passed explicitly on the command line (which `make lint` does) or once a file outside
 # the excluded path imports one inside it. The override below is what actually keeps
@@ -65,44 +70,91 @@ module = ["firebase_admin.*", "google.cloud.storage.*", "blurhash.*"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]
-# "shared" is deliberate, not a typo of "src" — shared/repositories and shared/services
-# have their own tests/ directories too, and both need discovering by a bare `pytest`.
-# "tests" (top-level, not under shared/ or src/) holds cross-domain wiring tests that
-# import from multiple src.<domain> packages — import-linter forbids that from shared/.
-testpaths = ["src", "shared", "tests"]
-addopts = "-q --cov=src --cov=shared --cov-report=term-missing"
+# All tests live under tests/, mirroring src/ and kernel/. importlib mode because there are
+# no __init__.py files and test names repeat across subdomains (tests/*/*/test_service.py).
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-q --import-mode=importlib --cov=src --cov=kernel --cov-report=term-missing"
 asyncio_mode = "auto"
 
 [tool.coverage.run]
 # Generated models are not our code to test — the schemas and fixtures cover them.
-omit = ["shared/generated/*", "*/tests/*"]
+omit = ["shared/generated/*"]
 
-# ── Domain boundaries — see ADR 0011 ────────────────────────────────
-# These two rules are load-bearing. `make lint` runs them.
+# ── Domain boundaries — see ADR 0017 and README.md ─────────────────
+# Load-bearing. `make lint` runs them; tests/test_domain_registry.py checks every domain
+# and subdomain on disk appears in the independence contracts below, and
+# tests/test_import_rules.py keeps the Firestore SDK out of routes and services.
 [tool.importlinter]
-root_packages = ["shared", "src"]
+root_packages = ["kernel", "shared", "src"]
 
 [[tool.importlinter.contracts]]
-name = "shared/ must never import from src/"
+name = "kernel is infrastructure: it imports no domain"
 type = "forbidden"
-source_modules = ["shared"]
+source_modules = ["kernel"]
 forbidden_modules = ["src"]
 
-# ⚠️ Every new domain must be added to this list, or it is silently unchecked.
 [[tool.importlinter.contracts]]
-name = "domains must not import each other"
+name = "shared holds generated models only: it imports nothing of ours"
+type = "forbidden"
+source_modules = ["shared"]
+forbidden_modules = ["src", "kernel"]
+
+[[tool.importlinter.contracts]]
+name = "main domains never import each other"
+type = "independence"
+modules = ["src.content", "src.identity", "src.inbox", "src.media", "src.ops"]
+
+[[tool.importlinter.contracts]]
+name = "content subdomains never import each other"
 type = "independence"
 modules = [
-    "src.system",
-    "src.contact",
-    "src.projects",
-    "src.skills",
-    "src.experience",
-    "src.education",
-    "src.certifications",
-    "src.posts",
-    "src.profile",
-    "src.settings",
-    "src.media",
-    "src.messages",
+    "src.content.certifications",
+    "src.content.education",
+    "src.content.experience",
+    "src.content.posts",
+    "src.content.profile",
+    "src.content.projects",
+    "src.content.settings",
+    "src.content.skills",
+]
+
+[[tool.importlinter.contracts]]
+name = "inbox subdomains never import each other"
+type = "independence"
+modules = ["src.inbox.contact", "src.inbox.messages", "src.inbox.notifications"]
+
+[[tool.importlinter.contracts]]
+name = "media subdomains never import each other"
+type = "independence"
+modules = ["src.media.library", "src.media.processing", "src.media.upload"]
+
+[[tool.importlinter.contracts]]
+name = "ops subdomains never import each other"
+type = "independence"
+modules = ["src.ops.audit", "src.ops.backup", "src.ops.health"]
+
+[[tool.importlinter.contracts]]
+name = "subdomain layers: main -> routes -> schemas -> service -> repository"
+type = "layers"
+layers = ["main", "(routes)", "(schemas)", "(service)", "(repository)"]
+containers = [
+    "src.content.certifications",
+    "src.content.education",
+    "src.content.experience",
+    "src.content.posts",
+    "src.content.profile",
+    "src.content.projects",
+    "src.content.settings",
+    "src.content.skills",
+    "src.identity.admins",
+    "src.inbox.contact",
+    "src.inbox.messages",
+    "src.inbox.notifications",
+    "src.media.library",
+    "src.media.processing",
+    "src.media.upload",
+    "src.ops.audit",
+    "src.ops.backup",
+    "src.ops.health",
 ]

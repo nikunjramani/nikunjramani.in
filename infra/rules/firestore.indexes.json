@@ -10,7 +10,7 @@
         },
         {
           "fieldPath": "at",
-          "order": "ASCENDING"
+          "order": "DESCENDING"
         }
       ]
     },
@@ -19,12 +19,16 @@
       "queryScope": "COLLECTION",
       "fields": [
         {
-          "fieldPath": "actor",
+          "fieldPath": "collection",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "docId",
           "order": "ASCENDING"
         },
         {
           "fieldPath": "at",
-          "order": "ASCENDING"
+          "order": "DESCENDING"
         }
       ]
     },
@@ -38,20 +42,6 @@
         },
         {
           "fieldPath": "order",
-          "order": "ASCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "contact_messages",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "read",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "createdAt",
           "order": "ASCENDING"
         }
       ]
@@ -111,8 +101,8 @@
           "order": "ASCENDING"
         },
         {
-          "fieldPath": "publishedAt",
-          "order": "ASCENDING"
+          "fieldPath": "audit.publishedAt",
+          "order": "DESCENDING"
         }
       ]
     },
@@ -126,11 +116,11 @@
         },
         {
           "fieldPath": "tags",
-          "order": "ASCENDING"
+          "arrayConfig": "CONTAINS"
         },
         {
-          "fieldPath": "publishedAt",
-          "order": "ASCENDING"
+          "fieldPath": "audit.publishedAt",
+          "order": "DESCENDING"
         }
       ]
     },
@@ -220,6 +210,12 @@
   "fieldOverrides": [
     {
       "collectionGroup": "contact_messages",
+      "fieldPath": "expiresAt",
+      "ttl": true,
+      "indexes": []
+    },
+    {
+      "collectionGroup": "_rate_limits",
       "fieldPath": "expiresAt",
       "ttl": true,
       "indexes": []

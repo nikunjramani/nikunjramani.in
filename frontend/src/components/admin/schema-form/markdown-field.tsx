@@ -5,6 +5,7 @@ import { useFormContext } from "react-hook-form";
 
 import { Markdown } from "@/components/site/markdown";
 import { cn } from "@/lib/utils";
+import { emptyToUndefined, fieldLabel } from "./field-utils";
 import type { ResolvedField } from "./resolve-field";
 
 /** No rich-text WYSIWYG, per the plan's own scope-creep warning — Markdown in a textarea
@@ -19,7 +20,7 @@ export function MarkdownField({ name, field }: { name: string; field: ResolvedFi
     <div className="flex flex-col gap-1.5">
       <div className="flex items-center justify-between">
         <label htmlFor={name} className="text-sm font-medium">
-          {field.key.charAt(0).toUpperCase() + field.key.slice(1)}
+          {fieldLabel(field.key)}
           {field.required ? <span className="text-accent"> *</span> : null}
         </label>
         <button
@@ -44,7 +45,7 @@ export function MarkdownField({ name, field }: { name: string; field: ResolvedFi
           className={cn(
             "rounded-md border border-border bg-background px-3 py-2 font-mono text-sm focus-visible:outline-2 focus-visible:outline-accent",
           )}
-          {...register(name)}
+          {...register(name, { setValueAs: emptyToUndefined })}
         />
       )}
     </div>

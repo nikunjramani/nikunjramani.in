@@ -8,6 +8,7 @@ import { z } from "zod";
 
 import { ContactMessageSchema } from "@/generated/schemas.zod";
 import { Turnstile } from "@/components/site/turnstile";
+import { submitContact } from "@/lib/api/contact";
 import { cn } from "@/lib/utils";
 
 // ContactMessageSchema is `.strict()` (ADR: server-set fields can never be client-supplied),
@@ -40,13 +41,12 @@ export function ContactForm() {
   async function onSubmit(values: FormValues) {
     setStatus("submitting");
     try {
-      const res = await fetch("/api/v1/contact/contact", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        // honeypot stays empty for real users — a bot filling every field trips it server-side.
-        body: JSON.stringify({ ...values, honeypot: values.honeypot ?? "", turnstileToken }),
+      await submitContact({
+        ...values,
+        // Honeypot stays empty for real users; a bot filling every field trips it server-side.
+        honeypot: values.honeypot ?? "",
+        turnstileToken,
       });
-      if (!res.ok) throw new Error(`status ${res.status}`);
       setStatus("success");
       reset();
     } catch {

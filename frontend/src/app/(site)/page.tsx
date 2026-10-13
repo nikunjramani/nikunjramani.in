@@ -7,6 +7,7 @@ import { SkillPills } from "@/components/site/skill-pills";
 import { getFeaturedProjects } from "@/lib/data/projects";
 import { getProfile } from "@/lib/data/profile";
 import { getFeaturedSkills } from "@/lib/data/skills";
+import { SITE_NAME } from "@/lib/site";
 
 export const metadata: Metadata = {
   alternates: { canonical: "/" },
@@ -30,7 +31,7 @@ export default async function HomePage() {
           </span>
         ) : null}
         <h1 className="text-3xl font-semibold tracking-tight text-balance">
-          {profile?.name ?? "Nikunj Ramani"}
+          {profile?.name ?? SITE_NAME}
         </h1>
         {profile?.headline ? (
           <p className="text-xl text-muted-foreground text-balance">{profile.headline}</p>

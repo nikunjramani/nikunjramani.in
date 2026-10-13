@@ -16,7 +16,7 @@ Live at **[nikunjramani.in](https://nikunjramani.in)**.
 | Data | Cloud Firestore · Firebase Storage · Firebase Auth |
 | Hosting | Firebase App Hosting |
 | Infra | Terraform (`google` / `google-beta`) |
-| CI/CD | GitHub Actions + Workload Identity Federation |
+| CI | GitHub Actions — schema validation + codegen drift (lint/test/deploy workflows: Phase 7) |
 
 Public pages are server-rendered from Firestore, so the site is real HTML for crawlers.
 Python owns every write; nothing on the read path can cold-start.
@@ -42,7 +42,7 @@ fields. Add a field once, and it appears everywhere.
 make gen     # regenerate all targets
 ```
 
-`frontend/src/generated/` and `backend/functions/generated/` are committed but never edited
+`frontend/src/generated/` and `backend/functions/shared/generated/` are committed but never edited
 by hand — CI regenerates and fails on any diff.
 
 ## Getting started
@@ -53,7 +53,7 @@ make dev       # Next.js + Firebase emulators
 make gen       # regenerate models from architecture/schemas
 make validate  # validate schemas + example fixtures
 make lint      # eslint + ruff + mypy + import-linter
-make test      # frontend + backend test suites
+make test      # vitest + pytest
 make deploy    # terraform apply + deploy functions and App Hosting
 ```
 

@@ -21,7 +21,7 @@ infra/
 │   │   └── monitoring/    # budget alert, uptime check, error-rate alert
 │   ├── envs/
 │   │   ├── prod/          # nikunjramani-in
-│   │   └── staging/       # optional; same modules, cheaper knobs
+│   │   └── staging/       # nikunjramani-in-staging; same modules, cheaper knobs (ADR 0018)
 │   └── backend.tf         # GCS remote state + locking
 ├── rules/
 │   ├── firestore.rules
@@ -96,12 +96,15 @@ The bucket is created by `bootstrap.sh` and then left alone. Never in git: `*.tf
 
 ## Environments
 
-Starting **prod-only**. The modules are written to be environment-parameterised from day one, so
-adding staging later is a new `envs/staging/main.tf` and a day's work — not a refactor.
+Started prod-only; staging is now decided ([ADR 0018](../adr/0018-staging-project-for-pr-previews.md)).
+The modules were written to be environment-parameterised from day one specifically so this would be
+a new `envs/staging/main.tf` pointed at a second project, not a refactor — see
+[phase-7-cicd.md §7.3](./phases/phase-7-cicd.md#73--staging-project--preview-deploys--adr-0018) for
+the concrete build-out steps.
 
-A staging Firebase project is genuinely useful once the admin panel exists and you want to test a
-schema migration against real-shaped data. Until then it's a second thing to keep in sync for no
-benefit.
+Staging is a **second Firebase project**, not a second environment inside the same one — a PR's
+functions deploy must never be able to land on top of prod's. It's one long-lived shared
+environment (PR preview deploys overwrite whatever was there before), not one per PR.
 
 ---
 

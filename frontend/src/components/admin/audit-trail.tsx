@@ -2,19 +2,9 @@
 
 import { useEffect, useState } from "react";
 
-import { apiFetch } from "@/lib/api/client";
+import { listAuditLog, type AuditEntry } from "@/lib/api/audit";
 
-interface AuditEntry {
-  id: string;
-  actor: string;
-  actorEmail?: string;
-  action: string;
-  collection: string;
-  docId?: string;
-  at: string;
-}
-
-/** Per-document history — GET /system/audit-log, filtered to this one record. Every admin
+/** Per-document history — GET /ops/audit, filtered to this one record. Every admin
  * mutation already writes one of these (shared/services/audit.py); this is just the first
  * thing that ever reads them back. */
 export function AuditTrail({ collection, docId }: { collection: string; docId: string }) {
@@ -22,14 +12,15 @@ export function AuditTrail({ collection, docId }: { collection: string; docId: s
   const [error, setError] = useState(false);
 
   useEffect(() => {
-    apiFetch<AuditEntry[]>(
-      `/system/audit-log?collection=${encodeURIComponent(collection)}&docId=${encodeURIComponent(docId)}&limit=20`,
-    )
+    listAuditLog({ collection, docId, limit: 20 })
       .then(setEntries)
       .catch(() => setError(true));
   }, [collection, docId]);
 
-  if (error || (entries && entries.length === 0)) return null;
+  // A failed load is shown, not hidden — a silently empty history is how a missing
+  // Firestore index went unnoticed before.
+  if (error) return <p className="text-xs text-red-500">Couldn&apos;t load this record&apos;s history.</p>;
+  if (entries && entries.length === 0) return null;
 
   return (
     <details className="rounded-lg border border-border">

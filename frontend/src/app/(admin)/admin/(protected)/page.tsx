@@ -11,37 +11,19 @@ import {
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
-import { apiFetch } from "@/lib/api/client";
 import { listRecords } from "@/lib/api/content";
+import { listMessages } from "@/lib/api/messages";
+import { listAuditLog, type AuditEntry } from "@/lib/api/audit";
 import { ADMIN_SCHEMAS } from "@/generated/admin-schemas";
-
-interface AuditEntry {
-  id: string;
-  actor: string;
-  actorEmail?: string;
-  action: string;
-  collection: string;
-  docId?: string;
-  at: string;
-}
+import { timeAgo } from "@/lib/format";
 
 const COUNTED = [
-  { key: "Project", label: "Projects", icon: FolderKanban },
-  { key: "Skill", label: "Skills", icon: Sparkles },
-  { key: "Experience", label: "Experience", icon: Briefcase },
-  { key: "Education", label: "Education", icon: GraduationCap },
-  { key: "Certification", label: "Certifications", icon: Award },
+  { key: "Project", label: "Projects", icon: FolderKanban, href: "/admin/projects" },
+  { key: "Skill", label: "Skills", icon: Sparkles, href: "/admin/skills" },
+  { key: "Experience", label: "Experience", icon: Briefcase, href: "/admin/experience" },
+  { key: "Education", label: "Education", icon: GraduationCap, href: "/admin/education" },
+  { key: "Certification", label: "Certifications", icon: Award, href: "/admin/certifications" },
 ] as const;
-
-function timeAgo(iso: string): string {
-  const diffMs = Date.now() - new Date(iso).getTime();
-  const minutes = Math.round(diffMs / 60_000);
-  if (minutes < 1) return "just now";
-  if (minutes < 60) return `${minutes}m ago`;
-  const hours = Math.round(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
-  return `${Math.round(hours / 24)}d ago`;
-}
 
 export default function AdminDashboardPage() {
   const [counts, setCounts] = useState<Record<string, number> | null>(null);
@@ -62,8 +44,8 @@ export default function AdminDashboardPage() {
               return [key, records.length] as const;
             }),
           ),
-          apiFetch<unknown[]>("/messages/?unread_only=true"),
-          apiFetch<AuditEntry[]>("/system/audit-log?limit=8"),
+          listMessages(true),
+          listAuditLog({ limit: 8 }),
         ]);
         if (cancelled) return;
         setCounts(Object.fromEntries(countPairs));
@@ -89,10 +71,10 @@ export default function AdminDashboardPage() {
       ) : (
         <>
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
-            {COUNTED.map(({ key, label, icon: Icon }) => (
+            {COUNTED.map(({ key, label, icon: Icon, href }) => (
               <Link
                 key={key}
-                href={`/admin/${ADMIN_SCHEMAS[key as keyof typeof ADMIN_SCHEMAS].apiDomain}`}
+                href={href}
                 className="rounded-lg border border-border bg-surface p-4 transition-colors hover:border-accent"
               >
                 <Icon className="mb-2 h-4 w-4 text-muted-foreground" aria-hidden="true" />

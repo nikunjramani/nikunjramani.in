@@ -9,7 +9,7 @@
 |---|---|---|---|---|
 | `audit_log` | **AuditLog** | ❌ | `actor`, `action`, `collection`, `at` | 2 |
 | `certifications` | **Certification** | ✅ | `title`, `issuer`, `visibility` | 1 |
-| `contact_messages` | **ContactMessage** | ❌ | `name`, `email`, `message` | 1 |
+| `contact_messages` | **ContactMessage** | ❌ | `name`, `email`, `message` | 0 |
 | `education` | **Education** | ✅ | `institution`, `qualification`, `visibility` | 1 |
 | `experience` | **Experience** | ✅ | `company`, `role`, `startDate`, `current`, `visibility` | 2 |
 | `media_assets` | **MediaAsset** | ❌ | `url`, `path`, `uploadedAt` | 1 |

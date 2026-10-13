@@ -6,7 +6,7 @@ Operational procedures. Deploy, rollback, and the things that go wrong.
 
 ## Local development
 
-**Prerequisites:** Node 22 · Python 3.13 (Homebrew, *not* system 3.9) · Terraform 1.9+ ·
+**Prerequisites:** Node 22 · Python 3.13 (via `uv`, *not* a system 3.9) · Terraform 1.9+ ·
 Firebase CLI · gcloud · uv
 
 ```bash
@@ -18,7 +18,7 @@ make dev       # Next.js on :3000 + emulators (UI on :4040 — moved off the def
 |---|---|
 | `make gen` | Regenerate models from `architecture/schemas` |
 | `make validate` | Validate schemas + example fixtures |
-| `make lint` | ruff · mypy --strict · import-linter · eslint · tsc · terraform fmt |
+| `make lint` | ruff · mypy --strict · import-linter · eslint · tsc · terraform fmt (all modules) |
 | `make test` | pytest + vitest |
 | `make build` | Production build |
 
@@ -171,10 +171,28 @@ echo -n "value" | gcloud secrets versions add RESEND_API_KEY --data-file=- --pro
 ### Rotation
 
 1. Add the new version
-2. Bind the secret in the consuming Python decorator, then redeploy those functions so they pick it up
+2. Redeploy the functions that bind it (`secrets=[...]` in their decorator) so they pick it up
 3. Verify the dependent path (send a test email)
-4. Redeploy App Hosting too when rotating `REVALIDATE_TOKEN`; both sides must use the same value
-5. Disable the old version — don't delete until the new one is proven
+4. Disable the old version — don't delete until the new one is proven
+
+### Contact form keys — required before the next functions deploy
+
+`api_contact` binds `TURNSTILE_SECRET_KEY`; `on_contact_created` binds `CONTACT_EMAIL_TO` and
+`RESEND_API_KEY`. `firebase deploy` rejects a function whose bound secret has no version, and in
+production the contact service **drops every submission** while Turnstile is unconfigured
+(it fails closed — an unprotected form lets anyone exhaust the rate limit). So, in order:
+
+1. Create a Turnstile widget for `nikunjramani.in`; add a Resend API key with a verified
+   sending domain.
+2. `gcloud secrets versions add` for `TURNSTILE_SECRET_KEY`, `RESEND_API_KEY` and (if not
+   already) `CONTACT_EMAIL_TO`.
+3. Set `NEXT_PUBLIC_TURNSTILE_SITE_KEY` in `frontend/apphosting.yaml` and deploy App Hosting.
+4. Deploy functions; submit the live form and confirm the email arrives.
+
+### Removing REVALIDATE_TOKEN (one-time, ADR 0015)
+
+Deploy App Hosting with the current `apphosting.yaml` (no `REVALIDATE_TOKEN`) **before**
+`terraform apply`, which destroys the secret.
 
 ### The Firebase browser API key isn't a secret, but GitHub will flag it anyway
 
@@ -212,7 +230,8 @@ The claim lands in the **next** token issued — sign out and back in to pick it
 
 ## Backups
 
-Nightly JSON export → `nikunjramani-in-backups`, 30-day lifecycle. This is **not**
+Nightly JSON export → `nikunjramani-in-backups`, 30-day lifecycle. The collection list is
+`BACKED_UP_COLLECTIONS` in `shared/core/collections.py`. This is **not**
 GCP's native Firestore export format; `gcloud firestore import` cannot restore it.
 The format is one `<UTC timestamp>/<collection>.json` file per collection, containing
 `[{"id": "document-id", "data": {...}}]`. Only the 11 named top-level collections are
@@ -242,7 +261,8 @@ it is not part of an ordinary code rollback.
 | Site renders empty, no errors | A document is missing `visibility` — the rule denies the read |
 | API 404s but the function deployed fine | Missing rewrite in `next.config.ts` |
 | Deploy fails on a secret | Secret read at import time instead of runtime |
-| `uv` builds against Python 3.9 | System Python picked up; force the Homebrew 3.13 |
+| `uv` builds against Python 3.9 | System Python picked up; `make PYTHON=$(uv python find 3.13)` |
+| Contact form says "Thanks" but nothing arrives | Turnstile or Resend key missing — function logs show `TURNSTILE_SECRET_KEY not set in production` or `RESEND_API_KEY not set` |
 | Firestore query fails in prod only | Missing composite index |
 | `Could not detect runtime` / `Missing virtual environment at venv directory` | Run `make setup-backend` — Firebase needs `requirements.txt` and its own `venv/`, not `.venv/` |
 | A function request hangs forever, no response, no error | Something constructed `a2wsgi.ASGIMiddleware` directly instead of using `shared/wsgi_bridge.py` — see ADR 0003's implementation note |

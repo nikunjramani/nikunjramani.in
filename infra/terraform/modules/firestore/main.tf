@@ -28,4 +28,15 @@ resource "google_firestore_field" "contact_ttl" {
   ttl_config {}
 }
 
+# Rate-limit windows (shared/core/rate_limit.py) carry an expiresAt; without this policy
+# every window document would accumulate forever.
+resource "google_firestore_field" "rate_limit_ttl" {
+  project    = var.project_id
+  database   = google_firestore_database.default.name
+  collection = "_rate_limits"
+  field      = "expiresAt"
+
+  ttl_config {}
+}
+
 output "database_name" { value = google_firestore_database.default.name }

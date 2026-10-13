@@ -5,16 +5,17 @@ import { useState } from "react";
 import { useFormContext } from "react-hook-form";
 import type { JSONSchema7 } from "json-schema";
 
+import { fieldLabel as sectionLabel } from "./field-utils";
 import { formFieldEntries } from "./resolve-field";
 import type { ResolvedField } from "./resolve-field";
 import { FieldRenderer } from "./field-renderer";
 
 function hasAnyValue(value: unknown): boolean {
   if (value === undefined || value === null) return false;
+  if (Array.isArray(value)) return value.length > 0;
   if (typeof value === "object") {
     return Object.values(value as Record<string, unknown>).some((v) => hasAnyValue(v));
   }
-  if (Array.isArray(value)) return value.length > 0;
   return value !== "" && value !== false;
 }
 
@@ -83,9 +84,4 @@ export function ObjectSection({ name, field }: { name: string; field: ResolvedFi
       </div>
     </fieldset>
   );
-}
-
-function sectionLabel(key: string): string {
-  const spaced = key.replace(/([A-Z])/g, " $1");
-  return spaced.charAt(0).toUpperCase() + spaced.slice(1);
 }

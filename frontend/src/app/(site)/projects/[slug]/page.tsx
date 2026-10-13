@@ -5,16 +5,14 @@ import { ArrowLeft, ArrowRight } from "lucide-react";
 
 import { JsonLd } from "@/components/site/json-ld";
 import { ProjectDetailView } from "@/components/site/project/project-detail-view";
+import { getProfile } from "@/lib/data/profile";
 import { getAllProjects, getProjectBySlug } from "@/lib/data/projects";
+import { SITE_NAME, SITE_URL } from "@/lib/site";
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://nikunjramani.in";
+// No generateStaticParams: pages render per request (ADR 0014), so pre-building them would
+// only add a Firestore dependency to `next build`.
 
 type Params = Promise<{ slug: string }>;
-
-export async function generateStaticParams() {
-  const projects = await getAllProjects();
-  return projects.map((project) => ({ slug: project.slug }));
-}
 
 export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
   const { slug } = await params;
@@ -32,6 +30,8 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
     description: project.seo?.metaDescription ?? project.summary,
     keywords: project.seo?.keywords,
     alternates: { canonical: `/projects/${slug}` },
+    // Unlisted: reachable by link, kept out of search results.
+    ...(project.visibility === "unlisted" ? { robots: { index: false, follow: true } } : {}),
     openGraph: {
       title: project.seo?.metaTitle ?? project.title,
       description: project.seo?.metaDescription ?? project.summary,
@@ -44,7 +44,11 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
 
 export default async function ProjectDetailPage({ params }: { params: Params }) {
   const { slug } = await params;
-  const [project, allProjects] = await Promise.all([getProjectBySlug(slug), getAllProjects()]);
+  const [project, allProjects, profile] = await Promise.all([
+    getProjectBySlug(slug),
+    getAllProjects(),
+    getProfile(),
+  ]);
 
   if (!project) notFound();
 
@@ -74,7 +78,7 @@ export default async function ProjectDetailPage({ params }: { params: Params }) 
           url: `${SITE_URL}/projects/${slug}`,
           ...(project.cover ? { image: project.cover.url } : {}),
           ...(project.tags?.length ? { keywords: project.tags.join(", ") } : {}),
-          author: { "@type": "Person", name: "Nikunj Ramani" },
+          author: { "@type": "Person", name: profile?.name ?? SITE_NAME },
         }}
       />
 

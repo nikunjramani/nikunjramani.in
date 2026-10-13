@@ -3,15 +3,18 @@
   "python.testing.pytestEnabled": true,
   "python.testing.unittestEnabled": false,
   "python.testing.cwd": "${workspaceFolder}/backend/functions",
-
-  "eslint.workingDirectories": [{ "directory": "frontend" }],
+  "eslint.workingDirectories": [
+    {
+      "directory": "frontend"
+    }
+  ],
   "typescript.tsdk": "frontend/node_modules/typescript/lib",
-
   "files.exclude": {
     "**/__pycache__": true,
     "**/.pytest_cache": true,
     "**/.mypy_cache": true,
     "**/.ruff_cache": true,
     "backend/functions/venv": true
-  }
+  },
+  "makefile.configureOnOpen": false
 }

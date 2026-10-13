@@ -4,12 +4,8 @@ import { useState } from "react";
 import { useFormContext } from "react-hook-form";
 
 import { cn } from "@/lib/utils";
+import { emptyToUndefined, fieldLabel, inputClass } from "./field-utils";
 import type { ResolvedField } from "./resolve-field";
-
-function fieldLabel(key: string): string {
-  const spaced = key.replace(/([A-Z])/g, " $1");
-  return spaced.charAt(0).toUpperCase() + spaced.slice(1);
-}
 
 function errorAt(errors: Record<string, unknown>, path: string): string | undefined {
   const parts = path.split(".");
@@ -24,9 +20,6 @@ function errorAt(errors: Record<string, unknown>, path: string): string | undefi
   }
   return undefined;
 }
-
-const inputClass =
-  "rounded-md border border-border bg-background px-3 py-2 text-sm focus-visible:outline-2 focus-visible:outline-accent";
 
 function FieldShell({
   name,
@@ -61,18 +54,14 @@ export function TextField({ name, field }: { name: string; field: ResolvedField 
   const { register } = useFormContext();
   return (
     <FieldShell name={name} field={field}>
-      <input id={name} type="text" className={inputClass} {...register(name)} />
+      <input
+        id={name}
+        type="text"
+        className={inputClass}
+        {...register(name, { setValueAs: emptyToUndefined })}
+      />
     </FieldShell>
   );
-}
-
-// A Zod format validator (.url(), .datetime(), .regex(...)) runs on whatever string is
-// there before `.optional()` gets a say — an untouched HTML input's value is "", not
-// undefined, so an empty *optional* formatted field fails validation as "invalid url" (or
-// similar) instead of being treated as simply not filled in. Same underlying issue as
-// NumberField's NaN case, different shape.
-function emptyToUndefined(value: string): string | undefined {
-  return value === "" ? undefined : value;
 }
 
 export function UrlField({ name, field }: { name: string; field: ResolvedField }) {
@@ -104,15 +93,35 @@ export function MonthField({ name, field }: { name: string; field: ResolvedField
   );
 }
 
+/** ISO instant -> the "YYYY-MM-DDTHH:mm" local-time string a datetime-local input shows. */
+function toLocalInput(value: unknown): string {
+  if (typeof value !== "string" || !value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(
+    date.getHours(),
+  )}:${pad(date.getMinutes())}`;
+}
+
+/** Controlled rather than registered: the input speaks local "YYYY-MM-DDTHH:mm", while the
+ * schema (format: date-time, Zod's .datetime()) needs a full ISO instant — so the value is
+ * converted in both directions instead of being stored as typed. */
 export function DateField({ name, field }: { name: string; field: ResolvedField }) {
-  const { register } = useFormContext();
+  const { watch, setValue } = useFormContext();
   return (
     <FieldShell name={name} field={field}>
       <input
         id={name}
         type="datetime-local"
         className={inputClass}
-        {...register(name, { setValueAs: emptyToUndefined })}
+        value={toLocalInput(watch(name))}
+        onChange={(e) =>
+          setValue(name, e.target.value ? new Date(e.target.value).toISOString() : undefined, {
+            shouldDirty: true,
+            shouldValidate: true,
+          })
+        }
       />
     </FieldShell>
   );
@@ -122,7 +131,12 @@ export function TextareaField({ name, field }: { name: string; field: ResolvedFi
   const { register } = useFormContext();
   return (
     <FieldShell name={name} field={field}>
-      <textarea id={name} rows={4} className={inputClass} {...register(name)} />
+      <textarea
+        id={name}
+        rows={4}
+        className={inputClass}
+        {...register(name, { setValueAs: emptyToUndefined })}
+      />
     </FieldShell>
   );
 }
@@ -171,7 +185,7 @@ export function SelectField({ name, field }: { name: string; field: ResolvedFiel
   const options = (field.schema.enum ?? []) as string[];
   return (
     <FieldShell name={name} field={field}>
-      <select id={name} className={inputClass} {...register(name)}>
+      <select id={name} className={inputClass} {...register(name, { setValueAs: emptyToUndefined })}>
         {!field.required ? <option value="">—</option> : null}
         {options.map((opt) => (
           <option key={opt} value={opt}>

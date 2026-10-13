@@ -34,9 +34,10 @@ and [docs/RUNBOOK.md](../../RUNBOOK.md) for operating it.
 
 ### 6.2 · Backend deploy
 
-- [ ] Secrets populated in Secret Manager (Resend, Turnstile) — deliberately deferred;
-      `REVALIDATE_TOKEN` and `CONTACT_EMAIL_TO` are populated (no third-party account
-      needed for either)
+- [ ] Secrets populated in Secret Manager (Resend, Turnstile) — **now blocking**: both are
+      bound to the contact functions, so the next functions deploy needs them, and the form
+      fails closed in production without Turnstile. See docs/RUNBOOK.md (Contact form keys).
+      `CONTACT_EMAIL_TO` is populated; `REVALIDATE_TOKEN` is retired (ADR 0015)
 - [x] `firebase deploy --only functions` — all 12 domains + 2 triggers + the scheduled
       backup, confirmed via `firebase functions:list`, none silently skipped
 - [x] All twelve production rewrites configured; health and admin routes tested live.

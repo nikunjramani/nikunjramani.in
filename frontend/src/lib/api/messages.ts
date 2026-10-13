@@ -1,36 +1,37 @@
 "use client";
 
 import { apiFetch, apiFetchBlob } from "@/lib/api/client";
+import type { RecordOut } from "@/lib/api/content";
 import type { ContactMessage } from "@/generated/types";
+import { API_ROUTES } from "@/generated/api-routes";
 
-export interface MessageRecordOut {
-  id: string;
-  data: ContactMessage;
-}
+const MESSAGES = `/${API_ROUTES.inbox.messages}`;
+
+export type MessageRecordOut = RecordOut<ContactMessage>;
 
 export function listMessages(unreadOnly = false): Promise<MessageRecordOut[]> {
   const qs = unreadOnly ? "?unread_only=true" : "";
-  return apiFetch(`/messages/${qs}`);
+  return apiFetch(`${MESSAGES}/${qs}`);
 }
 
 export function getMessage(id: string): Promise<MessageRecordOut> {
-  return apiFetch(`/messages/${id}`);
+  return apiFetch(`${MESSAGES}/${encodeURIComponent(id)}`);
 }
 
 export function markMessageRead(id: string): Promise<MessageRecordOut> {
-  return apiFetch(`/messages/${id}/read`, { method: "PATCH" });
+  return apiFetch(`${MESSAGES}/${encodeURIComponent(id)}/read`, { method: "PATCH" });
 }
 
 export function markMessageReplied(id: string): Promise<MessageRecordOut> {
-  return apiFetch(`/messages/${id}/replied`, { method: "PATCH" });
+  return apiFetch(`${MESSAGES}/${encodeURIComponent(id)}/replied`, { method: "PATCH" });
 }
 
 export function deleteMessage(id: string): Promise<void> {
-  return apiFetch(`/messages/${id}`, { method: "DELETE" });
+  return apiFetch(`${MESSAGES}/${encodeURIComponent(id)}`, { method: "DELETE" });
 }
 
 export async function downloadMessagesCsv(): Promise<void> {
-  const blob = await apiFetchBlob("/messages/export.csv");
+  const blob = await apiFetchBlob(`${MESSAGES}/export.csv`);
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;

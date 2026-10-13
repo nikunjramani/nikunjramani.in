@@ -27,7 +27,7 @@ GREEN, RED, DIM, RESET = "\033[32m", "\033[31m", "\033[2m", "\033[0m"
 
 
 def load(path: Path) -> Any:
-    return json.loads(path.read_text())
+    return json.loads(path.read_text(encoding="utf-8"))
 
 
 def build_registry() -> Registry:

@@ -21,29 +21,29 @@ production deploy, Phase 6) — not skipped, see their notes below.
 
 ### 4.1 · Data layer
 
-- [ ] `lib/firebase/admin.ts` — Admin SDK, server-only, singleton
-- [ ] `lib/data/` — one typed query module per collection
-- [ ] ISR caching with tags per collection
-- [ ] `app/api/revalidate/route.ts` — token-protected, called by the backend on publish
-- [ ] `notFound()` on missing docs, so a bad slug 404s properly
+- [x] `lib/firebase/admin.ts` — Admin SDK, server-only, singleton
+- [x] `lib/data/` — one typed query module per collection
+- [x] ~~ISR caching with tags per collection~~ — replaced by per-request rendering (ADR 0014)
+- [x] ~~`app/api/revalidate/route.ts`~~ — built, then removed with nothing left to revalidate (ADR 0015)
+- [x] `notFound()` on missing docs, so a bad slug 404s properly
 
 ### 4.2 · Shell
 
-- [ ] Root layout: fonts, theme provider, analytics slot
-- [ ] Nav — sticky, responsive, mobile drawer, active state
-- [ ] Footer — socials, copyright, back to top
-- [ ] Theme toggle, no flash on load
+- [ ] Root layout: fonts, theme provider, analytics slot — fonts and theme done; no analytics slot yet
+- [x] Nav — sticky, responsive, mobile drawer, active state
+- [x] Footer — socials, copyright, back to top
+- [x] Theme toggle, no flash on load
 - [ ] Page transitions
-- [ ] `not-found.tsx` and `error.tsx`
+- [x] `not-found.tsx` and `error.tsx`
 
 ### 4.3 · Home
 
-- [ ] Hero — name, headline, tagline, CTAs, availability badge
-- [ ] About preview → full About
-- [ ] Featured skills
-- [ ] Featured projects (3)
+- [x] Hero — name, headline, tagline, CTAs, availability badge
+- [ ] About preview → full About — links to /about; no inline preview
+- [x] Featured skills
+- [x] Featured projects (up to 4)
 - [ ] Experience snapshot
-- [ ] Contact CTA
+- [x] Contact CTA
 
 ### 4.4 · Projects
 
@@ -123,8 +123,8 @@ inside a server `<Nav>`, not a client `<Nav>`.
 `import "server-only"` at the top. Without that guard the failure is a leaked credential, not a
 build error.
 
-**ISR needs revalidation wired up**, or edits won't appear until the cache expires. That's what the
-backend's `on_content_published` trigger is for — test the whole loop.
+**~~ISR needs revalidation wired up~~** — superseded: pages render per request (ADR 0014) and the
+revalidation webhook is gone (ADR 0015). An edit appears on the next page load.
 
 **Dynamic OG images are slow to generate** and easy to get wrong. Build one, verify it in the
 LinkedIn Post Inspector, then do the rest.
