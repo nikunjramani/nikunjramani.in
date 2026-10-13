@@ -36,12 +36,56 @@ automate it you're encoding something known to work.
 - [ ] Path filters so unrelated changes don't run everything
 - [ ] Dependency caching (npm, uv)
 
-### 7.3 · Preview deploys
+### 7.3 · Staging project & preview deploys — [ADR 0018](../../adr/0018-staging-project-for-pr-previews.md)
 
-- [ ] `preview.yml` — App Hosting preview channel per PR
-- [ ] Preview URL commented on the PR
-- [ ] Previews point at prod Firestore **read-only**, or a seeded emulator
-- [ ] Channels cleaned up on merge
+Resolved: previews run against a **second, separate Firebase project**
+(`nikunjramani-in-staging`, same billing account), not the same project prod runs in — a PR
+redeploying functions must never be able to overwrite live data or live functions. It's one
+long-lived shared environment, not one per PR; the most recently pushed PR is whatever's live
+there.
+
+**Bootstrap (one-time, manual — same category as Phase 0's `bootstrap.sh` steps):**
+
+- [ ] Create the `nikunjramani-in-staging` GCP project, attach the same billing account
+- [ ] `firebase projects:addfirebase` for the new project
+- [ ] Enable the Google Auth provider in the staging project's console (no Terraform equivalent)
+
+**Terraform:**
+
+- [ ] `infra/terraform/envs/staging/` — copy `envs/prod/`, same modules
+      (`project`, `iam`, `firestore`, `storage`, `secrets`, `monitoring`, `functions`,
+      `app-hosting`), staging project id, cheaper knobs (`budget_amount` small, `max_instances = 1`)
+- [ ] New state prefix (`envs/staging` in the existing `nikunjramani-in-tfstate` bucket, or a
+      dedicated staging bucket — decide and record the choice in [04 · Infrastructure](../04-infrastructure.md))
+- [ ] `terraform apply` against staging — same two-apply dance as prod for `functions_deployed`
+      (false until the first functions deploy, then flipped true)
+
+**Secrets (staging-safe values, never prod values):**
+
+- [ ] `TURNSTILE_SECRET_KEY` — Cloudflare's published always-passes test key pair, not the real one
+- [ ] `RESEND_API_KEY` / `CONTACT_EMAIL_TO` — the owner's own inbox, so staging mail is
+      identifiable as staging mail, never a real client/employer address
+
+**First deploy & admin access:**
+
+- [ ] `firebase deploy --only firestore:rules,firestore:indexes,storage` against staging
+- [ ] `firebase deploy --only functions` against staging (seeds the Cloud Run services the IAM
+      invoker binding needs)
+- [ ] `python infra/scripts/set_admin_claim.py <owner email>` against the staging project
+- [ ] Seed staging Firestore with placeholder fixtures — never a prod export, never real contact
+      submissions or real client/employer names (this repo is public)
+
+**CI:**
+
+- [ ] `preview.yml` — on every PR push: resolve the changed function domains (same path-filter
+      logic `deploy.yml` uses), deploy those domains + App Hosting to the **staging** project
+- [ ] Preview URL commented on the PR, explicitly labelled staging (so it's never mistaken for prod)
+- [ ] WIF binding extended (or a second staging-scoped service account) so the deploy SA can act on
+      the staging project too — least privilege either way
+- [ ] Optional: `staging.nikunjramani.in` DNS, `noindex`d so it's never crawled
+
+**Not needed:** channel cleanup on merge — there's one shared slot, not one per PR, so there's
+nothing to tear down between PRs.
 
 ### 7.4 · Production deploy
 
@@ -72,7 +116,7 @@ automate it you're encoding something known to work.
 1. A PR runs only the relevant checks, and merging is blocked until they're green
 2. Merging to `main` deploys automatically, with an approval gate on infra changes
 3. No service-account JSON key exists anywhere
-4. Every PR gets a working preview URL
+4. Every PR gets a working preview URL, deployed to the staging project ([ADR 0018](../../adr/0018-staging-project-for-pr-previews.md)) — never the production one
 5. Hand-editing a generated file turns CI red
 6. A failed smoke test rolls back without you intervening
 
@@ -84,7 +128,11 @@ automate it you're encoding something known to work.
 auth fails with a message that doesn't say why. Get one workflow authenticating before writing the
 other six.
 
-**Preview deploys writing to prod data will hurt.** Read-only, or a separate seeded project.
+**Previews run in a second Firebase project, not prod ([ADR 0018](../../adr/0018-staging-project-for-pr-previews.md)).** A PR that redeploys functions into the same project prod runs in redeploys over the live ones — the exact risk this ADR exists to avoid.
+
+**Staging is one shared slot, not one per PR.** The most recently pushed PR is whatever's live there. Two PRs pushing around the same time stomp each other's preview — fine for a solo repo, a real limit if that changes.
+
+**Terraform drift between `envs/prod/` and `envs/staging/` is a new failure mode.** A module change now has to be reviewed against both environments, not one.
 
 **Lighthouse CI is flaky on shared runners.** Use a median of three runs and a slightly forgiving
 threshold, or you'll be re-running builds for nothing.
