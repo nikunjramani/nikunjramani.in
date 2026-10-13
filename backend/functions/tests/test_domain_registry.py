@@ -64,11 +64,13 @@ def test_import_linter_contracts_cover_every_domain_and_subdomain() -> None:
 
 
 def test_next_config_rewrites_every_http_function() -> None:
-    source = _read(REPO / "frontend" / "next.config.ts")
-    block = re.search(r"const ROUTES = \[(.*?)\]", source, re.DOTALL)
-    assert block, "ROUTES array not found in next.config.ts"
-    rewritten = set(re.findall(r'"(\w+/\w+)"', block.group(1)))
-    assert {"api_" + r.replace("/", "_") for r in rewritten} == set(_http_functions())
+    manifest = json.loads(_read(REPO / "architecture" / "api-routes.json"))
+    rewritten = {route for domain in manifest.values() for route in domain.values()}
+    assert {"api_" + route.replace("/", "_") for route in rewritten} == set(_http_functions())
+
+    next_config = _read(REPO / "frontend" / "next.config.ts")
+    assert 'from "./src/generated/api-routes"' in next_config
+    assert "BACKEND_ROUTES.map" in next_config
 
 
 def test_terraform_grants_invoker_on_every_http_function() -> None:

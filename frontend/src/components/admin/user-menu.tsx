@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { auth } from "@/lib/firebase/client";
+import { deleteAdminSession } from "@/lib/api/session";
 
 export function UserMenu({ email }: { email: string | undefined }) {
   const [signingOut, setSigningOut] = useState(false);
@@ -13,7 +14,7 @@ export function UserMenu({ email }: { email: string | undefined }) {
 
   async function handleSignOut() {
     setSigningOut(true);
-    await fetch("/api/admin/session", { method: "DELETE" });
+    await deleteAdminSession();
     await signOut(auth());
     router.push("/admin/login");
     router.refresh();

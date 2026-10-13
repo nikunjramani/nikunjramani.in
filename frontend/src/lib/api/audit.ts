@@ -1,6 +1,7 @@
 "use client";
 
 import { apiFetch } from "@/lib/api/client";
+import { API_ROUTES } from "@/generated/api-routes";
 
 export interface AuditEntry {
   id: string;
@@ -19,5 +20,5 @@ export function listAuditLog(filter: { collection?: string; docId?: string; limi
   if (filter.docId) params.set("docId", filter.docId);
   if (filter.limit) params.set("limit", String(filter.limit));
   const qs = params.toString();
-  return apiFetch<AuditEntry[]>(`/ops/audit/${qs ? `?${qs}` : ""}`);
+  return apiFetch<AuditEntry[]>(`/${API_ROUTES.ops.audit}/${qs ? `?${qs}` : ""}`);
 }

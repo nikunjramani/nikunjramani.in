@@ -44,6 +44,9 @@ subdomain as a thin `main.py` over shared code. That defeated the point and was 
   routes are written out in full.
 - **Generated models stay in one package, `shared/generated`.** `shared/` holds nothing else
   and imports nothing of ours, so it can ship as its own package.
+- **API route names live in `architecture/api-routes.json`.** Code generation produces the
+  typed frontend contract and Next.js consumes that generated registry for its rewrites;
+  registry tests keep it aligned with deployed function names and Terraform.
 - **Cross-domain reads move to Next.js**, consistent with ADR 0005. The media "where is this
   image used?" check is the example.
 - **A new `identity` domain** lists, grants and revokes the `admin` custom claim. Sign-in

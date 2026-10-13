@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { GoogleIcon } from "@/components/admin/google-icon";
+import { createAdminSession, deleteAdminSession } from "@/lib/api/session";
 import { auth } from "@/lib/firebase/client";
 
 type Status = "idle" | "signing-in" | "not-admin" | "error";
@@ -19,12 +20,7 @@ export function SignInPanel() {
       const credential = await signInWithPopup(auth(), new GoogleAuthProvider());
       const idToken = await credential.user.getIdToken();
 
-      const res = await fetch("/api/admin/session", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ idToken }),
-      });
-      if (!res.ok) throw new Error(`session exchange failed: ${res.status}`);
+      await createAdminSession(idToken);
 
       const claims = await credential.user.getIdTokenResult();
       if (claims.claims.admin !== true) {
@@ -32,7 +28,7 @@ export function SignInPanel() {
         // expected outcome that needs a clear message, not a silent redirect loop back to
         // this same page (which is what happens if this case isn't handled explicitly: no
         // session cookie ever gets cleared, so the client keeps thinking it's signed in).
-        await fetch("/api/admin/session", { method: "DELETE" });
+        await deleteAdminSession();
         await signOut(auth());
         setStatus("not-admin");
         return;

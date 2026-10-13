@@ -8,8 +8,9 @@ import { useFeedback } from "@/components/admin/ui-feedback";
 import { useRecordList } from "@/components/admin/use-record-list";
 import { ADMIN_SCHEMAS } from "@/generated/admin-schemas";
 import type { Project } from "@/generated/types";
-import { ApiError, apiFetch } from "@/lib/api/client";
+import { ApiError } from "@/lib/api/client";
 import type { RecordOut } from "@/lib/api/content";
+import { duplicateProject } from "@/lib/api/projects";
 
 const entry = ADMIN_SCHEMAS.Project;
 const KIND_OPTIONS = (entry.properties.kind.enum ?? []) as string[];
@@ -41,7 +42,7 @@ export default function AdminProjectsPage() {
 
   async function handleDuplicate(record: RecordOut<Project>) {
     try {
-      await apiFetch(`/${entry.apiDomain}/${record.id}/duplicate`, { method: "POST" });
+      await duplicateProject(record.id);
       toast("Project duplicated.");
       load();
     } catch (err) {
