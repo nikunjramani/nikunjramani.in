@@ -6,16 +6,16 @@ from typing import Any, Literal
 
 from google.cloud.firestore_v1 import Client
 
-from shared.core.firebase import get_db
-from shared.core.timestamps import now_iso, to_firestore
+from shared.core.timestamps import now_iso
 from shared.generated import AuditLog
+from shared.repositories.audit import AuditRepository
 
 Action = Literal["create", "update", "delete", "publish", "unpublish", "reorder"]
 
 
 class AuditService:
     def __init__(self, db: Client | None = None) -> None:
-        self._db = db if db is not None else get_db()
+        self._repo = AuditRepository(db)
 
     def record(
         self,
@@ -42,5 +42,4 @@ class AuditService:
         # before, a delete has no after), and exclude_none would drop the key entirely
         # rather than store an explicit null — worse for anyone reading the trail later,
         # since "missing" and "was null" would look identical.
-        payload = to_firestore(entry.model_dump(mode="json"))
-        self._db.collection("audit_log").document().set(payload)
+        self._repo.add(entry.model_dump(mode="json"))

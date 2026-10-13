@@ -53,17 +53,21 @@ def test_rate_limited_is_silently_discarded(
 ) -> None:
     svc, repo, limiter = service_with_fakes
     limiter.check.side_effect = RateLimitedError("too many")
-    _submit(svc)
+    with patch("src.contact.service.verify_turnstile", return_value=True):
+        _submit(svc)
     repo.create.assert_not_called()
 
 
 def test_failed_turnstile_is_silently_discarded(
     service_with_fakes: tuple[ContactService, MagicMock, MagicMock],
 ) -> None:
-    svc, repo, _limiter = service_with_fakes
+    svc, repo, limiter = service_with_fakes
     with patch("src.contact.service.verify_turnstile", return_value=False):
         _submit(svc)
     repo.create.assert_not_called()
+    # Unverified requests must not consume the rate-limit windows, or a bot could exhaust
+    # the global limit and silently block real visitors.
+    limiter.check.assert_not_called()
 
 
 def test_legitimate_submission_is_persisted(

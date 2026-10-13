@@ -14,27 +14,23 @@ from google.cloud.firestore_v1 import Client
 from shared.api import make_app
 from shared.crud import ContentService
 from shared.repositories.base import BaseRepository
-from src.profile.repository import ProfileRepository
-from src.profile.routes import get_profile_service
-from src.profile.routes import router as profile_router
-from src.settings.repository import SiteConfigRepository
-from src.settings.routes import get_settings_service
-from src.settings.routes import router as settings_router
+from src.profile import domain as profile
+from src.settings import domain as settings
 
 ADMIN = {"uid": "admin-1", "email": "admin@example.com", "admin": True}
 
 SINGLETON_DOMAINS = [
     pytest.param(
-        profile_router,
-        get_profile_service,
-        ProfileRepository,
+        profile.router,
+        profile.get_service,
+        profile.repository,
         {"name": "Nikunj Ramani", "headline": "Backend engineer", "visibility": "public"},
         id="profile",
     ),
     pytest.param(
-        settings_router,
-        get_settings_service,
-        SiteConfigRepository,
+        settings.router,
+        settings.get_service,
+        settings.repository,
         {"visibility": "public", "showBlog": False},
         id="settings",
     ),
@@ -93,11 +89,11 @@ def test_singleton_create_read_patch(
 
 
 def test_singleton_get_before_any_write_is_404(db: Client, clean_collection: str) -> None:
-    class ScratchRepo(ProfileRepository):
+    class ScratchRepo(profile.repository):  # type: ignore[name-defined, misc]
         collection = "_test_scratch"
 
-    app = make_app(profile_router, "test")
-    app.dependency_overrides[get_profile_service] = lambda: ContentService(ScratchRepo(db))
+    app = make_app(profile.router, "test")
+    app.dependency_overrides[profile.get_service] = lambda: ContentService(ScratchRepo(db))
     client = TestClient(app)
 
     with patch("shared.core.security.auth.verify_id_token", return_value=ADMIN):

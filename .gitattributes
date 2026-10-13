@@ -1,6 +1,6 @@
 * text=auto eol=lf
 
-# Generated code — committed, but never hand-edited (see PLAN.md §5).
+# Generated code — committed, but never hand-edited (see ADR 0006).
 # Collapsed in GitHub diffs and excluded from language stats.
 frontend/src/generated/**  linguist-generated=true
 backend/functions/shared/generated/**  linguist-generated=true

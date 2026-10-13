@@ -1,10 +1,8 @@
 # Firebase App Hosting runtime config for the Next.js frontend.
-# See docs/plan/09-deploy-cicd-implementation.md Part E and docs/plan/04-infrastructure.md.
+# See docs/RUNBOOK.md (App Hosting), ADR 0013 and docs/plan/04-infrastructure.md.
 #
-# NEXT_PUBLIC_* values are public by design (ADR: security is in Firestore rules, not in
-# hiding this config) — safe to commit plaintext, same as this repo already does in
-# frontend/.env.example. REVALIDATE_TOKEN is the one real secret here, and it's a
-# Secret Manager reference, never a plaintext value.
+# NEXT_PUBLIC_* values are public by design (security is in Firestore rules, not in
+# hiding this config) — safe to commit plaintext. This app reads no secrets.
 
 runConfig:
   minInstances: 0
@@ -40,18 +38,13 @@ env:
     value: "https://asia-south1-nikunjramani-in.cloudfunctions.net"
     availability: [BUILD, RUNTIME]
 
-  # The shared secret Python calls this app with after every content write (see
-  # shared/services/revalidate.py and app/api/revalidate/route.ts). Same value as the
-  # REVALIDATE_TOKEN Secret Manager container the backend reads from.
-  - variable: REVALIDATE_TOKEN
-    secret: REVALIDATE_TOKEN
-    availability: [RUNTIME]
-
   # FIREBASE_SERVICE_ACCOUNT is deliberately absent — App Hosting's runtime service
   # account (apphosting-runtime@..., read-only) provides ambient credentials; see
   # frontend/src/lib/firebase/admin.ts.
 
-  # NEXT_PUBLIC_TURNSTILE_SITE_KEY is deliberately absent — Turnstile is deferred
-  # (see docs/plan/09-deploy-cicd-implementation.md Part C). The contact form and its
-  # server-side check both have a documented skip when this and the matching
-  # TURNSTILE_SECRET_KEY are unset. Add both later and redeploy the frontend and contact function.
+  # Required before launch: the contact function fails closed in production without its
+  # TURNSTILE_SECRET_KEY, so the form drops every message until this public site key is
+  # set and the matching secret has a version. See docs/RUNBOOK.md (Contact form keys).
+  # - variable: NEXT_PUBLIC_TURNSTILE_SITE_KEY
+  #   value: "<site key from the Cloudflare Turnstile dashboard>"
+  #   availability: [BUILD, RUNTIME]

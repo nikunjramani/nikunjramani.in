@@ -9,6 +9,7 @@ import { useFeedback } from "@/components/admin/ui-feedback";
 import type { AdminSchemaEntry } from "@/generated/admin-schemas";
 import { ApiError } from "@/lib/api/client";
 import { getSingleton, patchSingleton, putSingleton } from "@/lib/api/content";
+import { toMergePatch } from "@/lib/merge-patch";
 
 /** profile and site-config: one fixed document, no list/create/delete/reorder — just the
  * form, loaded and saved directly against shared/crud.py's singleton_id="main" routes.
@@ -51,12 +52,11 @@ export function SingletonScreen<T extends z.ZodTypeAny>({
   }, [entry.apiDomain]);
 
   async function handleSubmit(values: z.infer<T>) {
-    if (exists) {
-      await patchSingleton(entry.apiDomain, values as Record<string, unknown>);
-    } else {
-      await putSingleton(entry.apiDomain, values);
-      setExists(true);
-    }
+    const saved = exists
+      ? await patchSingleton<Data>(entry.apiDomain, toMergePatch(data ?? {}, values as Data))
+      : await putSingleton<Data>(entry.apiDomain, values);
+    setData(saved.data);
+    setExists(true);
     toast(`${title} saved.`);
   }
 

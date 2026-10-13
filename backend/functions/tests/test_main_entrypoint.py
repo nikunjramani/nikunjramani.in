@@ -35,14 +35,14 @@ def test_every_trigger_and_scheduled_module_is_reachable_from_main() -> None:
     """Every src/<domain>/triggers.py or scheduled.py that defines a function must have a
     corresponding line in main.py — otherwise it exists in the repo but never deploys."""
     backend_root = BACKEND_ROOT
-    main_source = (backend_root / "main.py").read_text()
+    main_source = (backend_root / "main.py").read_text(encoding="utf-8")
 
     trigger_files = list((backend_root / "src").glob("*/triggers.py")) + list(
         (backend_root / "src").glob("*/scheduled.py")
     )
     missing: list[str] = []
     for path in trigger_files:
-        tree = ast.parse(path.read_text())
+        tree = ast.parse(path.read_text(encoding="utf-8"))
         for node in ast.walk(tree):
             if not isinstance(node, ast.FunctionDef):
                 continue
@@ -93,12 +93,15 @@ for name in main.__all__:
     expected_sa = 'functions-runtime@nikunjramani-in.iam.gserviceaccount.com'
     assert endpoint.serviceAccountEmail == expected_sa, name
     assert endpoint.maxInstances == (2 if name in {'api_media', 'on_media_uploaded'} else 3), name
-for name in ['api_projects', 'api_skills', 'api_experience', 'api_education',
-             'api_certifications', 'api_posts', 'api_profile', 'api_settings']:
-    secrets = getattr(main, name).__firebase_endpoint__.secretEnvironmentVariables
-    assert {'key': 'REVALIDATE_TOKEN'} in secrets, name
-secrets = main.on_contact_created.__firebase_endpoint__.secretEnvironmentVariables
-assert {'key': 'CONTACT_EMAIL_TO'} in secrets
+def secret_keys(name):
+    bound = getattr(main, name).__firebase_endpoint__.secretEnvironmentVariables or []
+    return {s['key'] for s in bound}
+expected = {
+    'api_contact': {'TURNSTILE_SECRET_KEY'},
+    'on_contact_created': {'CONTACT_EMAIL_TO', 'RESEND_API_KEY'},
+}
+for name in main.__all__:
+    assert secret_keys(name) == expected.get(name, set()), (name, secret_keys(name))
 """
     env = {k: v for k, v in os.environ.items() if k != "FUNCTION_TARGET"}
     subprocess.run([sys.executable, "-c", code], cwd=BACKEND_ROOT, env=env, check=True)

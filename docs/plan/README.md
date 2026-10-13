@@ -17,7 +17,7 @@ The plan lives here, split by topic and phase. Start with the
 | 05 | [CI/CD](./05-cicd.md) | Workflows, Workload Identity Federation, branch protection |
 | 06 | [Content Checklist](./06-content-checklist.md) | **What you actually need to write** |
 | 07 | [Domain Setup](./07-domain-setup.md) | GoDaddy → Firebase DNS, step by step |
-| — | [ADRs](../adr/README.md) | Architecture decision records — fourteen and counting |
+| — | [ADRs](../adr/README.md) | Architecture decision records — sixteen and counting |
 
 ## Phases — work these in order
 

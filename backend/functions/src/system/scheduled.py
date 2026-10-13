@@ -13,45 +13,25 @@ from datetime import UTC, datetime
 
 from firebase_functions import scheduler_fn
 
+from shared.core.collections import BACKED_UP_COLLECTIONS
 from shared.core.config import get_settings
-from shared.core.firebase import get_db
 from shared.core.logging import get_logger
-from shared.core.timestamps import from_firestore
 from shared.services.storage import StorageService
+from src.system.repository import BackupRepository
 
 log = get_logger(__name__)
-
-# Every collection backed by a schema in architecture/schemas, plus the two internal ones
-# that aren't (audit_log has no visibility/order and isn't user content, but losing the
-# audit trail in a disaster is still a real loss).
-_COLLECTIONS = [
-    "profile",
-    "projects",
-    "skills",
-    "experience",
-    "education",
-    "certifications",
-    "posts",
-    "site_config",
-    "contact_messages",
-    "media_assets",
-    "audit_log",
-]
 
 
 def export_all_collections() -> dict[str, int]:
     """The actual export logic, separated from the trigger decorator so it's callable
     directly from a test or a one-off manual run without going through the scheduler."""
-    db = get_db()
+    backups = BackupRepository()
     storage = StorageService()
     timestamp = datetime.now(UTC).strftime("%Y-%m-%dT%H-%M-%S")
     counts: dict[str, int] = {}
 
-    for collection in _COLLECTIONS:
-        docs = [
-            {"id": snap.id, "data": from_firestore(snap.to_dict() or {})}
-            for snap in db.collection(collection).stream()
-        ]
+    for collection in BACKED_UP_COLLECTIONS:
+        docs = backups.dump(collection)
         counts[collection] = len(docs)
         path = f"{timestamp}/{collection}.json"
         storage.upload_bytes(

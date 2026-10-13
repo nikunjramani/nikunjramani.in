@@ -57,7 +57,7 @@ def mark_message_read(
     claims: AdminClaims,
     service: Annotated[MessageService, Depends(get_messages_service)],
 ) -> dict[str, object]:
-    record = service.mark_read(doc_id)
+    record = service.mark_read(doc_id, claims)
     return {"id": record.id, "data": record.data}
 
 
@@ -67,7 +67,7 @@ def mark_message_replied(
     claims: AdminClaims,
     service: Annotated[MessageService, Depends(get_messages_service)],
 ) -> dict[str, object]:
-    record = service.mark_replied(doc_id)
+    record = service.mark_replied(doc_id, claims)
     return {"id": record.id, "data": record.data}
 
 
@@ -77,5 +77,5 @@ def delete_message(
     claims: AdminClaims,
     service: Annotated[MessageService, Depends(get_messages_service)],
 ) -> Response:
-    service.delete(doc_id)
+    service.delete(doc_id, claims)
     return Response(status_code=204)

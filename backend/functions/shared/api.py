@@ -54,7 +54,7 @@ def make_app(router: APIRouter, name: str) -> FastAPI:
         CORSMiddleware,
         allow_origins=settings.cors_origins,
         allow_credentials=True,
-        allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
+        allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
         allow_headers=["Authorization", "Content-Type"],
     )
 
@@ -77,8 +77,13 @@ def make_function(
     memory: options.MemoryOption = options.MemoryOption.MB_256,
     max_instances: int = 3,
     region: str = DEFAULT_REGION,
+    secrets: list[str] | None = None,
 ) -> Any:
-    """Wrap a FastAPI router as one deployed Firebase HTTP function named ``name``."""
+    """Wrap a FastAPI router as one deployed Firebase HTTP function named ``name``.
+
+    ``secrets`` are Secret Manager names bound as env vars. Each must have at least one
+    version before deploy, or `firebase deploy` refuses the function.
+    """
     wsgi = wsgi_from_asgi(make_app(router, name))
 
     def _handler(req: FlaskRequest) -> FlaskResponse:
@@ -94,18 +99,6 @@ def make_function(
         memory=memory,
         max_instances=max_instances,
         region=region,
-        secrets=["REVALIDATE_TOKEN"]
-        if name
-        in {
-            "api_projects",
-            "api_skills",
-            "api_experience",
-            "api_education",
-            "api_certifications",
-            "api_posts",
-            "api_profile",
-            "api_settings",
-        }
-        else [],
+        secrets=secrets or [],
     )
     return decorate(_handler)

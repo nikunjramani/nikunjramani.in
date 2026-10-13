@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from io import BytesIO
 
 import blurhash
-from PIL import Image
+from PIL import Image, ImageOps
 
 THUMBNAIL_MAX_DIMENSION = 400
 WEBP_QUALITY = 82
@@ -36,7 +36,10 @@ def process_image(raw: bytes) -> ProcessedImage:
     should not silently produce a broken asset.
     """
     with Image.open(BytesIO(raw)) as opened:
-        decoded = opened.convert("RGB") if opened.mode not in ("RGB", "RGBA") else opened.copy()
+        # Phone cameras store the sensor's orientation in EXIF rather than rotating the
+        # pixels; apply it, since the re-encoded WebP carries no EXIF to rotate it later.
+        upright = ImageOps.exif_transpose(opened)
+        decoded = upright.convert("RGB") if upright.mode not in ("RGB", "RGBA") else upright.copy()
         width, height = decoded.size
 
         original_webp = _to_webp(decoded)

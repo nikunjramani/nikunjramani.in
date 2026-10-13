@@ -10,11 +10,12 @@ import { ProjectDetailView } from "@/components/site/project/project-detail-view
 import { ADMIN_SCHEMAS } from "@/generated/admin-schemas";
 import { ProjectSchema } from "@/generated/schemas.zod";
 import type { Project } from "@/generated/types";
+import { ApiError } from "@/lib/api/client";
+import { createRecord, getRecord, patchRecord } from "@/lib/api/content";
+import { toMergePatch } from "@/lib/merge-patch";
 import type { z } from "zod";
 
 type ProjectFormValues = z.infer<typeof ProjectSchema>;
-import { ApiError } from "@/lib/api/client";
-import { createRecord, getRecord, patchRecord } from "@/lib/api/content";
 
 const entry = ADMIN_SCHEMAS.Project;
 const EMPTY_PROJECT = {} as Project;
@@ -48,7 +49,13 @@ export default function AdminProjectEditorPage() {
   }
 
   async function handleUpdate(values: ProjectFormValues) {
-    await patchRecord(entry.apiDomain, params.id, values as unknown as Record<string, unknown>);
+    if (!record) return;
+    const patch = toMergePatch(
+      record as unknown as Record<string, unknown>,
+      values as unknown as Record<string, unknown>,
+    );
+    const saved = await patchRecord<Project>(entry.apiDomain, params.id, patch);
+    setRecord(saved.data); // the next save diffs against what the server now holds
     toast("Project saved.");
   }
 

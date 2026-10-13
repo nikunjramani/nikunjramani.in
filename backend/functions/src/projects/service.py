@@ -5,8 +5,6 @@ from __future__ import annotations
 
 from google.cloud.firestore_v1 import Client
 
-from shared.core.errors import NotFoundError
-from shared.core.timestamps import now_iso
 from shared.crud import ContentService
 from shared.generated import Project
 from shared.repositories.base import Record
@@ -18,9 +16,7 @@ class ProjectService(ContentService[Project]):
         super().__init__(repo if repo is not None else ProjectRepository(db))
 
     def duplicate(self, doc_id: str, claims: dict[str, object]) -> Record[Project]:
-        original = self.repo.get(doc_id)
-        if original is None:
-            raise NotFoundError(f"Project '{doc_id}' not found.")
+        original = self.repo.require(doc_id)
 
         new_slug = self._unique_copy_slug(original.data.slug)
         data = original.data.model_dump(mode="json", exclude_none=True)
@@ -43,4 +39,4 @@ class ProjectService(ContentService[Project]):
         return candidate
 
 
-__all__ = ["ProjectService", "now_iso"]
+__all__ = ["ProjectService"]

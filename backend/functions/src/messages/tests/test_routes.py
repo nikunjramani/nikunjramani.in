@@ -47,4 +47,4 @@ def test_mark_read_then_replied() -> None:
         response = _client(fake).patch("/m1/read", headers={"Authorization": "Bearer x"})
     assert response.status_code == 200
     assert response.json()["data"]["read"] is True
-    fake.mark_read.assert_called_once_with("m1")
+    fake.mark_read.assert_called_once_with("m1", ADMIN)

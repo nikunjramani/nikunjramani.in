@@ -10,19 +10,17 @@ from google.cloud.firestore_v1 import Client
 
 from shared.api import make_app
 from shared.crud import ContentService
-from src.posts.repository import PostRepository
-from src.posts.routes import get_posts_service
-from src.posts.routes import router as posts_router
+from src.posts import domain as posts
 
 ADMIN = {"uid": "admin-1", "email": "admin@example.com", "admin": True}
 
 
 def test_post_id_is_its_slug(db: Client, clean_collection: str) -> None:
-    class ScratchRepo(PostRepository):
+    class ScratchRepo(posts.repository):  # type: ignore[name-defined, misc]
         collection = clean_collection
 
-    app = make_app(posts_router, "test")
-    app.dependency_overrides[get_posts_service] = lambda: ContentService(ScratchRepo(db))
+    app = make_app(posts.router, "test")
+    app.dependency_overrides[posts.get_service] = lambda: ContentService(ScratchRepo(db))
     client = TestClient(app)
 
     with patch("shared.core.security.auth.verify_id_token", return_value=ADMIN):

@@ -48,3 +48,14 @@ def test_small_image_thumbnail_is_not_upscaled() -> None:
 def test_garbage_bytes_raise_rather_than_silently_produce_a_broken_asset() -> None:
     with pytest.raises(UnidentifiedImageError):
         process_image(b"this is not an image")
+
+
+def test_exif_orientation_is_applied_before_encoding() -> None:
+    """A phone photo stored landscape with an EXIF "rotate 90" tag must come out portrait —
+    the WebP output has no EXIF left to rotate it at display time."""
+    buf = BytesIO()
+    exif = Image.Exif()
+    exif[0x0112] = 6  # Orientation: rotate 90° clockwise to display
+    Image.new("RGB", (400, 200), (10, 20, 30)).save(buf, format="JPEG", exif=exif)
+    result = process_image(buf.getvalue())
+    assert (result.width, result.height) == (200, 400)

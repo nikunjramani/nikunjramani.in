@@ -12,7 +12,6 @@ locals {
     "RESEND_API_KEY",
     "CONTACT_EMAIL_TO",
     "TURNSTILE_SECRET_KEY",
-    "REVALIDATE_TOKEN",
   ]
 }
 

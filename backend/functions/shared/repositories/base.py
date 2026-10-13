@@ -23,7 +23,7 @@ from pydantic import BaseModel
 
 from shared.core.errors import NotFoundError
 from shared.core.firebase import get_db
-from shared.core.timestamps import from_firestore, now_iso, to_firestore
+from shared.core.timestamps import from_firestore, to_firestore
 
 
 @dataclass(frozen=True, slots=True)
@@ -37,12 +37,6 @@ class Record[T]:
 
     id: str
     data: T
-
-
-@dataclass(frozen=True, slots=True)
-class Page[T]:
-    items: list[Record[T]]
-    next_cursor: str | None
 
 
 class BaseRepository[T: BaseModel]:
@@ -73,48 +67,6 @@ class BaseRepository[T: BaseModel]:
         if record is None:
             raise NotFoundError(f"{self.model.__name__} '{doc_id}' not found.")
         return record
-
-    def find_one(self, field: str, value: object) -> Record[T] | None:
-        """A single-field equality lookup — e.g. a project by slug when the caller does
-        not already know the document id (slug-keyed collections use slug AS the id, so
-        this is mostly for the exceptional case)."""
-        query = self._ref.where(filter=FieldFilter(field, "==", value)).limit(1)
-        for snap in query.stream():
-            return self._to_record(snap.id, snap.to_dict() or {})
-        return None
-
-    def list_page(
-        self,
-        *,
-        visibility: str | None = None,
-        order_by: str = "order",
-        limit: int = 50,
-        cursor: str | None = None,
-    ) -> Page[T]:
-        """Paginated list, filtered by visibility and sorted by `order_by`.
-
-        The cursor is the last-seen document id from a previous page. Firestore's
-        start_after needs a document *snapshot*, so the cursor id is re-fetched — one
-        extra read per page, which is a fine trade for cursors that stay valid even if
-        earlier documents are deleted (an offset-based cursor would not).
-        """
-        query: Query | CollectionReference = self._ref
-        if visibility is not None:
-            query = query.where(filter=FieldFilter("visibility", "==", visibility))
-        query = query.order_by(order_by).order_by("__name__").limit(limit + 1)
-
-        if cursor:
-            cursor_snap = self._ref.document(cursor).get()
-            if cursor_snap.exists:
-                query = query.start_after(cursor_snap)
-
-        snaps = list(query.stream())
-        has_more = len(snaps) > limit
-        snaps = snaps[:limit]
-
-        items = [self._to_record(s.id, s.to_dict() or {}) for s in snaps]
-        next_cursor = snaps[-1].id if has_more and snaps else None
-        return Page(items=items, next_cursor=next_cursor)
 
     def list_all(
         self, *, visibility: str | None = None, order_by: str | None = "order"
@@ -182,4 +134,4 @@ class BaseRepository[T: BaseModel]:
         return Record(id=doc_id, data=self.model.model_validate(converted))
 
 
-__all__ = ["BaseRepository", "Page", "Record", "now_iso"]
+__all__ = ["BaseRepository", "Record"]

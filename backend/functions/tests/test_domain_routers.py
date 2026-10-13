@@ -1,9 +1,9 @@
 """Router wiring, proven once per domain shape rather than trusting that
-`make_crud_router` was wired correctly into all eight call sites by eye.
+`content_domain` wired every domain correctly by eye.
 
 Business logic (merge semantics, publish transitions, audit trail) is already covered in
 shared/tests/test_crud.py — this file checks the thing that's specific to each domain's
-routes.py: that AdminClaims actually gates every route, and that create/list/get/patch/
+router: that AdminClaims actually gates every route, and that create/list/get/patch/
 delete round-trip through the real HTTP layer, not just the service layer directly.
 
 Lives in backend/functions/tests/, not shared/tests/: it imports from several src.<domain>
@@ -25,18 +25,10 @@ from google.cloud.firestore_v1 import Client
 from shared.api import make_app
 from shared.crud import ContentService
 from shared.repositories.base import BaseRepository
-from src.certifications.repository import CertificationRepository
-from src.certifications.routes import get_certifications_service
-from src.certifications.routes import router as certifications_router
-from src.education.repository import EducationRepository
-from src.education.routes import get_education_service
-from src.education.routes import router as education_router
-from src.experience.repository import ExperienceRepository
-from src.experience.routes import get_experience_service
-from src.experience.routes import router as experience_router
-from src.skills.repository import SkillRepository
-from src.skills.routes import get_skills_service
-from src.skills.routes import router as skills_router
+from src.certifications import domain as certifications
+from src.education import domain as education
+from src.experience import domain as experience
+from src.skills import domain as skills
 
 ADMIN = {"uid": "admin-1", "email": "admin@example.com", "admin": True}
 NOT_ADMIN = {"uid": "user-1", "email": "user@example.com", "admin": False}
@@ -44,16 +36,16 @@ NOT_ADMIN = {"uid": "user-1", "email": "user@example.com", "admin": False}
 # (router, service getter, repository class, a minimal valid payload)
 COLLECTION_DOMAINS = [
     pytest.param(
-        skills_router,
-        get_skills_service,
-        SkillRepository,
+        skills.router,
+        skills.get_service,
+        skills.repository,
         {"name": "Python", "category": "backend", "level": 4, "visibility": "public"},
         id="skills",
     ),
     pytest.param(
-        experience_router,
-        get_experience_service,
-        ExperienceRepository,
+        experience.router,
+        experience.get_service,
+        experience.repository,
         {
             "company": "Acme",
             "role": "Engineer",
@@ -64,16 +56,16 @@ COLLECTION_DOMAINS = [
         id="experience",
     ),
     pytest.param(
-        education_router,
-        get_education_service,
-        EducationRepository,
+        education.router,
+        education.get_service,
+        education.repository,
         {"institution": "State U", "qualification": "BSc", "visibility": "public"},
         id="education",
     ),
     pytest.param(
-        certifications_router,
-        get_certifications_service,
-        CertificationRepository,
+        certifications.router,
+        certifications.get_service,
+        certifications.repository,
         {"title": "AWS SA", "issuer": "AWS", "visibility": "public"},
         id="certifications",
     ),

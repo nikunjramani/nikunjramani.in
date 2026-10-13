@@ -44,8 +44,9 @@ def get_contact_service() -> ContactService:
 
 
 def _client_ip(request: Request) -> str:
-    # Cloud Functions sit behind a load balancer; the real client address is the first
-    # hop in X-Forwarded-For, not request.client.host (which would be the balancer).
+    # The first X-Forwarded-For hop is the visitor as seen through the Next.js rewrite and
+    # Google's front end — but a client can send its own X-Forwarded-For, so this only
+    # backs a best-effort per-IP limit. Turnstile, checked first, is the real gate.
     forwarded = request.headers.get("x-forwarded-for")
     if forwarded:
         return forwarded.split(",")[0].strip()

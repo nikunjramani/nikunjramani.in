@@ -13,7 +13,6 @@ from shared.services.storage import (
     ALLOWED_CONTENT_TYPES,
     MAX_UPLOAD_BYTES,
     StorageService,
-    new_object_path,
     validate_upload,
 )
 
@@ -42,19 +41,6 @@ def test_validate_upload_rejects_oversized_files() -> None:
 
 def test_validate_upload_accepts_the_exact_limit() -> None:
     validate_upload("image/webp", MAX_UPLOAD_BYTES)
-
-
-# ── new_object_path ──────────────────────────────────────────────────
-
-
-def test_object_path_uses_the_right_extension_and_lives_under_public() -> None:
-    path = new_object_path("image/png")
-    assert path.startswith("public/media/")
-    assert path.endswith("/original.png")
-
-
-def test_object_path_is_unique_per_call() -> None:
-    assert new_object_path("image/webp") != new_object_path("image/webp")
 
 
 # ── signed URL generation ────────────────────────────────────────────

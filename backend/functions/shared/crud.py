@@ -1,11 +1,11 @@
 """Generic admin CRUD for content collections.
 
 Eight domains (projects, skills, experience, education, certifications, posts, profile,
-settings) are the same operation over a different model. The *business rules* — audit trail,
-publish transitions, validation on merge, cache busting — are identical, so they live here
-once. Each domain still owns its repository, its function, its tests and whatever is
-genuinely specific to it (a project's slug uniqueness, say): ADR 0011 splits domains for
-deploy isolation, not to forbid sharing infrastructure through shared/.
+settings) are the same operation over a different model. The business rules — audit trail,
+publish transitions, validation on merge — are identical, so they live here once.
+`content_domain()` builds a whole standard domain (repository, service, router) from a
+model; only a domain with genuinely specific logic (projects' duplicate) hand-writes its
+own service. ADR 0011 splits domains for deploy isolation, ADR 0012/0016 share the rest.
 
 Deliberately no `from __future__ import annotations` in this module: FastAPI resolves route
 parameter annotations at import time, and the router factory below annotates parameters
@@ -13,18 +13,18 @@ with the runtime `model` variable.
 """
 
 from collections.abc import Callable
-from typing import Annotated, Any
+from dataclasses import dataclass
+from typing import Annotated, Any, cast
 
 from fastapi import APIRouter, Depends, Query, Response
 from pydantic import BaseModel
 from pydantic import ValidationError as PydanticValidationError
 
-from shared.core.errors import ConflictError, NotFoundError, ValidationError
+from shared.core.errors import ConflictError, ValidationError
 from shared.core.security import AdminClaims
 from shared.core.timestamps import now_iso
 from shared.repositories.base import BaseRepository, Record
 from shared.services.audit import Action, AuditService
-from shared.services.revalidate import revalidate_tags
 
 
 class RecordOut[T](BaseModel):
@@ -63,11 +63,9 @@ class ContentService[T: BaseModel]:
         repo: BaseRepository[T],
         *,
         audit: AuditService | None = None,
-        bust_cache: Callable[..., None] = revalidate_tags,
     ) -> None:
         self.repo = repo
         self._audit = audit if audit is not None else AuditService(repo.db)
-        self._bust_cache = bust_cache
         self._has_audit_field = "audit" in repo.model.model_fields
 
     # ── reads ────────────────────────────────────────────────────────
@@ -94,25 +92,28 @@ class ContentService[T: BaseModel]:
         return record
 
     def upsert(self, doc_id: str, payload: T, claims: dict[str, object]) -> Record[T]:
-        """Full replace at a known id — used by singletons (profile/main, site_config/main)."""
+        """Full replace at a known id — used by singletons (profile/main, site_config/main).
+
+        createdAt/createdBy and the first publishedAt survive the replace; only a
+        draft-to-public transition stamps a new publishedAt, exactly as patch() does.
+        """
         uid, email = actor_of(claims)
-        before = self.repo.get(doc_id)
+        existing = self.repo.get(doc_id)
+        before = self._dump(existing) if existing else None
         data = payload.model_dump(mode="json", exclude_none=True)
+        action: Action = "create"
+        if before is not None:
+            action = _transition(before.get("visibility"), data.get("visibility"))
         if self._has_audit_field:
-            previous = self._dump(before).get("audit", {}) if before else {}
-            data["audit"] = self._stamp_new(data, uid) | {
-                k: v for k, v in previous.items() if k in ("createdAt", "createdBy")
-            }
-            data["audit"]["updatedAt"] = now_iso()
+            previous = dict(before.get("audit") or {}) if before else {}
+            stamp = self._stamp_new(data, uid)
+            audit = {**stamp, **{k: v for k, v in previous.items() if k != "updatedAt"}}
+            audit["updatedAt"] = stamp["updatedAt"]
+            if data.get("visibility") == "public" and not audit.get("publishedAt"):
+                audit["publishedAt"] = stamp["updatedAt"]
+            data["audit"] = audit
         record = self.repo.save(doc_id, self._validate(data))
-        self._record(
-            "update" if before else "create",
-            doc_id,
-            uid,
-            email,
-            before=self._dump(before) if before else None,
-            after=self._dump(record),
-        )
+        self._record(action, doc_id, uid, email, before=before, after=self._dump(record))
         return record
 
     def patch(self, doc_id: str, patch: dict[str, Any], claims: dict[str, object]) -> Record[T]:
@@ -125,16 +126,12 @@ class ContentService[T: BaseModel]:
             raise ValidationError("slug is immutable: it is the document id and the public URL.")
 
         merged = deep_merge(before, patch)
-        action: Action = "update"
+        action = _transition(before.get("visibility"), merged.get("visibility"))
         if self._has_audit_field:
             audit = dict(merged.get("audit") or {})
             audit["updatedAt"] = now_iso()
-            became_public = merged.get("visibility") == "public" != before.get("visibility")
-            if became_public:
+            if action == "publish":
                 audit["publishedAt"] = audit.get("publishedAt") or now_iso()
-                action = "publish"
-            elif before.get("visibility") == "public" and merged.get("visibility") != "public":
-                action = "unpublish"
             merged["audit"] = audit
 
         record = self.repo.save(doc_id, self._validate(merged))
@@ -198,7 +195,14 @@ class ContentService[T: BaseModel]:
             before=before,
             after=after,
         )
-        self._bust_cache(self.repo.collection)
+
+
+def _transition(before_visibility: object, after_visibility: object) -> Action:
+    if after_visibility == "public" and before_visibility != "public":
+        return "publish"
+    if before_visibility == "public" and after_visibility != "public":
+        return "unpublish"
+    return "update"
 
 
 def _out(record: Record[Any]) -> dict[str, Any]:
@@ -288,10 +292,48 @@ def make_crud_router[T: BaseModel](
     return router
 
 
+@dataclass(frozen=True, slots=True)
+class ContentDomain[T: BaseModel]:
+    """Everything a standard content domain is: its repository class (tests subclass it to
+    point at a scratch collection), the service factory routes depend on (tests override
+    it), and the router `make_function` deploys."""
+
+    repository: type[BaseRepository[T]]
+    get_service: Callable[[], ContentService[T]]
+    router: APIRouter
+
+
+def content_domain[T: BaseModel](
+    model: type[T],
+    *,
+    collection: str,
+    slugged: bool = False,
+    singleton_id: str | None = None,
+) -> ContentDomain[T]:
+    """Build a standard content domain from its model — see ADR 0016."""
+    repository = cast(
+        "type[BaseRepository[T]]",
+        type(
+            f"{model.__name__}Repository",
+            (BaseRepository,),
+            {"collection": collection, "model": model},
+        ),
+    )
+
+    def get_service() -> ContentService[T]:
+        return ContentService(repository())
+
+    router = make_crud_router(
+        model=model, get_service=get_service, slugged=slugged, singleton_id=singleton_id
+    )
+    return ContentDomain(repository=repository, get_service=get_service, router=router)
+
+
 __all__ = [
+    "ContentDomain",
     "ContentService",
-    "NotFoundError",
     "RecordOut",
+    "content_domain",
     "deep_merge",
     "make_crud_router",
 ]

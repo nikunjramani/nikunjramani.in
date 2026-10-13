@@ -5,9 +5,10 @@ both reading count=4 against a limit of 5 must not both be allowed through. `Inc
 alone cannot express "reject if this would exceed the limit", only "add N unconditionally".
 
 Windows are identified by their start timestamp, so no separate cleanup step is needed to
-begin a new window — but old window documents do accumulate. `_rate_limits` is on the TTL
-policy in infra/terraform/modules/firestore alongside contact_messages, so Firestore
-deletes them on its own schedule; nothing here depends on that for correctness.
+begin a new window — but old window documents do accumulate. `_rate_limits.expiresAt` has a
+TTL policy (infra/terraform/modules/firestore, and the fieldOverrides that
+architecture/codegen/gen-indexes.py writes), so Firestore deletes them on its own schedule;
+nothing here depends on that for correctness.
 """
 
 from __future__ import annotations

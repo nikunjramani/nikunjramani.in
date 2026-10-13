@@ -1,18 +1,22 @@
 from __future__ import annotations
 
+from unittest.mock import MagicMock
+
 from google.cloud.firestore_v1 import Client
 
 from shared.core.timestamps import now_iso
 from shared.generated import ContactMessage
 from src.messages.repository import MessageRepository
-from src.messages.service import MessageService
+from src.messages.service import MessageService, csv_safe
+
+CLAIMS = {"uid": "admin-1", "email": "admin@example.com", "admin": True}
 
 
 def _service(db: Client, collection_name: str) -> MessageService:
     class ScratchRepo(MessageRepository):
         collection = collection_name
 
-    return MessageService(repo=ScratchRepo(db))
+    return MessageService(repo=ScratchRepo(db), audit=MagicMock())
 
 
 def _message(name: str, **overrides: object) -> ContactMessage:
@@ -49,10 +53,10 @@ def test_mark_read_and_replied(db: Client, clean_collection: str) -> None:
     record = svc.repo.create(_message("A"))
     assert record.data.read is False
 
-    read = svc.mark_read(record.id)
+    read = svc.mark_read(record.id, CLAIMS)
     assert read.data.read is True
 
-    replied = svc.mark_replied(record.id)
+    replied = svc.mark_replied(record.id, CLAIMS)
     assert replied.data.replied is True
     assert replied.data.read is True  # the earlier update wasn't clobbered
 
@@ -71,7 +75,7 @@ def test_export_csv_includes_a_header_and_every_message(db: Client, clean_collec
 def test_delete_removes_the_message(db: Client, clean_collection: str) -> None:
     svc = _service(db, clean_collection)
     record = svc.repo.create(_message("A"))
-    svc.delete(record.id)
+    svc.delete(record.id, CLAIMS)
     assert svc.repo.get(record.id) is None
 
 
@@ -90,3 +94,11 @@ def test_a_message_missing_created_at_still_appears(db: Client, clean_collection
     names = [m.data.name for m in svc.list_all()]
     assert "Undated" in names
     assert "Dated" in names
+
+
+def test_csv_cells_cannot_become_spreadsheet_formulas() -> None:
+    formula = '=HYPERLINK("https://evil.example","click")'
+    assert csv_safe(formula) == "'" + formula
+    assert csv_safe("+1 555") == "'+1 555"
+    assert csv_safe("plain text") == "plain text"
+    assert csv_safe(0.5) == 0.5

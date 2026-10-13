@@ -1,7 +1,7 @@
 """Integration tests for BaseRepository against the real Firestore emulator.
 
 These exist because mypy proves the types line up, not that Firestore actually behaves
-the way the code assumes — pagination cursors, transactional rate limiting and reorder
+the way the code assumes — visibility filters, ordering and reorder
 batches are exactly the kind of thing that type-checks cleanly and is wrong at runtime.
 """
 
@@ -82,15 +82,6 @@ def test_delete_requires_existing(db: Client, clean_collection: str) -> None:
         pass
 
 
-def test_find_one_by_field(db: Client, clean_collection: str) -> None:
-    repo = SkillRepository(db)
-    repo.create(_skill("TypeScript"))
-    found = repo.find_one("name", "TypeScript")
-    assert found is not None
-    assert found.data.name == "TypeScript"
-    assert repo.find_one("name", "Nonexistent") is None
-
-
 def test_list_all_filters_by_visibility_and_sorts_by_order(
     db: Client, clean_collection: str
 ) -> None:
@@ -105,24 +96,6 @@ def test_list_all_filters_by_visibility_and_sorts_by_order(
 
     everything = repo.list_all()
     assert len(everything) == 4
-
-
-def test_list_page_paginates_with_a_stable_cursor(db: Client, clean_collection: str) -> None:
-    repo = SkillRepository(db)
-    for i in range(5):
-        repo.create(_skill(f"skill-{i}", order=i))
-
-    page1 = repo.list_page(limit=2)
-    assert len(page1.items) == 2
-    assert page1.next_cursor is not None
-    assert [r.data.name for r in page1.items] == ["skill-0", "skill-1"]
-
-    page2 = repo.list_page(limit=2, cursor=page1.next_cursor)
-    assert [r.data.name for r in page2.items] == ["skill-2", "skill-3"]
-
-    page3 = repo.list_page(limit=2, cursor=page2.next_cursor)
-    assert [r.data.name for r in page3.items] == ["skill-4"]
-    assert page3.next_cursor is None
 
 
 def test_reorder_reassigns_order_in_one_batch(db: Client, clean_collection: str) -> None:

@@ -29,7 +29,7 @@ def test_upload_url_returns_camel_case_wire_format() -> None:
     fake = MagicMock()
     fake.request_upload.return_value = {
         "uploadUrl": "https://x",
-        "path": "public/media/1/original.webp",
+        "path": "uploads/media/1/original.webp",
     }
     with patch("shared.core.security.auth.verify_id_token", return_value=ADMIN):
         response = _client(fake).post(
@@ -38,7 +38,7 @@ def test_upload_url_returns_camel_case_wire_format() -> None:
             headers={"Authorization": "Bearer x"},
         )
     assert response.status_code == 200
-    assert response.json() == {"uploadUrl": "https://x", "path": "public/media/1/original.webp"}
+    assert response.json() == {"uploadUrl": "https://x", "path": "uploads/media/1/original.webp"}
 
 
 def test_list_requires_admin() -> None:
@@ -68,4 +68,16 @@ def test_update_metadata_returns_the_updated_record() -> None:
         )
     assert response.status_code == 200
     assert response.json()["data"]["alt"] == "A photo"
-    fake.update_metadata.assert_called_once_with("some-id", alt="A photo", caption=None)
+    fake.update_metadata.assert_called_once_with(
+        "some-id", alt="A photo", caption=None, claims=ADMIN
+    )
+
+
+def test_usage_lists_referencing_documents() -> None:
+    fake = MagicMock()
+    fake.usage.return_value = ["projects/acme"]
+    assert _client(fake).get("/some-id/usage").status_code == 401
+    with patch("shared.core.security.auth.verify_id_token", return_value=ADMIN):
+        response = _client(fake).get("/some-id/usage", headers={"Authorization": "Bearer x"})
+    assert response.status_code == 200
+    assert response.json() == {"references": ["projects/acme"]}

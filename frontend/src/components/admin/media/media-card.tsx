@@ -6,7 +6,7 @@ import { useState } from "react";
 
 import { useFeedback } from "@/components/admin/ui-feedback";
 import { ApiError } from "@/lib/api/client";
-import { deleteMedia, updateMediaMetadata, type MediaRecordOut } from "@/lib/api/media";
+import { deleteMedia, getMediaUsage, updateMediaMetadata, type MediaRecordOut } from "@/lib/api/media";
 import { cn } from "@/lib/utils";
 
 export function MediaCard({
@@ -50,11 +50,18 @@ export function MediaCard({
   }
 
   async function handleDelete() {
-    const usage = record.data.usageCount ?? 0;
-    const message =
-      usage > 0
-        ? `This image is referenced in ${usage} place${usage === 1 ? "" : "s"}. Deleting it will break those references. Delete anyway?`
-        : "Delete this image? This can't be undone.";
+    let references: string[];
+    try {
+      references = await getMediaUsage(record.id);
+    } catch (err) {
+      toast(err instanceof ApiError ? err.message : "Couldn't check where this image is used.", "error");
+      return;
+    }
+    const message = references.length
+      ? `This image is still used by ${references.join(", ")}. Deleting it will break ${
+          references.length === 1 ? "that page" : "those pages"
+        }. Delete anyway?`
+      : "Delete this image? This can't be undone.";
     const ok = await confirm(message);
     if (!ok) return;
     try {

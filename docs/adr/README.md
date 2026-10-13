@@ -16,7 +16,7 @@ reader would reasonably ask "why on earth is it like this?", belongs here.
 | [0002](./0002-firebase-functions-instead-of-cloud-run.md) | Firebase Functions instead of standalone Cloud Run | ✅ Accepted | 2026-09-06 |
 | [0003](./0003-fastapi-in-a-single-function.md) | FastAPI inside a single HTTP function | 🔄 Superseded by 0011 | 2026-09-06 |
 | [0004](./0004-python-313.md) | Python 3.13 as the runtime | ✅ Accepted | 2026-09-06 |
-| [0005](./0005-reads-bypass-python.md) | Reads bypass Python entirely | ✅ Accepted | 2026-09-06 |
+| [0005](./0005-reads-bypass-python.md) | Reads bypass Python entirely | ✅ Accepted — caching consequence superseded by 0014 | 2026-09-06 |
 | [0006](./0006-json-schema-source-of-truth.md) | JSON Schema as the single source of truth | ✅ Accepted | 2026-09-06 |
 | [0007](./0007-deny-all-client-writes.md) | All client writes denied, including admin | ✅ Accepted | 2026-09-06 |
 | [0008](./0008-projects-drop-start-end-dates.md) | Projects drop start/end dates | ✅ Accepted | 2026-09-06 |
@@ -25,7 +25,9 @@ reader would reasonably ask "why on earth is it like this?", belongs here.
 | [0011](./0011-domain-wise-separate-functions.md) | Domain-wise separate Firebase Functions | ✅ Accepted | 2026-09-06 |
 | [0012](./0012-generic-content-crud-in-shared.md) | Generic content CRUD lives in shared/, not per domain | ✅ Accepted | 2026-09-22 |
 | [0013](./0013-local-source-app-hosting.md) | Deploy App Hosting from local source | ✅ Accepted | 2026-10-10 |
-| [0014](./0014-request-scoped-content-cache.md) | Render mutable content per request | ✅ Accepted | 2026-10-10 |
+| [0014](./0014-request-scoped-content-cache.md) | Render mutable content per request | ✅ Accepted — webhook clause superseded by 0015 | 2026-10-10 |
+| [0015](./0015-remove-revalidation-webhook.md) | Remove the cache-revalidation webhook | ✅ Accepted | 2026-10-13 |
+| [0016](./0016-content-domains-from-a-factory.md) | Build standard content domains from their model; keep Firestore in repositories | ✅ Accepted | 2026-10-13 |
 
 **Status:** 🟡 Proposed · ✅ Accepted · ⛔ Rejected · 🔄 Superseded · ⚠️ Deprecated
 

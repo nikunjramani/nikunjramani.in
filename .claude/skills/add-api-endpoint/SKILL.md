@@ -34,6 +34,17 @@ src/<domain>/
 └── tests/
 ```
 
+A **standard content domain** (a schema with `visibility`/`order` and nothing but CRUD) has no
+routes/service/repository files at all — its `__init__.py` builds all three from the model with
+`shared.crud.content_domain` ([ADR 0016](../../../docs/adr/0016-content-domains-from-a-factory.md)):
+
+```python
+domain = content_domain(Skill, collection="skills")          # slugged=True / singleton_id="main"
+api_skills = make_function(domain.router, name="api_skills")
+```
+
+Hand-write the files only for genuinely domain-specific logic (`ProjectService.duplicate`).
+
 If the endpoint fits an existing domain, add it there. A **new** domain needs six extra steps —
 see "Adding a new domain" below.
 
@@ -59,6 +70,9 @@ router  →  service  →  repository  →  Firestore
 | **Repository** | Every Firestore SDK call | Contain business rules |
 
 A router that imports the Firestore SDK is a bug. So is a service that raises `HTTPException`.
+Shared Firestore access lives in `shared/repositories/` (`base.py`, `audit.py`,
+`references.py`). The one exception is `shared/core/rate_limit.py`, whose check-and-increment
+is a single transaction (ADR 0016).
 
 ## Steps
 
@@ -73,11 +87,11 @@ class ProjectRepository(BaseRepository[Project]):
     model = Project
 ```
 
-`BaseRepository` gives CRUD, pagination and ordering. Add a method only for a genuinely
-collection-specific query.
+`BaseRepository` gives CRUD, visibility filtering, ordering and reorder. Add a method only for
+a genuinely collection-specific query.
 
 **3 · Service** — `src/<domain>/service.py`. Business rules go here: slug uniqueness, publish
-transitions, reorder transactions, cache busting, rate limiting. Raise domain exceptions from
+transitions, reorder transactions, rate limiting. Raise domain exceptions from
 `shared/core/errors.py`, never HTTP ones. Rate limiting is a plain call inside the service, not a
 router dependency — `RateLimiter(db).check(scope=..., identifier=..., limit=..., window_seconds=...)`
 raises `RateLimitedError`, which the service either lets propagate (a real 429) or catches to
@@ -106,10 +120,8 @@ tested (`shared/core/tests/test_security.py`), so a new domain does not re-prove
 **5 · Audit** — every admin mutation calls `AuditService(db).record(actor=..., action=...,
 collection=..., doc_id=..., before=..., after=...)`. Handle it in the service, not the router.
 
-**6 · Cache** — a write that changes public content needs to bust the Next.js ISR cache, or edits
-don't appear until the window expires. If the domain uses `shared/crud.py`'s `ContentService`, this
-is already handled — every create/patch/delete calls `revalidate_tags` inline (ADR 0012). Only
-hand-written services need to call `shared.services.revalidate.revalidate_tags` themselves.
+**6 · No cache step.** Public pages render per request (ADR 0014), so a write is visible on
+the next page load. There is no webhook to call (ADR 0015).
 
 **7 · Tests** — required, all four:
 
@@ -151,18 +163,20 @@ the code. `tests/test_main_entrypoint.py` catches this too.
 
 ## Adding a new domain
 
-Six steps. Each of 3–5 fails silently rather than loudly — the domain works fine when invoked
+Six steps. Each of 3–6 fails silently rather than loudly — the domain works fine when invoked
 directly (during local dev, tests, or manifest discovery), and only misbehaves in the one
-situation those steps actually govern, which makes them easy to skip and forget.
+situation those steps actually govern. `tests/test_domain_registry.py` cross-checks all four
+lists against `src/`, so `make test` names whichever one was missed.
 
 1. `mkdir src/<domain>/` with the shape above
-2. Export the function:
+2. Export the function — with its Secret Manager bindings, if it reads any (each secret must
+   have a version before deploy, or `firebase deploy` rejects the function):
    ```python
    # src/<domain>/__init__.py
    from shared.api import make_function
    from .routes import router
 
-   api_<domain> = make_function(router, name="api_<domain>")
+   api_<domain> = make_function(router, name="api_<domain>", secrets=["SOME_SECRET"])
    ```
 3. **Add it to `main.py`'s `FUNCTION_TARGET`-conditional imports** — not a flat import. Without
    this, every domain's FastAPI app gets constructed on every OTHER domain's cold start, which
@@ -181,7 +195,9 @@ situation those steps actually govern, which makes them easy to skip and forget.
    (Firebase Hosting rewrites don't apply — App Hosting is a different product and has none.)
 5. **Add it to the import-linter contract** in `backend/functions/pyproject.toml`, or the domain's
    boundaries are silently unchecked.
-6. Add the domain to the Terraform `domains` map with its memory and `max_instances`.
+6. Add `api_<domain>` to `http_functions` in `infra/terraform/modules/functions/main.tf`, or
+   Cloud Run answers 403 to every request. Memory and `max_instances` belong in
+   `make_function(...)`, not Terraform.
 
 ## Verify
 

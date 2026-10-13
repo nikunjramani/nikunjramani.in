@@ -55,7 +55,7 @@ def test_export_handles_an_empty_collection(db: Client, monkeypatch) -> None:  #
     # whatever real seed data the rest of the collections carry — that guarantee, not
     # "projects happens to have nothing in it today", is what this test is actually for.
     scratch_collection = "scratch_empty_for_export_test"
-    monkeypatch.setattr(scheduled_module, "_COLLECTIONS", [scratch_collection])
+    monkeypatch.setattr(scheduled_module, "BACKED_UP_COLLECTIONS", [scratch_collection])
 
     fake_storage = MagicMock()
     with patch("src.system.scheduled.StorageService", return_value=fake_storage):

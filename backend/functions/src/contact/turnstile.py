@@ -18,13 +18,13 @@ _VERIFY_URL = "https://challenges.cloudflare.com/turnstile/v0/siteverify"
 
 def verify_turnstile(token: str, *, remote_ip: str) -> bool:
     """True if the token is valid. Fails closed on any error — a Turnstile outage should
-    not turn into an open contact form."""
+    not turn into an open contact form. Only local development may run without a key."""
     settings = get_settings()
 
     if not settings.turnstile_secret_key:
-        # Local development without a site configured yet (Turnstile setup is a Phase 3
-        # prerequisite not yet done — billing/external services are deferred). Passing
-        # here lets the rest of the flow be exercised against the emulator today.
+        if settings.is_production:
+            log.error("TURNSTILE_SECRET_KEY not set in production — rejecting submission")
+            return False
         log.warning("TURNSTILE_SECRET_KEY not set — skipping verification (dev mode)")
         return True
 

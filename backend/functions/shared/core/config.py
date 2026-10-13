@@ -17,12 +17,9 @@ class Settings(BaseSettings):
     contact_email_to: str = ""
     mail_from: str = "no-reply@nikunjramani.in"
     turnstile_secret_key: str = ""
-    revalidate_token: str = ""
 
     allowed_origins: str = "http://localhost:3000"
 
-    # Where the Next.js app listens for cache-bust calls after a content write.
-    revalidate_url: str = "http://localhost:3000/api/revalidate"
     storage_bucket: str = "nikunjramani-in-media"
     backups_bucket: str = "nikunjramani-in-backups"
     site_url: str = "https://nikunjramani.in"
