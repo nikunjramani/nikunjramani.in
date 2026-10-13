@@ -21,10 +21,15 @@ automate it you're encoding something known to work.
 
 ### 7.1 · Workload Identity Federation
 
-- [ ] WIF pool + provider in Terraform, scoped to this repo
-- [ ] Deploy service account with least privilege
+- [ ] WIF pool + provider in Terraform, scoped to this repo — **one per environment**: the
+      `iam` module creates its own pool, provider and `github-deploy` SA inside whichever
+      project it's applied to, so `envs/prod/` and `envs/staging/` ([§7.3](#73--staging-project--preview-deploys--adr-0018))
+      each get a fully separate, least-privilege identity — never one shared across both
+- [ ] Deploy service account with least privilege (×2 — prod and staging)
 - [ ] Repo-level bindings
-- [ ] Verified: a workflow authenticates with **no** JSON key
+- [ ] A GitHub **environment** per target (`production`, `staging`) holding that env's
+      `WIF_PROVIDER` / `DEPLOY_SA` vars, so a workflow step can't point at the wrong project
+- [ ] Verified: a workflow authenticates with **no** JSON key, for both environments
 - [ ] Any existing SA keys deleted
 
 ### 7.2 · PR checks
@@ -79,9 +84,10 @@ there.
 
 - [ ] `preview.yml` — on every PR push: resolve the changed function domains (same path-filter
       logic `deploy.yml` uses), deploy those domains + App Hosting to the **staging** project
+- [ ] Gated on the §7.2 check jobs passing (`needs:` in the workflow) — staging never ends up
+      running code that fails lint, type-check or tests either
 - [ ] Preview URL commented on the PR, explicitly labelled staging (so it's never mistaken for prod)
-- [ ] WIF binding extended (or a second staging-scoped service account) so the deploy SA can act on
-      the staging project too — least privilege either way
+- [ ] Authenticates with staging's own WIF provider/SA from §7.1 — never the prod one
 - [ ] Optional: `staging.nikunjramani.in` DNS, `noindex`d so it's never crawled
 
 **Not needed:** channel cleanup on merge — there's one shared slot, not one per PR, so there's
