@@ -30,7 +30,7 @@ export function ContactForm() {
   async function onSubmit(values: FormValues) {
     setStatus("submitting");
     try {
-      const res = await fetch("/api/v1/contact/contact", {
+      const res = await fetch("/api/v1/inbox/contact", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         // honeypot stays empty for real users — a bot filling every field trips it server-side.

@@ -1,27 +1,26 @@
 "use client";
 
-/** Media doesn't fit shared/crud.py's generic shape — creation happens inside the
- * on_media_uploaded Storage trigger, not a POST body (see src/media/service.py) — so it
- * gets its own small client instead of the generic CRUD helpers in lib/api/content.ts. */
-import { apiFetch } from "@/lib/api/client";
+/** The backend's media domain: `upload` issues signed URLs, `library` lists, edits and
+ * deletes assets (which the processing trigger creates — never a POST body). */
+import { ApiError, apiFetch } from "@/lib/api/client";
 import type { RecordOut } from "@/lib/api/content";
 import type { MediaAsset } from "@/generated/types";
 
 export type MediaRecordOut = RecordOut<MediaAsset>;
 
 export function listMedia(): Promise<MediaRecordOut[]> {
-  return apiFetch("/media/");
+  return apiFetch("/media/library/");
 }
 
 export function getMedia(id: string): Promise<MediaRecordOut> {
-  return apiFetch(`/media/${id}`);
+  return apiFetch(`/media/library/${id}`);
 }
 
 export function requestUploadUrl(
   contentType: string,
   sizeBytes: number,
 ): Promise<{ uploadUrl: string; path: string }> {
-  return apiFetch("/media/upload-url", {
+  return apiFetch("/media/upload/", {
     method: "POST",
     body: JSON.stringify({ contentType, sizeBytes }),
   });
@@ -32,20 +31,24 @@ export function updateMediaMetadata(
   alt: string,
   caption?: string,
 ): Promise<MediaRecordOut> {
-  return apiFetch(`/media/${id}`, {
+  return apiFetch(`/media/library/${id}`, {
     method: "PATCH",
     body: JSON.stringify({ alt, caption: caption || undefined }),
   });
 }
 
-/** `collection/id` of every content document still pointing at this asset. */
+/** `collection/id` of every content document still pointing at this asset. A read across
+ * the content collections, so Next.js answers it, not the media domain (ADR 0017) — a
+ * same-origin route authorised by the admin session cookie, not the Python API. */
 export async function getMediaUsage(id: string): Promise<string[]> {
-  const { references } = await apiFetch<{ references: string[] }>(`/media/${id}/usage`);
+  const res = await fetch(`/api/admin/media/${encodeURIComponent(id)}/usage`);
+  if (!res.ok) throw new ApiError(res.status, "Couldn't check where this image is used.");
+  const { references } = (await res.json()) as { references: string[] };
   return references;
 }
 
 export function deleteMedia(id: string): Promise<void> {
-  return apiFetch(`/media/${id}`, { method: "DELETE" });
+  return apiFetch(`/media/library/${id}`, { method: "DELETE" });
 }
 
 /** The signed URL itself is a plain Storage PUT, not a Python API call — no Bearer token,

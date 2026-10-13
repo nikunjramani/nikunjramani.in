@@ -13,25 +13,30 @@ import type { NextConfig } from "next";
  * without special handling. The cost is one extra hop through the (already warm) Next
  * server. Fine for a write-only path used by one admin and the occasional contact form.
  *
- * Every new domain needs a line here — see ADR 0011.
+ * Each backend subdomain is its own function: /api/v1/<domain>/<sub>/... is rewritten to
+ * api_<domain>_<sub> (ADR 0017). Every new subdomain needs a line in ROUTES —
+ * backend/functions/tests/test_domain_registry.py fails until it has one.
  */
 const FUNCTIONS_BASE =
   process.env.FUNCTIONS_BASE_URL ??
   "http://127.0.0.1:5001/nikunjramani-in/asia-south1";
 
-const DOMAINS = [
-  "system",
-  "contact",
-  "projects",
-  "skills",
-  "experience",
-  "education",
-  "certifications",
-  "posts",
-  "profile",
-  "settings",
-  "media",
-  "messages",
+const ROUTES = [
+  "content/profile",
+  "content/projects",
+  "content/skills",
+  "content/experience",
+  "content/education",
+  "content/certifications",
+  "content/posts",
+  "content/settings",
+  "identity/admins",
+  "inbox/contact",
+  "inbox/messages",
+  "media/upload",
+  "media/library",
+  "ops/health",
+  "ops/audit",
 ] as const;
 
 const nextConfig: NextConfig = {
@@ -45,9 +50,9 @@ const nextConfig: NextConfig = {
   },
 
   async rewrites() {
-    return DOMAINS.map((domain) => ({
-      source: `/api/v1/${domain}/:path*`,
-      destination: `${FUNCTIONS_BASE}/api_${domain}/:path*`,
+    return ROUTES.map((route) => ({
+      source: `/api/v1/${route}/:path*`,
+      destination: `${FUNCTIONS_BASE}/api_${route.replace("/", "_")}/:path*`,
     }));
   },
 
