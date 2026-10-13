@@ -5,13 +5,14 @@ import { useCallback, useEffect, useState } from "react";
 import { useFeedback } from "@/components/admin/ui-feedback";
 import { ApiError } from "@/lib/api/client";
 import { deleteRecord, listRecords, reorderRecords, type RecordOut } from "@/lib/api/content";
+import type { ContentApiDomain } from "@/generated/api-routes";
 
 /**
  * A content collection as an admin list screen sees it: load, optimistic delete with
  * rollback, and reorder within a (possibly grouped or filtered) slice of the list.
  * Shared by the generic collection screen and the projects screen.
  */
-export function useRecordList<T>(apiDomain: string) {
+export function useRecordList<T>(apiDomain: ContentApiDomain) {
   const [records, setRecords] = useState<RecordOut<T>[] | null>(null);
   const [error, setError] = useState(false);
   const { toast, confirm } = useFeedback();

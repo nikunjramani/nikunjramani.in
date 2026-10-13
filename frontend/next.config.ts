@@ -1,5 +1,7 @@
 import type { NextConfig } from "next";
 
+import { BACKEND_ROUTES } from "./src/generated/api-routes";
+
 /**
  * API routing.
  *
@@ -14,30 +16,12 @@ import type { NextConfig } from "next";
  * server. Fine for a write-only path used by one admin and the occasional contact form.
  *
  * Each backend subdomain is its own function: /api/v1/<domain>/<sub>/... is rewritten to
- * api_<domain>_<sub> (ADR 0017). Every new subdomain needs a line in ROUTES —
- * backend/functions/tests/test_domain_registry.py fails until it has one.
+ * api_<domain>_<sub> (ADR 0017). Routes are generated from architecture/api-routes.json;
+ * backend/functions/tests/test_domain_registry.py keeps that manifest aligned with deploys.
  */
 const FUNCTIONS_BASE =
   process.env.FUNCTIONS_BASE_URL ??
   "http://127.0.0.1:5001/nikunjramani-in/asia-south1";
-
-const ROUTES = [
-  "content/profile",
-  "content/projects",
-  "content/skills",
-  "content/experience",
-  "content/education",
-  "content/certifications",
-  "content/posts",
-  "content/settings",
-  "identity/admins",
-  "inbox/contact",
-  "inbox/messages",
-  "media/upload",
-  "media/library",
-  "ops/health",
-  "ops/audit",
-] as const;
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
@@ -50,7 +34,7 @@ const nextConfig: NextConfig = {
   },
 
   async rewrites() {
-    return ROUTES.map((route) => ({
+    return BACKEND_ROUTES.map((route) => ({
       source: `/api/v1/${route}/:path*`,
       destination: `${FUNCTIONS_BASE}/api_${route.replace("/", "_")}/:path*`,
     }));

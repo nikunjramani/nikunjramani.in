@@ -8,7 +8,7 @@ import type { JSONSchema7 } from "json-schema";
 export interface AdminSchemaEntry {
   title: string;
   collection: string;
-  apiDomain: string;
+  apiDomain: import("./api-routes").ContentApiDomain;
   slugged: boolean;
   singleton: boolean;
   required: string[];

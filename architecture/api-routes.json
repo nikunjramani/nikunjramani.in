@@ -1,0 +1,27 @@
+{
+  "content": {
+    "profile": "content/profile",
+    "projects": "content/projects",
+    "skills": "content/skills",
+    "experience": "content/experience",
+    "education": "content/education",
+    "certifications": "content/certifications",
+    "posts": "content/posts",
+    "settings": "content/settings"
+  },
+  "identity": {
+    "admins": "identity/admins"
+  },
+  "inbox": {
+    "contact": "inbox/contact",
+    "messages": "inbox/messages"
+  },
+  "media": {
+    "upload": "media/upload",
+    "library": "media/library"
+  },
+  "ops": {
+    "health": "ops/health",
+    "audit": "ops/audit"
+  }
+}

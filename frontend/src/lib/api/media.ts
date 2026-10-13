@@ -5,22 +5,25 @@
 import { ApiError, apiFetch } from "@/lib/api/client";
 import type { RecordOut } from "@/lib/api/content";
 import type { MediaAsset } from "@/generated/types";
+import { API_ROUTES } from "@/generated/api-routes";
+
+const LIBRARY = `/${API_ROUTES.media.library}`;
 
 export type MediaRecordOut = RecordOut<MediaAsset>;
 
 export function listMedia(): Promise<MediaRecordOut[]> {
-  return apiFetch("/media/library/");
+  return apiFetch(`${LIBRARY}/`);
 }
 
 export function getMedia(id: string): Promise<MediaRecordOut> {
-  return apiFetch(`/media/library/${id}`);
+  return apiFetch(`${LIBRARY}/${encodeURIComponent(id)}`);
 }
 
 export function requestUploadUrl(
   contentType: string,
   sizeBytes: number,
 ): Promise<{ uploadUrl: string; path: string }> {
-  return apiFetch("/media/upload/", {
+  return apiFetch(`/${API_ROUTES.media.upload}/`, {
     method: "POST",
     body: JSON.stringify({ contentType, sizeBytes }),
   });
@@ -31,7 +34,7 @@ export function updateMediaMetadata(
   alt: string,
   caption?: string,
 ): Promise<MediaRecordOut> {
-  return apiFetch(`/media/library/${id}`, {
+  return apiFetch(`${LIBRARY}/${encodeURIComponent(id)}`, {
     method: "PATCH",
     body: JSON.stringify({ alt, caption: caption || undefined }),
   });
@@ -48,7 +51,7 @@ export async function getMediaUsage(id: string): Promise<string[]> {
 }
 
 export function deleteMedia(id: string): Promise<void> {
-  return apiFetch(`/media/library/${id}`, { method: "DELETE" });
+  return apiFetch(`${LIBRARY}/${encodeURIComponent(id)}`, { method: "DELETE" });
 }
 
 /** The signed URL itself is a plain Storage PUT, not a Python API call — no Bearer token,
