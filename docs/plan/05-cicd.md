@@ -19,7 +19,7 @@ Designed now so the repo structure supports it; wired up in
 | `ci-frontend.yml` | PR touching `frontend/` | `tsc --noEmit`, eslint, vitest, `next build`, Lighthouse CI budget |
 | `ci-backend.yml` | PR touching `backend/` | ruff, `mypy --strict`, pytest against the Firebase emulator |
 | `infra-plan.yml` | PR touching `infra/` | `terraform fmt -check`, `validate`, `plan` → posted as a PR comment |
-| `preview.yml` | PR | App Hosting preview channel + a comment with the URL |
+| `preview.yml` | PR | Deploy changed function domains + App Hosting to the **staging project** ([ADR 0018](../adr/0018-staging-project-for-pr-previews.md)), comment the staging URL |
 | `deploy.yml` | push to `main` | `terraform apply` → deploy rules → deploy **changed** function domains → App Hosting auto-builds |
 | `backup-verify.yml` | nightly cron | Confirm the Firestore export actually landed |
 
