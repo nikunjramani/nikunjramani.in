@@ -1,26 +1,22 @@
 "use client";
 
 import { ChevronDown, ChevronUp, Pencil, Plus, Trash2 } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
 import type { z } from "zod";
 
 import { RecordFormDialog } from "@/components/admin/record-form-dialog";
 import { useFeedback } from "@/components/admin/ui-feedback";
+import { useRecordList } from "@/components/admin/use-record-list";
 import type { AdminSchemaEntry } from "@/generated/admin-schemas";
-import {
-  createRecord,
-  deleteRecord,
-  listRecords,
-  patchRecord,
-  reorderRecords,
-  type RecordOut,
-} from "@/lib/api/content";
-import { ApiError } from "@/lib/api/client";
+import { createRecord, patchRecord, type RecordOut } from "@/lib/api/content";
+import { toMergePatch } from "@/lib/merge-patch";
+
+type Data = Record<string, unknown>;
 
 const TITLE_KEYS = ["title", "name", "company", "institution"];
 const SUBTITLE_KEYS = ["headline", "role", "qualification", "issuer", "summary"];
 
-function pick(data: Record<string, unknown>, keys: string[]): string | undefined {
+function pick(data: Data, keys: string[]): string | undefined {
   for (const key of keys) {
     const value = data[key];
     if (typeof value === "string" && value) return value;
@@ -40,23 +36,11 @@ export function ContentCollectionScreen<T extends z.ZodTypeAny>({
   /** Optional field to group rows under a heading (e.g. Skill's "category"). */
   groupBy?: string;
 }) {
-  type Data = Record<string, unknown>;
-  const [records, setRecords] = useState<RecordOut<Data>[] | null>(null);
-  const [error, setError] = useState(false);
+  const { records, error, load, remove, move } = useRecordList<Data>(entry.apiDomain);
   const [dialog, setDialog] = useState<{ mode: "create" } | { mode: "edit"; record: RecordOut<Data> } | null>(
     null,
   );
-  const { toast, confirm } = useFeedback();
-
-  const load = useCallback(() => {
-    listRecords<Data>(entry.apiDomain)
-      .then(setRecords)
-      .catch(() => setError(true));
-  }, [entry.apiDomain]);
-
-  useEffect(() => {
-    load();
-  }, [load]);
+  const { toast } = useFeedback();
 
   async function handleCreate(values: z.infer<T>) {
     await createRecord(entry.apiDomain, values);
@@ -65,48 +49,11 @@ export function ContentCollectionScreen<T extends z.ZodTypeAny>({
     load();
   }
 
-  async function handleEdit(id: string, values: z.infer<T>) {
-    await patchRecord(entry.apiDomain, id, values as Record<string, unknown>);
+  async function handleEdit(record: RecordOut<Data>, values: z.infer<T>) {
+    await patchRecord(entry.apiDomain, record.id, toMergePatch(record.data, values as Data));
     toast(`${title} updated.`);
     setDialog(null);
     load();
-  }
-
-  async function handleDelete(record: RecordOut<Data>) {
-    const name = pick(record.data, TITLE_KEYS) ?? record.id;
-    const ok = await confirm(`Delete "${name}"? This can't be undone.`);
-    if (!ok) return;
-    const previous = records;
-    setRecords((r) => r?.filter((x) => x.id !== record.id) ?? null);
-    try {
-      await deleteRecord(entry.apiDomain, record.id);
-      toast(`${title} deleted.`);
-    } catch (err) {
-      setRecords(previous ?? null); // rollback — an optimistic delete that silently "worked" would look like a bug
-      toast(err instanceof ApiError ? err.message : "Delete failed.", "error");
-    }
-  }
-
-  async function move(index: number, direction: -1 | 1, group: RecordOut<Data>[]) {
-    const target = index + direction;
-    if (target < 0 || target >= group.length) return;
-    const reordered = [...group];
-    [reordered[index], reordered[target]] = [reordered[target], reordered[index]];
-    const ids = reordered.map((r) => r.id);
-    const previous = records;
-    setRecords((all) => (all ? mergeOrdered(all, reordered) : all));
-    try {
-      await reorderRecords(entry.apiDomain, ids);
-    } catch (err) {
-      setRecords(previous ?? null);
-      toast(err instanceof ApiError ? err.message : "Reorder failed.", "error");
-    }
-  }
-
-  function mergeOrdered(all: RecordOut<Data>[], reorderedGroup: RecordOut<Data>[]): RecordOut<Data>[] {
-    const byId = new Map(reorderedGroup.map((r) => [r.id, r]));
-    let cursor = 0;
-    return all.map((r) => (byId.has(r.id) ? reorderedGroup[cursor++] : r));
   }
 
   if (error) {
@@ -158,7 +105,7 @@ export function ContentCollectionScreen<T extends z.ZodTypeAny>({
                     <div className="flex items-center gap-1">
                       <button
                         type="button"
-                        onClick={() => move(index, -1, group)}
+                        onClick={() => move(group, index, -1)}
                         disabled={index === 0}
                         aria-label="Move up"
                         className="rounded p-1.5 text-muted-foreground hover:text-foreground disabled:opacity-30"
@@ -167,7 +114,7 @@ export function ContentCollectionScreen<T extends z.ZodTypeAny>({
                       </button>
                       <button
                         type="button"
-                        onClick={() => move(index, 1, group)}
+                        onClick={() => move(group, index, 1)}
                         disabled={index === group.length - 1}
                         aria-label="Move down"
                         className="rounded p-1.5 text-muted-foreground hover:text-foreground disabled:opacity-30"
@@ -184,7 +131,7 @@ export function ContentCollectionScreen<T extends z.ZodTypeAny>({
                       </button>
                       <button
                         type="button"
-                        onClick={() => handleDelete(record)}
+                        onClick={() => remove(record, pick(record.data, TITLE_KEYS) ?? record.id)}
                         aria-label="Delete"
                         className="rounded p-1.5 text-muted-foreground hover:text-red-500"
                       >
@@ -217,7 +164,7 @@ export function ContentCollectionScreen<T extends z.ZodTypeAny>({
           entry={entry}
           zodSchema={zodSchema}
           defaultValues={dialog.record.data as z.infer<T>}
-          onSubmit={(values) => handleEdit(dialog.record.id, values)}
+          onSubmit={(values) => handleEdit(dialog.record, values)}
           onClose={() => setDialog(null)}
           autosaveKey={`${entry.apiDomain}:${dialog.record.id}`}
           auditTrail={{ collection: entry.collection, docId: dialog.record.id }}
@@ -227,7 +174,7 @@ export function ContentCollectionScreen<T extends z.ZodTypeAny>({
   );
 }
 
-function groupRecords<Data extends Record<string, unknown>>(
+function groupRecords(
   records: RecordOut<Data>[] | null,
   groupBy: string | undefined,
 ): [string | null, RecordOut<Data>[]][] {

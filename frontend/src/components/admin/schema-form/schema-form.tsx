@@ -9,6 +9,7 @@ import type { z } from "zod";
 import { FieldRenderer } from "./field-renderer";
 import { formFieldEntries } from "./resolve-field";
 import type { AdminSchemaEntry } from "@/generated/admin-schemas";
+import { timeAgo } from "@/lib/format";
 
 const DRAFT_PREFIX = "admin-draft:";
 
@@ -42,13 +43,6 @@ function clearDraft(key: string): void {
   } catch {
     // see saveDraft
   }
-}
-
-function timeAgo(ms: number): string {
-  const minutes = Math.round((Date.now() - ms) / 60_000);
-  if (minutes < 1) return "just now";
-  if (minutes < 60) return `${minutes}m ago`;
-  return `${Math.round(minutes / 60)}h ago`;
 }
 
 /**

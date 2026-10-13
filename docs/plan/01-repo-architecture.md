@@ -76,7 +76,7 @@ frontend/
 │   │   │   ├── page.tsx                   # dashboard
 │   │   │   ├── projects/[id]/page.tsx
 │   │   │   └── skills/ experience/ media/ messages/ settings/
-│   │   ├── api/revalidate/route.ts        # on-demand ISR bust
+│   │   ├── api/admin/session/route.ts     # session cookie exchange
 │   │   ├── sitemap.ts  robots.ts  opengraph-image.tsx  # sitemap reads Firestore
 │   │   │                                                # directly — ADR 0005
 │   │   └── layout.tsx  not-found.tsx
@@ -140,7 +140,7 @@ backend/functions/
     ├── media/                     # + on_media_uploaded → WebP, thumbs, blurhash
     ├── messages/
     ├── settings/
-    └── system/                    # health · resume (302 + download counter) · nightly_backup
+    └── system/                    # health · audit-log · nightly_backup
                                     # NOT sitemap — that's a pure content read, owned by
                                     # Next.js's app/sitemap.ts per ADR 0005
 ```

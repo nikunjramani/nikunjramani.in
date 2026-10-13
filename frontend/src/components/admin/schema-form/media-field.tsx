@@ -5,31 +5,24 @@ import Image from "next/image";
 import { useEffect, useState } from "react";
 import { useFormContext } from "react-hook-form";
 
-import { listRecords } from "@/lib/api/content";
+import { listMedia } from "@/lib/api/media";
+import type { MediaAsset } from "@/generated/types";
 import { cn } from "@/lib/utils";
+import { emptyToUndefined, fieldLabel, inputClass } from "./field-utils";
 import type { ResolvedField } from "./resolve-field";
-
-interface MediaAssetLike {
-  url: string;
-  alt?: string;
-  thumbnailUrl?: string;
-}
-
-const inputClass =
-  "rounded-md border border-border bg-background px-3 py-2 text-sm focus-visible:outline-2 focus-visible:outline-accent";
 
 function LibraryDialog({
   onPick,
   onClose,
 }: {
-  onPick: (asset: MediaAssetLike) => void;
+  onPick: (asset: MediaAsset) => void;
   onClose: () => void;
 }) {
-  const [assets, setAssets] = useState<{ id: string; data: MediaAssetLike }[] | null>(null);
+  const [assets, setAssets] = useState<{ id: string; data: MediaAsset }[] | null>(null);
   const [error, setError] = useState(false);
 
   useEffect(() => {
-    listRecords<MediaAssetLike>("media")
+    listMedia()
       .then(setAssets)
       .catch(() => setError(true));
   }, []);
@@ -87,15 +80,6 @@ function LibraryDialog({
   );
 }
 
-function fieldLabel(key: string): string {
-  const spaced = key.replace(/([A-Z])/g, " $1");
-  return spaced.charAt(0).toUpperCase() + spaced.slice(1);
-}
-
-function emptyToUndefined(value: string): string | undefined {
-  return value === "" ? undefined : value;
-}
-
 /**
  * Collapsed by default when optional and unset, same as ObjectSection — and for the same
  * underlying reason, not just visual consistency: react-hook-form registers whatever
@@ -114,10 +98,23 @@ export function MediaField({ name, field }: { name: string; field: ResolvedField
   const url: string | undefined = watch(`${name}.url`);
   const alt: string | undefined = watch(`${name}.alt`);
 
-  function pick(asset: MediaAssetLike) {
+  // The library entry's dimensions and blurhash travel with it: the public site reserves
+  // space from width/height and shows the blurhash while the image loads.
+  function pick(asset: MediaAsset) {
     setValue(`${name}.url`, asset.url, { shouldDirty: true });
     setValue(`${name}.alt`, asset.alt ?? "", { shouldDirty: true });
+    for (const key of ["width", "height", "blurhash"] as const) {
+      setValue(`${name}.${key}`, asset[key] ?? undefined, { shouldDirty: true });
+    }
     setLibraryOpen(false);
+  }
+
+  // A hand-typed URL is a different image: dimensions/blurhash from an earlier pick no
+  // longer describe it.
+  function clearDerived() {
+    for (const key of ["width", "height", "blurhash"]) {
+      setValue(`${name}.${key}`, undefined, { shouldDirty: true });
+    }
   }
 
   function clear() {
@@ -174,7 +171,7 @@ export function MediaField({ name, field }: { name: string; field: ResolvedField
             type="url"
             placeholder="Image URL"
             className={inputClass}
-            {...register(`${name}.url`, { setValueAs: emptyToUndefined })}
+            {...register(`${name}.url`, { setValueAs: emptyToUndefined, onChange: clearDerived })}
           />
           <input
             type="text"

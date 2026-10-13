@@ -2,36 +2,26 @@
 
 import { ChevronDown, ChevronUp, Copy, Plus, Trash2 } from "lucide-react";
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 import { useFeedback } from "@/components/admin/ui-feedback";
+import { useRecordList } from "@/components/admin/use-record-list";
 import { ADMIN_SCHEMAS } from "@/generated/admin-schemas";
 import type { Project } from "@/generated/types";
-import { apiFetch } from "@/lib/api/client";
-import { deleteRecord, listRecords, reorderRecords, type RecordOut } from "@/lib/api/content";
 import { ApiError } from "@/lib/api/client";
+import type { RecordOut } from "@/lib/api/content";
+import { duplicateProject } from "@/lib/api/projects";
 
 const entry = ADMIN_SCHEMAS.Project;
 const KIND_OPTIONS = (entry.properties.kind.enum ?? []) as string[];
 const VISIBILITY_OPTIONS = (entry.properties.visibility.enum ?? []) as string[];
 
 export default function AdminProjectsPage() {
-  const [records, setRecords] = useState<RecordOut<Project>[] | null>(null);
-  const [error, setError] = useState(false);
+  const { records, error, load, remove, move } = useRecordList<Project>(entry.apiDomain);
   const [search, setSearch] = useState("");
   const [kindFilter, setKindFilter] = useState("");
   const [visibilityFilter, setVisibilityFilter] = useState("");
-  const { toast, confirm } = useFeedback();
-
-  const load = useCallback(() => {
-    listRecords<Project>(entry.apiDomain)
-      .then(setRecords)
-      .catch(() => setError(true));
-  }, []);
-
-  useEffect(() => {
-    load();
-  }, [load]);
+  const { toast } = useFeedback();
 
   const filtered = useMemo(() => {
     if (!records) return [];
@@ -52,7 +42,7 @@ export default function AdminProjectsPage() {
 
   async function handleDuplicate(record: RecordOut<Project>) {
     try {
-      await apiFetch(`/projects/${record.id}/duplicate`, { method: "POST" });
+      await duplicateProject(record.id);
       toast("Project duplicated.");
       load();
     } catch (err) {
@@ -60,34 +50,10 @@ export default function AdminProjectsPage() {
     }
   }
 
-  async function handleDelete(record: RecordOut<Project>) {
-    const ok = await confirm(`Delete "${record.data.title}"? This can't be undone.`);
-    if (!ok) return;
-    const previous = records;
-    setRecords((r) => r?.filter((x) => x.id !== record.id) ?? null);
-    try {
-      await deleteRecord(entry.apiDomain, record.id);
-      toast("Project deleted.");
-    } catch (err) {
-      setRecords(previous ?? null);
-      toast(err instanceof ApiError ? err.message : "Delete failed.", "error");
-    }
-  }
-
-  async function move(index: number, direction: -1 | 1) {
-    if (!records || filtersActive) return; // reordering a filtered view would scramble the real order
-    const target = index + direction;
-    if (target < 0 || target >= records.length) return;
-    const reordered = [...records];
-    [reordered[index], reordered[target]] = [reordered[target], reordered[index]];
-    const previous = records;
-    setRecords(reordered);
-    try {
-      await reorderRecords(entry.apiDomain, reordered.map((r) => r.id));
-    } catch (err) {
-      setRecords(previous);
-      toast(err instanceof ApiError ? err.message : "Reorder failed.", "error");
-    }
+  function moveProject(index: number, direction: -1 | 1) {
+    // Reordering a filtered view would scramble the real order, so it's whole-list only.
+    if (!records || filtersActive) return;
+    void move(records, index, direction);
   }
 
   if (error) {
@@ -162,7 +128,7 @@ export default function AdminProjectsPage() {
                 <div className="flex items-center gap-1">
                   <button
                     type="button"
-                    onClick={() => move(index, -1)}
+                    onClick={() => moveProject(index, -1)}
                     disabled={filtersActive || index === 0}
                     aria-label="Move up"
                     className="rounded p-1.5 text-muted-foreground hover:text-foreground disabled:opacity-30"
@@ -171,7 +137,7 @@ export default function AdminProjectsPage() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => move(index, 1)}
+                    onClick={() => moveProject(index, 1)}
                     disabled={filtersActive || index === records.length - 1}
                     aria-label="Move down"
                     className="rounded p-1.5 text-muted-foreground hover:text-foreground disabled:opacity-30"
@@ -188,7 +154,7 @@ export default function AdminProjectsPage() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => handleDelete(record)}
+                    onClick={() => remove(record, record.data.title)}
                     aria-label="Delete"
                     className="rounded p-1.5 text-muted-foreground hover:text-red-500"
                   >

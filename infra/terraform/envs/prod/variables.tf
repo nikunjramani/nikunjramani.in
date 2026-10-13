@@ -41,7 +41,7 @@ variable "functions_deployed" {
 variable "apphosting_github_connection_id" {
   description = <<-EOT
     Set only after the App Hosting GitHub connection is authorised in the Firebase
-    Console (Part E of docs/plan/09-deploy-cicd-implementation.md). Null uses local-source deployment without a GitHub connection.
+    Console. Null uses local-source deployment without a GitHub connection (ADR 0013).
   EOT
   type        = string
   default     = null
@@ -59,6 +59,12 @@ variable "apphosting_region" {
   default     = "asia-southeast1"
 }
 
+
+variable "apphosting_backend_host" {
+  description = "App Hosting's default hostname for the backend (no scheme)."
+  type        = string
+  default     = "nikunjramani-in--nikunjramani-in.asia-southeast1.hosted.app"
+}
 
 variable "health_host" {
   description = "Public hostname for HTTPS health monitoring; set after the first rollout."

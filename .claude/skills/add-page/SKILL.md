@@ -81,7 +81,8 @@ look intentional, not broken.
   value in the RSC payload
 - **`next/image` with correct `sizes`**, always. Dimensions are in the schema to prevent layout shift
 - **Design tokens only** — no hard-coded hex values or arbitrary spacing
-- **Revalidation** — a page showing editable content needs a cache tag the backend can bust
+- **Fresh reads** — `(site)/` renders per request (`revalidate = 0`, ADR 0014). Don't add
+  `unstable_cache` or `"use cache"` for content: nothing invalidates it any more (ADR 0015)
 
 ## Accessibility — not optional, CI enforces it
 

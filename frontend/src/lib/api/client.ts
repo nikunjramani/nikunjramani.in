@@ -7,8 +7,8 @@
  * practice: there's no separate refresh machinery, just always asking the SDK for a current
  * token right before the request that needs it.
  *
- * Requests go to /api/v1/<domain>/..., which next.config.ts rewrites to the matching Python
- * function — the browser only ever talks to one origin. See ADR 0011.
+ * Requests go to /api/v1/<domain>/<subdomain>/..., which next.config.ts rewrites to that
+ * subdomain's Python function — the browser only ever talks to one origin. See ADR 0017.
  */
 import { auth } from "@/lib/firebase/client";
 

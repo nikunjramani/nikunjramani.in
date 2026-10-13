@@ -43,7 +43,7 @@ def main() -> int:
     ]
 
     for path in roots:
-        s = json.loads(path.read_text())
+        s = json.loads(path.read_text(encoding="utf-8"))
         meta = s.get("x-firestore", {})
         req = ", ".join(f"`{r}`" for r in s.get("required", [])) or "—"
         lines.append(
@@ -52,7 +52,7 @@ def main() -> int:
         )
 
     for path in roots:
-        s = json.loads(path.read_text())
+        s = json.loads(path.read_text(encoding="utf-8"))
         required = set(s.get("required", []))
         lines += ["", f"## {s['title']}", ""]
         if desc := s.get("description"):
@@ -63,7 +63,7 @@ def main() -> int:
             lines.append(f"| `{name}` | {type_of(prop)} | {mark} |")
 
     OUT.parent.mkdir(parents=True, exist_ok=True)
-    OUT.write_text("\n".join(lines) + "\n")
+    OUT.write_text("\n".join(lines) + "\n", encoding="utf-8", newline="\n")
     print(f"  docs        → architecture/docs/ERD.md ({len(roots)} models)")
     return 0
 

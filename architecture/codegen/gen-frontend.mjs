@@ -6,7 +6,7 @@
  * fields, so every schema is dereferenced first. A validator that looks right and accepts
  * anything is worse than no validator.
  */
-import { readdir, writeFile, mkdir } from "node:fs/promises";
+import { readFile, readdir, writeFile, mkdir } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 
@@ -18,10 +18,17 @@ import prettier from "prettier";
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const SCHEMAS = path.resolve(HERE, "../schemas");
 const OUT = path.resolve(HERE, "../../frontend/src/generated");
+const API_ROUTES_SOURCE = path.resolve(HERE, "../api-routes.json");
 
 const BANNER = `/**
  * DO NOT EDIT. Generated from architecture/schemas by \`make gen\`.
  * CI regenerates this and fails on any diff. See ADR 0006.
+ */
+/* eslint-disable */
+`;
+
+const API_ROUTES_BANNER = `/**
+ * DO NOT EDIT. Generated from architecture/api-routes.json by \`make gen\`.
  */
 /* eslint-disable */
 `;
@@ -43,6 +50,24 @@ if (roots.length === 0) {
 }
 
 await mkdir(OUT, { recursive: true });
+
+// ── API route contract ───────────────────────────────────────────────────────
+// One manifest feeds feature clients and Next.js rewrites. Backend registry tests also
+// compare it with deployed Firebase functions, so adding a subdomain cannot leave a stale
+// string hidden in a component or config file.
+const apiRoutes = JSON.parse(await readFile(API_ROUTES_SOURCE, "utf8"));
+await writeFile(
+  path.join(OUT, "api-routes.ts"),
+  await prettier.format(
+    `${API_ROUTES_BANNER}export const API_ROUTES = ${JSON.stringify(apiRoutes)} as const;
+
+export const BACKEND_ROUTES = Object.values(API_ROUTES).flatMap((domain) => Object.values(domain));
+
+export type ContentApiDomain = (typeof API_ROUTES.content)[keyof typeof API_ROUTES.content];
+`,
+    { parser: "typescript" },
+  ),
+);
 
 // ── TypeScript ──────────────────────────────────────────────────────
 // One combined document so shared types (Media, Link, Metric) are emitted once
@@ -110,11 +135,10 @@ console.log(`  zod         → frontend/src/generated/schemas.zod.ts`);
 // each has its own hand-built admin UI instead, for reasons documented in their own
 // service.py files).
 //
-// One exception the schema can't tell you: `x-firestore.collection` is the Firestore
-// collection name, but the site-config domain's API route is mounted as `/settings`, not
-// `/site_config` — see backend/functions/src/settings/. Every other domain's route matches
-// its collection name exactly.
-const API_DOMAIN_OVERRIDES = { site_config: "settings" };
+// Every content collection is a subdomain of the backend's `content` domain (ADR 0017),
+// served at /api/v1/content/<subdomain>. The subdomain matches the collection name except
+// site_config, whose subdomain is `settings` (backend/functions/src/content/settings/).
+const CONTENT_SUBDOMAIN_OVERRIDES = { site_config: "settings" };
 
 const formSchemas = {};
 for (const file of roots) {
@@ -130,7 +154,7 @@ for (const file of roots) {
   formSchemas[pascal(file)] = {
     title: deref.title,
     collection,
-    apiDomain: API_DOMAIN_OVERRIDES[collection] ?? collection,
+    apiDomain: `content/${CONTENT_SUBDOMAIN_OVERRIDES[collection] ?? collection}`,
     // Matches shared/crud.py's make_crud_router(slugged=...): the document id is the
     // payload's own `slug` field rather than an auto-generated one.
     slugged: required.includes("slug"),
@@ -150,7 +174,7 @@ await writeFile(
 export interface AdminSchemaEntry {
   title: string;
   collection: string;
-  apiDomain: string;
+  apiDomain: import("./api-routes").ContentApiDomain;
   slugged: boolean;
   singleton: boolean;
   required: string[];

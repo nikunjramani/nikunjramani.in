@@ -25,7 +25,7 @@ resource "google_monitoring_uptime_check_config" "health" {
   period       = "300s"
 
   http_check {
-    path         = "/api/v1/system/health"
+    path         = "/api/v1/ops/health"
     port         = 443
     use_ssl      = true
     validate_ssl = true

@@ -7,8 +7,7 @@ import { Footer } from "@/components/site/footer";
 import { JsonLd } from "@/components/site/json-ld";
 import { Nav } from "@/components/site/nav";
 import { getProfile } from "@/lib/data/profile";
-
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://nikunjramani.in";
+import { SITE_NAME, SITE_URL } from "@/lib/site";
 
 export default async function SiteLayout({ children }: { children: ReactNode }) {
   const profile = await getProfile();
@@ -20,7 +19,7 @@ export default async function SiteLayout({ children }: { children: ReactNode }) 
           "@context": "https://schema.org",
           "@type": "WebSite",
           url: SITE_URL,
-          name: profile?.name ?? "Nikunj Ramani",
+          name: profile?.name ?? SITE_NAME,
         }}
       />
       {profile ? (

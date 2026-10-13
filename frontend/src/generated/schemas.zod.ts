@@ -64,7 +64,7 @@ export const CertificationSchema = z
     visibility: z
       .enum(["public", "unlisted", "draft"])
       .describe(
-        "public renders on the site. unlisted is reachable by URL but absent from indexes and sitemaps. draft is admin-only.",
+        "public renders on the site. unlisted is reachable by its direct URL (a project page) but absent from listings, sitemaps and search indexes. draft is admin-only.",
       ),
     audit: z
       .object({
@@ -101,7 +101,7 @@ export const ContactMessageSchema = z
       .gte(0)
       .lte(1)
       .describe(
-        "Server-set by the on_contact_created trigger. Flags rather than deletes.",
+        "Server-set by the contact service when the message is stored. Flags rather than deletes.",
       )
       .optional(),
     read: z.boolean().default(false),
@@ -156,7 +156,7 @@ export const EducationSchema = z
     visibility: z
       .enum(["public", "unlisted", "draft"])
       .describe(
-        "public renders on the site. unlisted is reachable by URL but absent from indexes and sitemaps. draft is admin-only.",
+        "public renders on the site. unlisted is reachable by its direct URL (a project page) but absent from listings, sitemaps and search indexes. draft is admin-only.",
       ),
     audit: z
       .object({
@@ -267,7 +267,7 @@ export const ExperienceSchema = z
     visibility: z
       .enum(["public", "unlisted", "draft"])
       .describe(
-        "public renders on the site. unlisted is reachable by URL but absent from indexes and sitemaps. draft is admin-only.",
+        "public renders on the site. unlisted is reachable by its direct URL (a project page) but absent from listings, sitemaps and search indexes. draft is admin-only.",
       ),
     audit: z
       .object({
@@ -302,7 +302,7 @@ export const MediaAssetSchema = z
       .min(1)
       .max(500)
       .describe(
-        "Storage object path, e.g. public/media/<id>/original.webp — needed to delete the underlying object, not just the Firestore record.",
+        "Storage path of the private original upload, e.g. uploads/media/<id>/original.jpg (older assets: public/media/<id>/original.jpg). <id> is also this document's id and locates the public derivatives to delete with it.",
       ),
     alt: z
       .string()
@@ -324,7 +324,7 @@ export const MediaAssetSchema = z
       .int()
       .gte(0)
       .describe(
-        "Best-effort reference count the admin panel can use to warn before deleting an asset still in use elsewhere.",
+        "Deprecated and never maintained — kept so existing documents still validate. The admin panel asks GET /media/{id}/usage instead.",
       )
       .default(0),
     uploadedBy: z.string().max(128).optional(),
@@ -373,7 +373,7 @@ export const PostSchema = z
     visibility: z
       .enum(["public", "unlisted", "draft"])
       .describe(
-        "public renders on the site. unlisted is reachable by URL but absent from indexes and sitemaps. draft is admin-only.",
+        "public renders on the site. unlisted is reachable by its direct URL (a project page) but absent from listings, sitemaps and search indexes. draft is admin-only.",
       ),
     seo: z
       .object({
@@ -506,7 +506,7 @@ export const ProfileSchema = z
     visibility: z
       .enum(["public", "unlisted", "draft"])
       .describe(
-        "public renders on the site. unlisted is reachable by URL but absent from indexes and sitemaps. draft is admin-only.",
+        "public renders on the site. unlisted is reachable by its direct URL (a project page) but absent from listings, sitemaps and search indexes. draft is admin-only.",
       ),
     seo: z
       .object({
@@ -587,7 +587,7 @@ export const ProjectSchema = z
     visibility: z
       .enum(["public", "unlisted", "draft"])
       .describe(
-        "public renders on the site. unlisted is reachable by URL but absent from indexes and sitemaps. draft is admin-only.",
+        "public renders on the site. unlisted is reachable by its direct URL (a project page) but absent from listings, sitemaps and search indexes. draft is admin-only.",
       ),
     timeline: z
       .object({
@@ -752,7 +752,7 @@ export const ProjectSchema = z
       })
       .strict()
       .describe(
-        "When confidential is true the name is stripped server-side in lib/data/ and never reaches the browser. Filtering in a component would still ship it in the RSC payload.",
+        "When confidential is true the name and logo are stripped server-side in lib/data/ and never reach the browser. Filtering in a component would still ship them in the RSC payload.",
       )
       .optional(),
     cover: z
@@ -973,7 +973,7 @@ export const SiteConfigSchema = z
     visibility: z
       .enum(["public", "unlisted", "draft"])
       .describe(
-        "public renders on the site. unlisted is reachable by URL but absent from indexes and sitemaps. draft is admin-only.",
+        "public renders on the site. unlisted is reachable by its direct URL (a project page) but absent from listings, sitemaps and search indexes. draft is admin-only.",
       ),
     audit: z
       .object({
@@ -1033,7 +1033,7 @@ export const SkillSchema = z
     visibility: z
       .enum(["public", "unlisted", "draft"])
       .describe(
-        "public renders on the site. unlisted is reachable by URL but absent from indexes and sitemaps. draft is admin-only.",
+        "public renders on the site. unlisted is reachable by its direct URL (a project page) but absent from listings, sitemaps and search indexes. draft is admin-only.",
       ),
     audit: z
       .object({

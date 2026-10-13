@@ -1,4 +1,4 @@
-import { Mail } from "lucide-react";
+import { Link2, Mail } from "lucide-react";
 import Link from "next/link";
 import type { ComponentType, SVGProps } from "react";
 
@@ -11,9 +11,11 @@ import {
   XIcon,
   YoutubeIcon,
 } from "@/components/site/brand-icons";
+import type { SocialPlatform } from "@/generated/types";
 import { getProfile } from "@/lib/data/profile";
+import { SITE_NAME } from "@/lib/site";
 
-const ICONS: Record<string, ComponentType<SVGProps<SVGSVGElement>>> = {
+const ICONS: Partial<Record<SocialPlatform, ComponentType<SVGProps<SVGSVGElement>>>> = {
   github: GithubIcon,
   linkedin: LinkedinIcon,
   instagram: InstagramIcon,
@@ -32,13 +34,14 @@ export async function Footer() {
     <footer className="border-t border-border">
       <div className="mx-auto flex max-w-4xl flex-col items-center gap-4 px-6 py-10 text-sm text-muted-foreground sm:flex-row sm:justify-between">
         <p>
-          © {year} {profile?.name ?? "Nikunj Ramani"}
+          © {year} {profile?.name ?? SITE_NAME}
         </p>
 
         {profile?.socials?.length ? (
           <div className="flex items-center gap-3">
             {profile.socials.map((social) => {
-              const Icon = ICONS[social.platform] ?? XIcon;
+              // "other" (or anything unmapped) gets a neutral link icon, not a brand.
+              const Icon = ICONS[social.platform] ?? Link2;
               return (
                 <Link
                   key={social.url}

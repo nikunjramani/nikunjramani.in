@@ -1,215 +1,120 @@
 ---
 name: add-api-endpoint
-description: Add or modify an endpoint in the Python Firebase Functions backend. Use for any new API route, CRUD operation, Firestore trigger, or scheduled job — this backend has strict one-way layering that is easy to violate by accident.
+description: Add or modify an endpoint in the Python Firebase Functions backend. Use for any new API route, CRUD operation, Firestore trigger, or scheduled job — this backend has strict domain/subdomain isolation and one-way layering that are easy to violate by accident.
 ---
 
 # Adding a backend endpoint
 
-## First: is this just another content collection?
+Read [backend/functions/README.md](../../../backend/functions/README.md) first — it has the domain
+map and the rules. → [ADR 0017](../../../docs/adr/0017-bounded-context-domains.md)
 
-If the domain is plain CRUD on a Firestore collection — create/list/get/patch/delete/reorder,
-`visibility`/`order`, an audit trail — **do not hand-write the service or the routes.**
-`shared/crud.py` already has this: `ContentService[T]` for the business rules, `make_crud_router`
-for the FastAPI routes. See `src/skills/` for the three-file minimum this reduces to (repository +
-one-line service + one line of router wiring), or `src/projects/` for a domain that adds exactly
-one thing beyond the generic shape (`duplicate`). Singletons (`profile`, `settings`) use the same
-factory with `singleton_id="main"`. → [ADR 0012](../../../docs/adr/0012-generic-content-crud-in-shared.md)
-
-Only write this section's full router/service/repository trio by hand for something that
-genuinely isn't collection CRUD — `contact` (public, anti-abuse logic) and `media` are the reason
-this pattern exists at all.
-
-## First (if not): which domain?
-
-One deployed function per domain. Everything about a domain lives in
-`backend/functions/src/<domain>/`. → [ADR 0011](../../../docs/adr/0011-domain-wise-separate-functions.md)
+## First: which domain and subdomain?
 
 ```
-src/<domain>/
-├── __init__.py     # exports api_<domain> via shared.api.make_function
-├── routes.py       # FastAPI router
-├── service.py      # business rules
-├── repository.py   # Firestore access
-├── triggers.py     # Firestore/Storage triggers for this domain
-└── tests/
+src/<domain>/<subdomain>/      one job, one deployed function: api_<domain>_<subdomain>
+├── main.py         the Firebase function(s) — make_function(router, ...) or a trigger
+├── routes.py       HTTP only: parse, authorise (AdminClaims), delegate, serialise
+├── schemas.py      request / response models
+├── service.py      the rules — no HTTP, raises kernel.errors
+├── repository.py   its collection — the only Firestore SDK user
+└── settings.py · storage.py · paths.py · …   anything else only this job needs
 ```
 
-If the endpoint fits an existing domain, add it there. A **new** domain needs six extra steps —
-see "Adding a new domain" below.
+- A new route on an existing job → add it to that subdomain.
+- A new job → a new subdomain. Don't stretch one subdomain over two jobs.
+- **No `common/` folder, no sibling imports, no cross-domain imports.** If two subdomains need
+  the same convention, each owns the slice it uses (see `src/media/*/paths.py` and
+  `tests/media/test_layout.py`).
+- **No `__init__.py`** — packages are implicit. **No tests under `src/`.**
 
-### Two import rules, both non-negotiable
+## Is it a visibility/order content collection?
 
-- ❌ `shared/` importing from `src/` — circular dependency
-- ❌ one domain importing another domain's `service` or `repository`
-
-Cross-domain work goes through `shared/` or an event. `make lint` enforces both.
+Copy `src/content/skills/`. Its `repository.py` subclasses `kernel.crud.repository.BaseRepository`,
+its `service.py` subclasses `kernel.crud.service.CrudService` (audit stamps, publish/unpublish
+transitions, RFC 7386 merge-patch, reorder), and its `routes.py` is written out in full. A
+singleton (one fixed document) follows `src/content/profile/`. Add only what's specific to the
+collection — `ProjectService.duplicate` is the example.
 
 ## Layering — one way only
 
-```
-router  →  service  →  repository  →  Firestore
-   ↑          ↑            ↑
-   └──── generated Pydantic models ────┘
-```
+`main → routes → schemas → service → repository → Firestore`, enforced by import-linter's
+layers contract and `tests/test_import_rules.py`.
 
 | Layer | Does | Must never |
 |---|---|---|
-| **Router** | Parse, authorize, delegate, serialize | Contain business logic or touch Firestore |
-| **Service** | Business rules, orchestration | Know what HTTP is — no `Request`, no status codes |
-| **Repository** | Every Firestore SDK call | Contain business rules |
+| **routes** | Parse, `AdminClaims`, delegate, serialise | Contain rules or touch Firestore |
+| **service** | Rules, orchestration | Know HTTP — no `Request`, no status codes |
+| **repository** | Every Firestore SDK call for its collection | Contain rules |
 
-A router that imports the Firestore SDK is a bug. So is a service that raises `HTTPException`.
+The one exception: `src/inbox/contact/rate_limit.py`, whose check-and-increment is a single
+transaction.
 
 ## Steps
 
-**1 · Model** — already generated from `architecture/schemas/`. Need a new field? Use the
-`add-schema-field` skill. Never hand-write a model.
+**1 · Model** — generated from `architecture/schemas/` into `shared/generated`. Need a field?
+Use the `add-schema-field` skill. Never hand-write a model.
 
-**2 · Repository** — `src/<domain>/repository.py`. Most collections just subclass:
+**2 · Repository** — `repository.py`, only the operations this job needs on its collection.
 
-```python
-class ProjectRepository(BaseRepository[Project]):
-    collection = "projects"
-    model = Project
-```
+**3 · Service** — `service.py`. Raise `kernel.errors` exceptions. Every admin mutation writes an
+audit entry through `kernel.audit.AuditWriter` (`CrudService` already does).
 
-`BaseRepository` gives CRUD, pagination and ordering. Add a method only for a genuinely
-collection-specific query.
+**4 · Schemas + routes** — request/response models in `schemas.py` (wrap a record as
+`RecordOut[Model]` from `kernel.crud.schemas`); routes in `routes.py`. Every admin route takes
+`claims: AdminClaims` (`kernel.security`) — it verifies the token **and** the `admin` claim.
 
-**3 · Service** — `src/<domain>/service.py`. Business rules go here: slug uniqueness, publish
-transitions, reorder transactions, cache busting, rate limiting. Raise domain exceptions from
-`shared/core/errors.py`, never HTTP ones. Rate limiting is a plain call inside the service, not a
-router dependency — `RateLimiter(db).check(scope=..., identifier=..., limit=..., window_seconds=...)`
-raises `RateLimitedError`, which the service either lets propagate (a real 429) or catches to
-disguise as success (see `src/contact/service.py` for why the contact form does the latter).
-
-**4 · Router** — `src/<domain>/routes.py`. Every admin route carries `AdminClaims`, which is
-`Annotated[dict, Depends(require_admin)]` from `shared.core.security` — it verifies the bearer
-token AND the `admin: true` claim, and hands back the decoded claims for the audit trail:
+**5 · Entry point** — `main.py`:
 
 ```python
-from shared.core.security import AdminClaims
+from kernel.http import make_function
+from src.<domain>.<sub>.routes import router
 
-@router.post("/projects", response_model=Project, status_code=201)
-async def create_project(
-    payload: ProjectCreate,
-    claims: AdminClaims,                                # ← every admin route, no exceptions
-    svc: Annotated[ProjectService, Depends(get_project_service)],
-) -> Project:
-    return svc.create(payload, actor=claims["uid"])
+api_<domain>_<sub> = make_function(router, name="api_<domain>_<sub>", secrets=["NAME"])
 ```
 
-Signing in isn't enough — the claim is the actual gate, and `require_admin` is already built and
-tested (`shared/core/tests/test_security.py`), so a new domain does not re-prove it. Declare
-`response_model` so the OpenAPI spec stays accurate.
+Bound secrets must have a Secret Manager version before deploy. Triggers and scheduled jobs are
+defined in `main.py` too, with their logic in `service.py`.
 
-**5 · Audit** — every admin mutation calls `AuditService(db).record(actor=..., action=...,
-collection=..., doc_id=..., before=..., after=...)`. Handle it in the service, not the router.
+**6 · Tests** — in `tests/<domain>/<sub>/`, mirroring the source:
+- service unit tests with the repository faked (see `tests/inbox/contact/test_service.py`)
+- route tests with the service overridden (see `tests/media/library/test_routes.py`)
+- repository/integration tests on the `db` fixture — they run against the Firestore emulator and
+  skip without it (see `tests/content/projects/test_service.py`)
 
-**6 · Cache** — a write that changes public content needs to bust the Next.js ISR cache, or edits
-don't appear until the window expires. If the domain uses `shared/crud.py`'s `ContentService`, this
-is already handled — every create/patch/delete calls `revalidate_tags` inline (ADR 0012). Only
-hand-written services need to call `shared.services.revalidate.revalidate_tags` themselves.
+## Registering a new subdomain
 
-**7 · Tests** — required, all four:
+`tests/test_domain_registry.py` fails `make test` until all four are done — each one, missed,
+fails silently in production:
 
-- Unit test of the service with the repository mocked (see `src/contact/tests/test_service.py`)
-- Integration test against the Firestore emulator (see `shared/repositories/tests/`) — the `db`
-  fixture from the root `conftest.py` skips automatically when the emulator isn't running, so
-  `make test` still works offline
-- Auth: no token → 401 · valid token without the claim → **403** · with the claim → 200 — already
-  proven once for `require_admin` itself; a new admin domain doesn't need to re-derive this, just
-  use `AdminClaims`
-- Rate limit, if the route is public (see `shared/core/tests/test_rate_limit.py` for the pattern —
-  a fresh scope per test avoids window collisions)
+1. **`src/<domain>/main.py`** — add `"api_<domain>_<sub>": "src.<domain>.<sub>.main"` to
+   `FUNCTIONS` (triggers too, under their own names). Not listed → never deployed.
+2. **`frontend/next.config.ts`** — add `"<domain>/<sub>"` to `ROUTES`. Missing → a 404 that reads
+   like a routing bug.
+3. **`backend/functions/pyproject.toml`** — add the subdomain to its domain's independence
+   contract and to the layers contract's `containers`.
+4. **`infra/terraform/modules/functions/main.tf`** — add `api_<domain>_<sub>` to
+   `http_functions`. Missing → Cloud Run answers 403.
 
-## Triggers and scheduled jobs
-
-Discrete functions, not FastAPI routes — `src/<domain>/triggers.py` or `scheduled.py`, living with
-the domain they belong to. `on_media_uploaded` goes in `src/media/`, not a global triggers
-directory.
-
-**Each one needs its own `main.py` line, separate from the domain's `api_<domain>` line.**
-`on_contact_created` and `on_media_uploaded` both shipped as working, tested code that was *never
-actually wired into `main.py`* — `functions_framework`'s deploy discovery only ever sees what
-`main.py` imports, so both would have deployed nothing at all, silently, and every test in the
-suite still passed because none of them imported `main.py` itself. Caught by
-`tests/test_main_entrypoint.py`, which actually imports `main.py` and cross-checks every decorated
-function in every `triggers.py`/`scheduled.py` against it — run that file (or `make test`, which
-includes it) after adding any trigger or scheduled job, not just the domain's HTTP route:
-
-```python
-if _wanted("on_<event>"):
-    from src.<domain>.triggers import on_<event>
-```
-
-Import heavy dependencies *inside* the handler; every top-level import runs on every cold start.
-The one exception: anything the decorator itself needs synchronously, like
-`storage_fn.on_object_finalized(bucket=...)` — that argument must be a real value at *decoration*
-time (module import), and only surfaces as broken by actually importing the module, not by reading
-the code. `tests/test_main_entrypoint.py` catches this too.
-
-## Adding a new domain
-
-Six steps. Each of 3–5 fails silently rather than loudly — the domain works fine when invoked
-directly (during local dev, tests, or manifest discovery), and only misbehaves in the one
-situation those steps actually govern, which makes them easy to skip and forget.
-
-1. `mkdir src/<domain>/` with the shape above
-2. Export the function:
-   ```python
-   # src/<domain>/__init__.py
-   from shared.api import make_function
-   from .routes import router
-
-   api_<domain> = make_function(router, name="api_<domain>")
-   ```
-3. **Add it to `main.py`'s `FUNCTION_TARGET`-conditional imports** — not a flat import. Without
-   this, every domain's FastAPI app gets constructed on every OTHER domain's cold start, which
-   defeats the entire reason for one-function-per-domain. See
-   [ADR 0011](../../../docs/adr/0011-domain-wise-separate-functions.md)'s implementation note.
-   ```python
-   if _wanted("api_<domain>"):
-       from src.<domain> import api_<domain>
-   ```
-4. **Add the rewrite** in `frontend/next.config.ts` — without it the function deploys fine and
-   looks healthy, but the frontend gets a 404 that reads like a routing bug. Add the domain to the
-   `DOMAINS` array:
-   ```ts
-   const DOMAINS = ["system", "contact", "<domain>"] as const;
-   ```
-   (Firebase Hosting rewrites don't apply — App Hosting is a different product and has none.)
-5. **Add it to the import-linter contract** in `backend/functions/pyproject.toml`, or the domain's
-   boundaries are silently unchecked.
-6. Add the domain to the Terraform `domains` map with its memory and `max_instances`.
+A new **domain** also needs `src/<domain>/main.py`, an import of its `FUNCTIONS` in the root
+`main.py`, and a place in the domain-independence contract.
 
 ## Verify
 
 ```bash
-make lint    # ruff + mypy --strict + import boundaries, all must be clean
-make test    # ≥80% coverage on services and repositories
-make dev     # then check the domain's /docs shows the route with correct models
-```
-
-Deploy just the domain you changed:
-
-```bash
-firebase deploy --only functions:api_<domain>
+make lint    # ruff · mypy --strict · import-linter
+make test    # emulator-backed tests skip unless the Firestore emulator is running
+make dev     # then check the subdomain's /docs shows the route with correct models
+firebase deploy --only functions:api_<domain>_<sub>
 ```
 
 ## Gotchas
 
-- **Secrets aren't available at import time**, only at runtime. Reading one at module level fails
-  the deploy with an unhelpful error.
+- **Secrets aren't available at import time**, only at request time.
 - **Firestore `in` queries cap at 30 values.**
 - **Composite queries need composite indexes** — add to `x-firestore.indexes` in the schema.
-- **`/docs` must be disabled in production.**
-- **A change under `shared/` redeploys every domain.** Worth knowing before refactoring it casually.
-- **Never construct `a2wsgi.ASGIMiddleware` directly**, even to fix or extend `shared/api.py`. It
-  starts a persistent background thread at construction time, which hangs every request forever
-  once the process forks — which Werkzeug's dev-server reloader does locally. Reproduced directly
-  with `os.fork()`. `shared/wsgi_bridge.py` is the fix; nothing should bypass it.
-- **A `TestClient` pass does not prove the Firebase adapter works.** The bug above type-checked
-  and passed every unit test — it only appeared against the real emulator. Any change to
-  `shared/api.py` or `shared/wsgi_bridge.py` needs a real request through
-  `firebase emulators:start --only functions,firestore`, not just `TestClient`.
+- **`/docs` must be disabled in production** (`kernel/http.py` does this).
+- **A change under `kernel/` or `shared/` redeploys every function.**
+- **Never construct `a2wsgi.ASGIMiddleware` directly** — use `kernel/wsgi_bridge.py`. Its thread
+  dies when the dev server forks and every request hangs.
+- **A `TestClient` pass does not prove the Firebase adapter works.** Changes to `kernel/http.py`
+  or `kernel/wsgi_bridge.py` need a real request through the emulator.

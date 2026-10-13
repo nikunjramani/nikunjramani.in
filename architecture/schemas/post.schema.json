@@ -3,11 +3,11 @@
   "$id": "post.schema.json",
   "title": "Post",
   "description": "Blog post. Schema exists from Phase 1 so the shape is settled; the UI ships in Phase 8 behind the showBlog flag.",
-  "x-version": "1.0.0",
+  "x-version": "1.0.1",
   "x-firestore": {
     "collection": "posts",
     "publicRead": true,
-    "indexes": [["visibility", "publishedAt"], ["visibility", "tags", "publishedAt"]]
+    "indexes": [["visibility", "audit.publishedAt:desc"], ["visibility", "tags:contains", "audit.publishedAt:desc"]]
   },
   "type": "object",
   "properties": {
