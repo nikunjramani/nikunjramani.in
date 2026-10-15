@@ -262,10 +262,16 @@ jobs:
         with:
           workload_identity_provider: ${{ vars.WIF_PROVIDER }}
           service_account: ${{ vars.DEPLOY_SA }}
+      # Retried: a fresh project's first deploys hit documented propagation races (Eventarc
+      # service agent, gcf-artifacts repo, source bucket) whose remedy is "retry in a few minutes".
       - name: Deploy rules, functions and App Hosting to staging
-        run: >
-          firebase deploy --project "$PROJECT" --non-interactive --force
-          --only firestore:rules,firestore:indexes,functions,apphosting
+        run: |
+          for attempt in 1 2 3; do
+            firebase deploy --project "$PROJECT" --non-interactive --force \
+              --only firestore:rules,firestore:indexes,functions,apphosting && exit 0
+            [ "$attempt" -lt 3 ] && { echo "::warning::Deploy attempt $attempt failed; retrying in 90s"; sleep 90; }
+          done
+          exit 1
       - id: url
         run: echo "url=https://nikunjramani-in--nikunjramani-in-staging.asia-southeast1.hosted.app" >> "$GITHUB_OUTPUT"
       - name: Smoke test
