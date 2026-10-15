@@ -1,0 +1,33 @@
+name: firebase-setup
+description: >
+  Toolchain + keyless auth for `firebase deploy`: Python 3.13, uv, Node 22, firebase-tools,
+  Workload Identity Federation, and the requirements.txt + stdlib venv/ the Firebase CLI needs
+  to load the Python functions (CLAUDE.md gotcha).
+
+inputs:
+  workload_identity_provider:
+    required: true
+  service_account:
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-python@v5
+      with:
+        python-version: "3.13"
+    - uses: astral-sh/setup-uv@v5
+      with:
+        enable-cache: true
+        cache-dependency-glob: backend/functions/uv.lock
+    - uses: actions/setup-node@v4
+      with:
+        node-version: 22
+    - run: npm install -g firebase-tools
+      shell: bash
+    - uses: google-github-actions/auth@v2
+      with:
+        workload_identity_provider: ${{ inputs.workload_identity_provider }}
+        service_account: ${{ inputs.service_account }}
+    - run: make setup-backend
+      shell: bash

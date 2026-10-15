@@ -52,8 +52,11 @@ make test    # vitest + pytest
 make deploy  # terraform apply + firebase deploy
 ```
 
-CI today is only `.github/workflows/schemas.yml` (validate + codegen drift). Lint and test
-workflows are Phase 7 — until then, run `make lint` and `make test` yourself before pushing.
+CI (Phase 7): `.github/workflows/pr.yml` runs schemas, backend, frontend and `terraform plan`
+on every PR, then deploys it to the **staging project** (`nikunjramani-in-staging`) and comments
+the URL. `deploy.yml` deploys `main` to prod — inert until `PROD_DEPLOY_ENABLED` is set. Two
+projects, never one: a PR must never be able to reach prod (ADR 0018, ADR 0019, RUNBOOK
+"CI/CD and staging").
 
 ---
 

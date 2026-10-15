@@ -1,0 +1,154 @@
+name: deploy
+
+# Push to main deploys production. Off until the repository variable PROD_DEPLOY_ENABLED is
+# "true" — set only once prod has been caught up with main by hand (phase-7-cicd.md).
+#
+# Order: rules → functions → App Hosting → smoke test → terraform apply (only when
+# infra/terraform changed, behind the production-infra approval). Functions go first because
+# Firebase makes a new HTTP function public on create, while Terraform's invoker binding fails
+# on a function that doesn't exist yet. A change that adds a *secret* is the exception: run
+# this workflow manually with infra_only first, so the secret exists before a function binds it.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      infra_only:
+        description: "Only run terraform apply (e.g. to create a new secret before code binds it)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production
+  cancel-in-progress: false # never cancel a half-finished prod deploy
+
+env:
+  PROJECT: nikunjramani-in
+  SITE: https://nikunjramani.in
+
+jobs:
+  changes:
+    if: vars.PROD_DEPLOY_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    outputs:
+      infra: ${{ steps.filter.outputs.infra }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # the filter diffs against github.event.before
+      - uses: dorny/paths-filter@v3
+        if: github.event_name == 'push'
+        id: filter
+        with:
+          base: ${{ github.event.before }}
+          filters: |
+            infra:
+              - infra/terraform/**
+
+  deploy:
+    needs: changes
+    if: ${{ !inputs.infra_only }}
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: ${{ env.SITE }}
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/firebase-setup
+        with:
+          workload_identity_provider: ${{ vars.WIF_PROVIDER }}
+          service_account: ${{ vars.DEPLOY_SA }}
+      # Retried for the same transient Eventarc/Artifact Registry races as the staging preview.
+      - name: Deploy rules, functions and App Hosting
+        run: |
+          for attempt in 1 2 3; do
+            firebase deploy --project "$PROJECT" --non-interactive --force \
+              --only firestore:rules,firestore:indexes,storage,functions,apphosting && exit 0
+            [ "$attempt" -lt 3 ] && { echo "::warning::Deploy attempt $attempt failed; retrying in 90s"; sleep 90; }
+          done
+          exit 1
+
+  smoke:
+    needs: deploy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Homepage and API health
+        run: |
+          curl -fsS --retry 5 --retry-delay 10 --retry-all-errors -o /dev/null "$SITE/"
+          curl -fsS --retry 5 --retry-delay 10 --retry-all-errors "$SITE/api/v1/ops/health"
+
+  # A failed smoke test redeploys the previous commit's code. Terraform isn't rolled back —
+  # infra changes are reviewed in the approval step and are rarely what breaks a deploy.
+  rollback:
+    needs: [deploy, smoke]
+    # Only when the deploy itself or its smoke test failed — not for any upstream hiccup.
+    if: >
+      always() && github.event_name == 'push'
+      && (needs.deploy.result == 'failure' || needs.smoke.result == 'failure')
+      && github.event.before != '0000000000000000000000000000000000000000'
+    runs-on: ubuntu-latest
+    environment: production
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.before }}
+      - uses: ./.github/actions/firebase-setup
+        with:
+          workload_identity_provider: ${{ vars.WIF_PROVIDER }}
+          service_account: ${{ vars.DEPLOY_SA }}
+      - name: Redeploy the previous commit
+        run: >
+          firebase deploy --project "$PROJECT" --non-interactive --force
+          --only firestore:rules,firestore:indexes,storage,functions,apphosting
+      - name: Smoke test the rollback
+        run: |
+          curl -fsS --retry 5 --retry-delay 10 --retry-all-errors -o /dev/null "$SITE/"
+          curl -fsS --retry 5 --retry-delay 10 --retry-all-errors "$SITE/api/v1/ops/health"
+      - run: echo "::error::Deploy of ${{ github.sha }} failed its smoke test and was rolled back to ${{ github.event.before }}."; exit 1
+
+  terraform:
+    needs: [changes, smoke]
+    if: >
+      always() && needs.changes.result == 'success'
+      && (inputs.infra_only || (needs.changes.outputs.infra == 'true' && needs.smoke.result == 'success'))
+    runs-on: ubuntu-latest
+    strategy:
+      max-parallel: 1
+      matrix:
+        include: # staging first: it's the rehearsal
+          - env: staging
+            gh_env: staging-infra
+          - env: prod
+            gh_env: production-infra
+    environment: ${{ matrix.gh_env }} # production-infra has a required reviewer (ADR 0019)
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      TF_VAR_billing_account: ${{ secrets.TF_VAR_BILLING_ACCOUNT }}
+      TF_VAR_alert_email: ${{ secrets.TF_VAR_ALERT_EMAIL }}
+      TF_IN_AUTOMATION: "1"
+    defaults:
+      run:
+        working-directory: infra/terraform/envs/${{ matrix.env }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_wrapper: false
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.WIF_PROVIDER }}
+          service_account: ${{ vars.TERRAFORM_SA }}
+      - run: terraform init -input=false
+      - run: terraform apply -input=false -auto-approve -lock-timeout=300s

@@ -61,7 +61,7 @@ lint-backend:
 		&& uv run mypy . && uv run lint-imports
 
 lint-frontend:
-	cd $(FRONT) && npx tsc --noEmit && npm run lint
+	cd $(FRONT) && npx next typegen && npx tsc --noEmit && npm run lint
 
 lint-infra:
 	terraform -chdir=infra/terraform fmt -check -recursive

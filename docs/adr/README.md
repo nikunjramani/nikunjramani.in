@@ -29,7 +29,8 @@ reader would reasonably ask "why on earth is it like this?", belongs here.
 | [0015](./0015-remove-revalidation-webhook.md) | Remove the cache-revalidation webhook | ✅ Accepted | 2026-10-13 |
 | [0016](./0016-content-domains-from-a-factory.md) | Build standard content domains from their model; keep Firestore in repositories | 🔄 Structure superseded by 0017 | 2026-10-13 |
 | [0017](./0017-bounded-context-domains.md) | Organise the backend as isolated domains of self-contained subdomains | ✅ Accepted | 2026-10-13 |
-| [0018](./0018-staging-project-for-pr-previews.md) | A separate Firebase project for PR preview deploys | 🟡 Proposed | 2026-10-13 |
+| [0018](./0018-staging-project-for-pr-previews.md) | A separate Firebase project for PR preview deploys | ✅ Accepted | 2026-10-13 |
+| [0019](./0019-ci-identities-gated-by-github-environment.md) | CI identities are gated by GitHub environment, and CI applies Terraform | ✅ Accepted | 2026-10-15 |
 
 **Status:** 🟡 Proposed · ✅ Accepted · ⛔ Rejected · 🔄 Superseded · ⚠️ Deprecated
 

@@ -35,7 +35,7 @@ variable "functions_deployed" {
     bindings — see modules/functions/main.tf.
   EOT
   type        = bool
-  default     = false
+  default     = true # flipped after the first deploy (Phase 6); CI plans/applies with this
 }
 
 variable "apphosting_github_connection_id" {
@@ -67,7 +67,7 @@ variable "apphosting_backend_host" {
 }
 
 variable "health_host" {
-  description = "Public hostname for HTTPS health monitoring; set after the first rollout."
+  description = "Public hostname for HTTPS health monitoring."
   type        = string
-  default     = ""
+  default     = "nikunjramani-in--nikunjramani-in.asia-southeast1.hosted.app"
 }
