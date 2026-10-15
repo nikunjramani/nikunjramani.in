@@ -24,9 +24,9 @@ variable "budget_amount" {
 }
 
 variable "functions_deployed" {
-  description = "False until the first functions deploy to staging has run; see envs/prod."
+  description = "Flipped after the first staging functions deploy (2026-10-15); see envs/prod."
   type        = bool
-  default     = false
+  default     = true
 }
 
 variable "apphosting_region" {

@@ -30,28 +30,37 @@ jobs:
       - uses: dorny/paths-filter@v3
         id: filter
         with:
+          # A workflow or action change runs everything: otherwise e.g. an actions bump only
+          # exercises the jobs that happened to be triggered by something else.
           filters: |
+            ci: &ci
+              - .github/workflows/**
+              - .github/actions/**
             schemas:
+              - *ci
               - architecture/**
               - backend/functions/shared/generated/**
               - frontend/src/generated/**
             backend:
+              - *ci
               - architecture/**
               - backend/**
               - firebase.json
             frontend:
+              - *ci
               - architecture/**
               - frontend/**
             infra:
+              - *ci
               - infra/terraform/**
             deployable:
+              - *ci
               - architecture/**
               - backend/**
               - frontend/**
               - infra/rules/**
               - firebase.json
               - .firebaserc
-              - .github/workflows/pr.yml
 
   # ── checks ──────────────────────────────────────────────────────────
   schemas:
@@ -182,6 +191,12 @@ jobs:
         with:
           terraform_wrapper: false
       - run: terraform fmt -check -recursive ../..
+      # Empty values still "work" — and produce a wrong plan (an empty billing account plans a
+      # budget replacement). Dependabot runs read Dependabot secrets, not Actions secrets.
+      - name: Require the Terraform secrets
+        run: |
+          [ -n "$TF_VAR_billing_account" ] || { echo "::error::TF_VAR_BILLING_ACCOUNT is empty"; exit 1; }
+          [ "${{ matrix.env }}" != prod ] || [ -n "$TF_VAR_alert_email" ] || { echo "::error::TF_VAR_ALERT_EMAIL is empty"; exit 1; }
       - uses: google-github-actions/auth@v2
         with:
           workload_identity_provider: ${{ vars[matrix.wif_provider] }}
@@ -237,12 +252,12 @@ jobs:
   preview:
     needs: [changes, checks]
     # Deploy only when every check that ran passed, for same-repo PRs that change something
-    # deployable. Fork and Dependabot PRs get no OIDC token, so they never reach staging.
+    # deployable. Dependabot PRs included — a dependency bump is exactly what a live preview
+    # should prove. Fork PRs get no OIDC token, so they never reach staging.
     if: >
       always() && !failure() && !cancelled()
       && needs.changes.outputs.deployable == 'true'
       && github.event.pull_request.head.repo.full_name == github.repository
-      && github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
     environment:
       name: staging

@@ -144,7 +144,9 @@ Three CI identities per project, each gated by a GitHub environment (ADR 0019):
    - Environment variables from `terraform output`: `WIF_PROVIDER` on all four; `DEPLOY_SA` on
      `staging` / `production`; `TERRAFORM_SA` on the two `-infra` ones
    - Repository variables: `PROD_WIF_PROVIDER`, `PROD_PLAN_SA`, `STAGING_WIF_PROVIDER`,
-     `STAGING_PLAN_SA`. Repository secrets: `TF_VAR_BILLING_ACCOUNT`, `TF_VAR_ALERT_EMAIL`
+     `STAGING_PLAN_SA`. Repository secrets: `TF_VAR_BILLING_ACCOUNT`, `TF_VAR_ALERT_EMAIL` —
+     set them **again as Dependabot secrets** (`gh secret set --app dependabot`): Dependabot's
+     PR runs can't read Actions secrets, and `infra-plan` fails fast without them
    - `main` protected: PRs only (admins included), required check `checks`, squash merge only,
      linear history, conversation resolution
 

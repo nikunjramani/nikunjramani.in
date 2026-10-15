@@ -1,6 +1,7 @@
 # Phase 7 · CI/CD Hardening
 
-**~5 hours** · Status: 🟡 Built on branch `phase-7-cicd`; awaiting the first applies and runs
+**~5 hours** · Status: 🟡 PR checks + staging previews live (PR #2 green, 2026-10-15); prod
+deploys await the catch-up (Prerequisites)
 
 > **Goal:** Push to `main` deploys safely; every PR is checked automatically; no
 > long-lived credentials anywhere.
@@ -44,10 +45,13 @@ gated by GitHub environment; CI applies Terraform) · operating it:
       secret, Cloud Build, Artifact Registry, Scheduler, Eventarc, App Hosting
 - [x] `github-terraform` (apply) bound to `production-infra` / `staging-infra`
 - [x] `github-plan` (read-only, plus state-lock write) bound to the repository
-- [ ] Applied: `envs/staging` in full; `envs/prod` with `-target=module.iam` only (RUNBOOK)
-- [ ] Billing-account roles granted (RUNBOOK · First-time setup)
-- [ ] GitHub environments + variables (RUNBOOK · First-time setup)
-- [ ] Verified: a workflow authenticates with **no** JSON key, in every environment
+- [x] Applied: `envs/staging` in full; `envs/prod` with `-target=module.project` /
+      `-target=module.iam` only (RUNBOOK) — 2026-10-15
+- [x] Billing-account roles granted: `billing.viewer` (both `github-plan`),
+      `billing.costsManager` (both `github-terraform`)
+- [x] GitHub environments + variables + Terraform secrets
+- [x] Verified keyless in `staging` (preview deploy) and for both `github-plan`s (PR plans);
+      `production` / `production-infra` are first exercised by `deploy.yml`
 - [ ] Trim any role the first real runs prove unnecessary
 
 ### 7.2 · PR checks — `.github/workflows/pr.yml`
@@ -64,7 +68,7 @@ count as passed.
 - [x] `infra-plan` — fmt, validate, plan for prod and staging, each posted as its own PR comment
 - [x] `checks` — rolls the above up into the single required status check
 - [x] Path filters (`dorny/paths-filter`); npm, uv and emulator caching
-- [ ] First green run on a real PR
+- [x] First green run on a real PR (#2, 2026-10-15)
 
 ### 7.3 · Staging project & preview deploys ([ADR 0018](../../adr/0018-staging-project-for-pr-previews.md))
 
@@ -75,7 +79,7 @@ count as passed.
 - [x] `backend/functions/.env.nikunjramani-in-staging` (and its `.gitignore` exception)
 - [x] `frontend/apphosting.staging.yaml` — staging Firebase config, functions URL, Turnstile
       **test** site key, `SITE_INDEXABLE=false`
-- [ ] Fill its `NEXT_PUBLIC_FIREBASE_API_KEY` / `APP_ID` from the staging web app after apply
+- [x] Fill its `NEXT_PUBLIC_FIREBASE_API_KEY` / `APP_ID` from the staging web app after apply
 - [x] `SITE_INDEXABLE=false` → `robots.txt` disallows everything and every response carries
       `X-Robots-Tag: noindex`
 - [x] `.firebaserc` `staging` alias; CI always passes `--project`
@@ -89,17 +93,21 @@ count as passed.
 - [x] OAuth consent + Google sign-in provider enabled
 - [x] State bucket `nikunjramani-in-staging-tfstate`, in the staging project — a **separate
       bucket**, not a prefix in prod's: staging identities then never need anything in prod
-- [ ] Staging App Hosting hostname added to Auth's authorized domains
+- [x] Staging App Hosting hostname added to Auth's authorized domains
 
 **Terraform:**
 
 - [x] `infra/terraform/envs/staging/` — same modules, staging project, ₹50 budget alert
-- [ ] `terraform apply` (planned: 87 to add, 0 change, 0 destroy)
-- [ ] Flip `functions_deployed` to `true` after the first staging functions deploy
+- [x] `terraform apply` — staging matches the configuration (no pending changes)
+- [x] Flip `functions_deployed` to `true` after the first staging functions deploy
+- [x] Provision what a first `firebase deploy` would otherwise create itself (see Gotchas):
+      service-agent bindings, `developerconnect` / `iam` / `pubsub` APIs, the default
+      `firebase-app-hosting-compute` account
+- [x] TTL fields declare `index_config {}` to match `firestore.indexes.json`'s fieldOverrides
 
 **Secrets & data:**
 
-- [ ] Secret versions: Turnstile test secret, `CONTACT_EMAIL_TO` = the owner's inbox, a
+- [x] Secret versions: Turnstile test secret, `CONTACT_EMAIL_TO` = the owner's inbox, a
       placeholder `RESEND_API_KEY` (staging email fails by design)
 - [ ] Admin claim for the owner on staging
 - [ ] Seed placeholder content from `architecture/examples/valid/` — never a prod export
@@ -116,7 +124,9 @@ count as passed.
       an artifact, never fails the job)
 - [x] PR comments via `marocchino/sticky-pull-request-comment` — one per header, updated in place
 - [x] Preview URL commented on the PR, labelled staging
-- [ ] First successful preview
+- [x] Deploy retried up to 3× (90s apart) for first-deploy propagation races
+- [x] First successful preview — all 18 functions ACTIVE, homepage 200, health reports
+      `nikunjramani-in-staging`, `robots.txt` disallow + `X-Robots-Tag: noindex` (2026-10-15)
 
 ### 7.4 · Production deploy — `.github/workflows/deploy.yml`
 
@@ -133,10 +143,10 @@ count as passed.
 
 ### 7.5 · Branch protection
 
-- [ ] `main` protected — PRs only, admins included
-- [ ] Required check: `checks`
-- [ ] Squash merge only, linear history, branches deleted on merge
-- [ ] Conversation resolution required
+- [x] `main` protected — PRs only, admins included, no force pushes or deletion
+- [x] Required check: `checks`
+- [x] Squash merge only, linear history, branches deleted on merge
+- [x] Conversation resolution required
 
 ### 7.6 · Monitoring & maintenance
 
@@ -179,6 +189,22 @@ service agents roles for event triggers (GCS agent → `pubsub.publisher`, Pub/S
 `serviceAccountTokenCreator`, compute SA → `run.invoker` + `eventarc.eventReceiver`). As owner
 that's silent; as CI's `github-deploy` it fails. `modules/iam` declares them, so the CLI finds them
 present and skips its own `setIamPolicy`.
+
+**`firebase deploy` provisions things itself on a fresh project — CI can't.** Beyond the
+service agents: App Hosting's deploy enables `developerconnect.googleapis.com` and creates the
+`firebase-app-hosting-compute` account if either is missing. Terraform declares both (the
+account with `create_ignore_already_exists`, adopting prod's). A new project needs these before
+its first CI deploy, not after.
+
+**A fresh project's first functions deploy races itself.** The Eventarc service agent isn't
+usable for minutes, the `gcf-artifacts` repo doesn't exist until one build creates it, and
+parallel builds 409 on the source bucket. Google's remedy is "retry in a few minutes", which is
+why the deploy steps retry. A function left `FAILED` by such a race is safest deleted and
+redeployed.
+
+**Firestore TTL fields have two writers.** `firestore.indexes.json` (generated) sets their
+`fieldOverrides` and `firebase deploy` applies it; Terraform owns the TTL. Both must agree on
+`index_config` or each run undoes the other.
 
 **`-target` on prod's first IAM apply is a one-off.** Prod's full plan carries the un-deployed
 ADR 0017/0015 changes until the catch-up; don't let them ride along with the IAM apply.
