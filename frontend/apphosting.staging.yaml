@@ -8,7 +8,7 @@ runConfig:
 
 env:
   - variable: NEXT_PUBLIC_FIREBASE_API_KEY
-    value: "FILL_AFTER_STAGING_APPLY"
+    value: "AIzaSyBoA_sJ2cwaKsF6Hm3_rqJYa9tKgVjvsC8"
     availability: [BUILD, RUNTIME]
 
   - variable: NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
@@ -24,7 +24,7 @@ env:
     availability: [BUILD, RUNTIME]
 
   - variable: NEXT_PUBLIC_FIREBASE_APP_ID
-    value: "FILL_AFTER_STAGING_APPLY"
+    value: "1:659120187836:web:4c73d7d0c069f2490aa3b9"
     availability: [BUILD, RUNTIME]
 
   - variable: NEXT_PUBLIC_SITE_URL
