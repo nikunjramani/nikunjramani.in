@@ -13,21 +13,27 @@ Designed now so the repo structure supports it; wired up in
 
 ## Workflows
 
-| Workflow | Trigger | Does |
+> **As built (Phase 7):** the PR checks are **jobs in one `pr.yml`**, not separate workflows. A
+> required check in a path-filtered workflow never reports on PRs outside its paths and blocks
+> them forever; path-skipped jobs inside one workflow count as passed, and a `checks` job rolls
+> them up into the one required status check.
+
+| `pr.yml` job / workflow | Trigger | Does |
 |---|---|---|
-| `schemas.yml` | PR touching `architecture/` | Validate schemas, validate examples, run `make gen`, **fail on any diff** |
-| `ci-frontend.yml` | PR touching `frontend/` | `tsc --noEmit`, eslint, vitest, `next build`, Lighthouse CI budget |
-| `ci-backend.yml` | PR touching `backend/` | ruff, `mypy --strict`, pytest against the Firebase emulator |
-| `infra-plan.yml` | PR touching `infra/` | `terraform fmt -check`, `validate`, `plan` → posted as a PR comment |
-| `preview.yml` | PR | Deploy changed function domains + App Hosting to the **staging project** ([ADR 0018](../adr/0018-staging-project-for-pr-previews.md)), comment the staging URL |
-| `deploy.yml` | push to `main` | `terraform apply` → deploy rules → deploy **changed** function domains → App Hosting auto-builds |
-| `backup-verify.yml` | nightly cron | Confirm the Firestore export actually landed |
+| `schemas` | PR touching `architecture/` or generated code | Validate schemas, validate examples, run `make gen`, **fail on any diff** |
+| `frontend` | PR touching `frontend/` | `tsc --noEmit`, eslint, vitest, `next build` |
+| `backend` | PR touching `backend/` | ruff, `mypy --strict`, import-linter, pytest against the Firestore emulator |
+| `infra-plan` | PR touching `infra/terraform/` | `terraform fmt -check`, `validate`, `plan` for prod and staging → PR comments |
+| `checks` | every PR | The single required status check |
+| `preview` | PR changing anything deployable | Deploy rules, all functions and App Hosting to the **staging project** ([ADR 0018](../adr/0018-staging-project-for-pr-previews.md)); smoke test; Lighthouse; comment the staging URL |
+| `deploy.yml` | push to `main` | Rules → functions → App Hosting → smoke test (rollback on failure) → `terraform apply` behind approval when infra changed ([ADR 0019](../adr/0019-ci-identities-gated-by-github-environment.md)) |
+| `backup-verify.yml` | nightly cron | Confirm the Firestore export actually landed — *not built yet* |
 
 ---
 
 ## The drift check is the important one
 
-`schemas.yml` is what makes the schema-first approach real rather than aspirational:
+The `schemas` job is what makes the schema-first approach real rather than aspirational:
 
 ```yaml
 - run: make gen
@@ -78,16 +84,21 @@ generated code on both sides, so both suites must run.
 
 ### Deploying only what changed
 
-Functions are split by domain ([ADR 0011](../adr/0011-domain-wise-separate-functions.md)), so the
-deploy can be narrowed to the domains a PR actually touched:
+Each subdomain is its own function ([ADR 0017](../adr/0017-bounded-context-domains.md)), so the
+deploy can be narrowed to the subdomains a PR actually touched:
 
 ```bash
-firebase deploy --only functions:api_projects,functions:api_media
+firebase deploy --only functions:api_content_projects,functions:api_media_library
 ```
 
-A change under `backend/functions/shared/` touches everything, so it deploys everything. A change
-under `backend/functions/src/projects/` deploys one function. Worth doing — it turns a multi-minute
-deploy into a seconds-long one for the common case.
+A change under `src/<domain>/<sub>/` deploys every function that subdomain lists in its domain's
+`FUNCTIONS` table (`src/<domain>/main.py`) — its `api_<domain>_<sub>` plus any trigger or scheduled
+job it owns. A change under `kernel/`, `shared/`, the root `main.py` or the dependency files
+touches everything, so it deploys everything. Derive the mapping from the `FUNCTIONS` tables
+rather than hard-coding it in the workflow, or the two drift.
+
+Worth doing, but not first: `preview.yml` and `deploy.yml` start by deploying all functions,
+and narrow once the pipeline is proven.
 
 ---
 

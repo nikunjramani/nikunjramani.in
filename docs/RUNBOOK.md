@@ -107,6 +107,80 @@ make deploy
 
 ---
 
+## CI/CD and staging
+
+Two projects: `nikunjramani-in` (prod) and `nikunjramani-in-staging` (PR previews, ADR 0018).
+Three CI identities per project, each gated by a GitHub environment (ADR 0019):
+
+| Workflow | When | Identity · environment |
+|---|---|---|
+| `pr.yml` checks | every PR | — (`github-plan` for `terraform plan`, read-only) |
+| `pr.yml` preview | same-repo PRs, after checks | staging `github-deploy` · `staging` |
+| `deploy.yml` deploy | push to `main` | prod `github-deploy` · `production` (main only) |
+| `deploy.yml` terraform | `infra/terraform/**` changed | `github-terraform` · `staging-infra`, then `production-infra` (**your approval**) |
+
+### First-time setup (done once)
+
+1. **Terraform.** Staging in full; prod's IAM only:
+   ```bash
+   terraform -chdir=infra/terraform/envs/staging apply
+   terraform -chdir=infra/terraform/envs/prod apply -target=module.iam \
+     -target=module.app-hosting.google_firebase_app_hosting_domain.apex \
+     -target=module.app-hosting.google_firebase_app_hosting_domain.www
+   ```
+   The `-target` on prod is deliberate, one time only: prod's full plan also carries the
+   uncaught-up ADR 0017/0015 changes (phase-7-cicd.md prerequisites), which must not ride along.
+2. **Staging secrets** — staging-safe values only, added with `gcloud secrets versions add`:
+   `TURNSTILE_SECRET_KEY` = Cloudflare's always-passes test secret; `CONTACT_EMAIL_TO` = the
+   owner's inbox; `RESEND_API_KEY` = a placeholder until a real key exists (staging email fails).
+3. **Billing-account roles** Terraform can't grant (budgets live on the billing account):
+   `roles/billing.costsManager` for each project's `github-terraform`, `roles/billing.viewer`
+   for each `github-plan`.
+4. **`frontend/apphosting.staging.yaml`** — API key and app ID from
+   `firebase apps:sdkconfig WEB <staging web_app_id> --project nikunjramani-in-staging`.
+5. **GitHub** (repo Settings, or `gh`):
+   - Environments: `staging` (any branch), `staging-infra` (main only), `production` (main only),
+     `production-infra` (main only + **you** as required reviewer)
+   - Environment variables from `terraform output`: `WIF_PROVIDER` on all four; `DEPLOY_SA` on
+     `staging` / `production`; `TERRAFORM_SA` on the two `-infra` ones
+   - Repository variables: `PROD_WIF_PROVIDER`, `PROD_PLAN_SA`, `STAGING_WIF_PROVIDER`,
+     `STAGING_PLAN_SA`. Repository secrets: `TF_VAR_BILLING_ACCOUNT`, `TF_VAR_ALERT_EMAIL`
+   - `main` protected: PRs only (admins included), required check `checks`, squash merge only,
+     linear history, conversation resolution
+
+### Turning on production deploys
+
+`deploy.yml` does nothing until the repository variable `PROD_DEPLOY_ENABLED` is `true`. Set it
+only after prod has been caught up with `main` by hand:
+
+```bash
+gh variable set PROD_DEPLOY_ENABLED --body true
+```
+
+### Approving an infra change
+
+A merge touching `infra/terraform/**` pauses at `production-infra`. Open the run, read the
+staging apply's output (it ran first — the same modules), then approve. Approving grants a
+GitHub job owner-equivalent rights on prod for that run; don't approve a run you didn't expect.
+
+### A change that adds a secret
+
+`deploy.yml` deploys code before Terraform, so a function that binds a brand-new secret would
+deploy before the secret exists. Run **Actions → deploy → Run workflow → infra_only** first,
+add the secret's value (`gcloud secrets versions add`), then merge the code.
+
+### Staging
+
+- Shared, single slot: the most recent PR push to deploy is what's live. Re-run that PR's
+  `preview` job to put it back.
+- Placeholder data only — never a prod export, never real names (the repo is public).
+- Admin sign-in: sign in once on the staging URL, then
+  `python infra/scripts/set_admin_claim.py <email> --project nikunjramani-in-staging`.
+- Contact form uses Cloudflare's always-passes Turnstile test keys; email is a placeholder
+  key, so notifications fail by design until a real Resend key exists.
+
+---
+
 ## Rollback
 
 **Roll back first, diagnose after.** A revert costs minutes; debugging a live broken site

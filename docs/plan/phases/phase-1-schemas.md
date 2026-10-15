@@ -97,7 +97,7 @@ Each carries `x-firestore` metadata:
 
 ### 1.7 · CI drift check
 
-- [x] `.github/workflows/schemas.yml`
+- [x] `.github/workflows/schemas.yml` (folded into `pr.yml`'s `schemas` job in Phase 7)
 - [x] Runs `make validate` then `make gen`, and fails on any diff
 - [x] Verified: hand-editing a generated file turns the build red
 

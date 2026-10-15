@@ -56,6 +56,9 @@ const nextConfig: NextConfig = {
             key: "Strict-Transport-Security",
             value: "max-age=63072000; includeSubDomains; preload",
           },
+          ...(process.env.SITE_INDEXABLE === "false"
+            ? [{ key: "X-Robots-Tag", value: "noindex, nofollow" }]
+            : []),
         ],
       },
     ];
