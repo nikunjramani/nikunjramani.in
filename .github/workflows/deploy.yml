@@ -38,6 +38,8 @@ jobs:
       infra: ${{ steps.filter.outputs.infra }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # the filter diffs against github.event.before
       - uses: dorny/paths-filter@v3
         if: github.event_name == 'push'
         id: filter
@@ -80,8 +82,12 @@ jobs:
   # A failed smoke test redeploys the previous commit's code. Terraform isn't rolled back —
   # infra changes are reviewed in the approval step and are rarely what breaks a deploy.
   rollback:
-    needs: smoke
-    if: failure() && github.event_name == 'push' && github.event.before != '0000000000000000000000000000000000000000'
+    needs: [deploy, smoke]
+    # Only when the deploy itself or its smoke test failed — not for any upstream hiccup.
+    if: >
+      always() && github.event_name == 'push'
+      && (needs.deploy.result == 'failure' || needs.smoke.result == 'failure')
+      && github.event.before != '0000000000000000000000000000000000000000'
     runs-on: ubuntu-latest
     environment: production
     permissions:
