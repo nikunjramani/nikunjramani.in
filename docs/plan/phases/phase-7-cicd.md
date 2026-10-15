@@ -174,6 +174,12 @@ deploys to PR branches (ADR 0019).
 
 **Terraform drift between `envs/prod/` and `envs/staging/` is a new failure mode.** A module change now has to be reviewed against both environments, not one. `deploy.yml` applies staging first for exactly this reason.
 
+**A project's first functions deploy wants to edit project IAM.** The Firebase CLI grants
+service agents roles for event triggers (GCS agent → `pubsub.publisher`, Pub/Sub agent →
+`serviceAccountTokenCreator`, compute SA → `run.invoker` + `eventarc.eventReceiver`). As owner
+that's silent; as CI's `github-deploy` it fails. `modules/iam` declares them, so the CLI finds them
+present and skips its own `setIamPolicy`.
+
 **`-target` on prod's first IAM apply is a one-off.** Prod's full plan carries the un-deployed
 ADR 0017/0015 changes until the catch-up; don't let them ride along with the IAM apply.
 
