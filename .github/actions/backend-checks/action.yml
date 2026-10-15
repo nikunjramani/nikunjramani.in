@@ -1,0 +1,47 @@
+name: backend-checks
+description: >
+  Lint the Python functions (ruff, ruff format, mypy --strict, import-linter) and run the full
+  test suite against the Firestore emulator.
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-python@v7
+      with:
+        python-version-file: .python-version
+    - uses: astral-sh/setup-uv@v10.3.0
+      with:
+        enable-cache: true
+        cache-dependency-glob: backend/functions/uv.lock
+    - uses: actions/setup-node@v7
+      with:
+        node-version-file: .nvmrc
+    - uses: actions/setup-java@v6 # firebase-tools emulator requires "JDK at version 21 or above"
+      with:
+        distribution: temurin
+        java-version: 21
+    - uses: actions/cache@v6
+      with:
+        path: ~/.cache/firebase/emulators
+        key: firebase-emulators-${{ runner.os }}-v1
+    - shell: bash
+      run: npm install -g firebase-tools@15.34.0
+    - shell: bash
+      working-directory: backend/functions
+      run: uv sync --all-extras --locked
+    - name: Lint
+      shell: bash
+      working-directory: backend/functions
+      run: |
+        uv run ruff check .
+        uv run ruff format --check .
+        uv run mypy .
+        uv run lint-imports
+    - name: Test against the Firestore emulator
+      shell: bash
+      env:
+        REQUIRE_FIRESTORE_EMULATOR: "1" # a broken emulator start fails, not skips
+      run: |
+        project=$(jq -r .projects.default .firebaserc)
+        firebase emulators:exec --only firestore --project "$project" \
+          "cd backend/functions && uv run pytest"

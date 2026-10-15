@@ -142,11 +142,20 @@ Three CI identities per project, each gated by a GitHub environment (ADR 0019):
    - Environments: `staging` (any branch), `staging-infra` (main only), `production` (main only),
      `production-infra` (main only + **you** as required reviewer)
    - Environment variables from `terraform output`: `WIF_PROVIDER` on all four; `DEPLOY_SA` on
-     `staging` / `production`; `TERRAFORM_SA` on the two `-infra` ones
+     `staging` / `production`; `TERRAFORM_SA` on the two `-infra` ones. Plus `SITE_URL` on
+     `staging` / `production` — the deploy's smoke-test target and environment link
    - Repository variables: `PROD_WIF_PROVIDER`, `PROD_PLAN_SA`, `STAGING_WIF_PROVIDER`,
-     `STAGING_PLAN_SA`. Repository secrets: `TF_VAR_BILLING_ACCOUNT`, `TF_VAR_ALERT_EMAIL` —
-     set them **again as Dependabot secrets** (`gh secret set --app dependabot`): Dependabot's
-     PR runs can't read Actions secrets, and `infra-plan` fails fast without them
+     `STAGING_PLAN_SA`. Repository secrets: `TF_VAR_BILLING_ACCOUNT`, `TF_VAR_ALERT_EMAIL`
+     (`infra-plan` fails fast without them)
+
+### Updating dependencies
+
+No bot opens dependency PRs (Dependabot was removed — one PR per ecosystem, each re-running the
+whole pipeline, cost more CI than it saved). Update everything **in one PR**: bump npm
+(`frontend/`, `architecture/codegen/`), `uv lock --upgrade` in `backend/functions/`, action
+versions in `.github/`, and provider constraints in `infra/terraform/envs/*/backend.tf`, then let
+that PR's single run — checks, both plans, a staging preview — prove it. Treat majors that need
+code changes (zod, TypeScript, Vitest, Firebase, the `$ref` resolver) as their own migrations.
    - `main` protected: PRs only (admins included), required check `checks`, squash merge only,
      linear history, conversation resolution
 

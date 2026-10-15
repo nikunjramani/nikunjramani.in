@@ -56,9 +56,12 @@ gated by GitHub environment; CI applies Terraform) · operating it:
 
 ### 7.2 · PR checks — `.github/workflows/pr.yml`
 
-One workflow, not one per area: a required check that lives in a path-filtered workflow never
-reports on PRs outside its paths, and blocks them forever. Path-skipped jobs inside one workflow
-count as passed.
+Each `pr.yml` job checks out and calls one composite action in `.github/actions/`
+(`schema-check`, `backend-checks`, `frontend-checks`, `terraform-plan`, `firebase-deploy`). They
+are jobs of the one `pr.yml` run on purpose: a required check that lives in a separate
+path-filtered workflow never reports on PRs outside its paths, and blocks them forever;
+path-skipped jobs inside one run count as passed. No config is hard-coded in CI — project IDs
+from `.firebaserc`, URLs from each environment's `SITE_URL`, build env from `apphosting.yaml`.
 
 - [x] `schemas` — validate, `make gen`, fail on diff (moved from `schemas.yml`, now deleted)
 - [x] `backend` — ruff, ruff format, mypy strict, import-linter, pytest on the Firestore
@@ -114,8 +117,8 @@ count as passed.
 
 **CI — the `preview` job in `pr.yml`:**
 
-- [x] Runs after `checks`, for same-repo PRs that change something deployable; fork and
-      Dependabot PRs never reach it
+- [x] Runs after `checks`, for same-repo PRs that change something deployable; fork PRs never
+      reach it
 - [x] Deploys Firestore rules + indexes, **all** functions, App Hosting to staging as staging's
       `github-deploy`; narrowing to changed subdomains comes later
       ([05 · CI/CD](../05-cicd.md#deploying-only-what-changed))
@@ -151,7 +154,8 @@ count as passed.
 ### 7.6 · Monitoring & maintenance
 
 - [ ] `backup-verify.yml` nightly — needs an identity with object read on the backups bucket
-- [x] Dependabot: npm (frontend, codegen), uv, Actions, Terraform — weekly, grouped
+- [x] Dependency updates: **no bot** — Dependabot was tried and removed (one PR per ecosystem,
+      each a full pipeline run). Updates go in one deliberate PR (RUNBOOK · Updating dependencies)
 - [ ] Uptime alerts routed to email
 - [ ] Error-rate alert verified by deliberately triggering it
 

@@ -13,12 +13,12 @@ terraform {
   required_providers {
     google = {
       source  = "hashicorp/google"
-      version = "~> 6.0"
+      version = "~> 8.6"
     }
     # Firebase resources live in the beta provider. Expected, not a workaround.
     google-beta = {
       source  = "hashicorp/google-beta"
-      version = "~> 6.0"
+      version = "~> 8.6"
     }
   }
 }
