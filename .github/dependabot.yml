@@ -1,0 +1,32 @@
+# Weekly, grouped: one PR per ecosystem rather than one per package.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /frontend
+    schedule: { interval: weekly }
+    groups:
+      frontend: { patterns: ["*"] }
+
+  - package-ecosystem: npm
+    directory: /architecture/codegen
+    schedule: { interval: weekly }
+    groups:
+      codegen: { patterns: ["*"] }
+
+  - package-ecosystem: uv
+    directory: /backend/functions
+    schedule: { interval: weekly }
+    groups:
+      backend: { patterns: ["*"] }
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule: { interval: weekly }
+    groups:
+      actions: { patterns: ["*"] }
+
+  - package-ecosystem: terraform
+    directories: [/infra/terraform/envs/prod, /infra/terraform/envs/staging]
+    schedule: { interval: weekly }
+    groups:
+      terraform: { patterns: ["*"] }

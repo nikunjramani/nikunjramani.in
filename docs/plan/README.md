@@ -17,7 +17,7 @@ The plan lives here, split by topic and phase. Start with the
 | 05 | [CI/CD](./05-cicd.md) | Workflows, Workload Identity Federation, branch protection |
 | 06 | [Content Checklist](./06-content-checklist.md) | **What you actually need to write** |
 | 07 | [Domain Setup](./07-domain-setup.md) | GoDaddy → Firebase DNS, step by step |
-| — | [ADRs](../adr/README.md) | Architecture decision records — eighteen and counting |
+| — | [ADRs](../adr/README.md) | Architecture decision records — nineteen and counting |
 
 ## Phases — work these in order
 
@@ -30,7 +30,7 @@ The plan lives here, split by topic and phase. Start with the
 | 4 | [Public Site](./phases/phase-4-public-site.md) | ~16h | 🟡 Built & verified; blocked on Phase 2 content + Phase 6 Lighthouse |
 | 5 | [Admin Panel](./phases/phase-5-admin-panel.md) | ~14h | 🟡 Built; production admin claim and signed uploads verified |
 | 6 | [Deploy & DNS](./phases/phase-6-deploy.md) | ~5h | 🟡 `nikunjramani.in` live over HTTPS; a few launch checks remain |
-| 7 | [CI/CD Hardening](./phases/phase-7-cicd.md) | ~5h | ⬜ Not started |
+| 7 | [CI/CD Hardening](./phases/phase-7-cicd.md) | ~5h | 🟡 Built; awaiting first applies and runs |
 | 8 | [Post-Launch](./phases/phase-8-post-launch.md) | ongoing | ⬜ Not started |
 
 **Launch is the end of Phase 6.** Total: ~67h of build + ~5h of your writing.

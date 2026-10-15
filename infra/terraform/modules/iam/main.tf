@@ -6,6 +6,16 @@ variable "github_repo" {
   description = "owner/repo — scopes the WIF binding so only this repository can deploy."
 }
 
+variable "deploy_environment" {
+  type        = string
+  description = "GitHub environment whose jobs may act as github-deploy (code deploys)."
+}
+
+variable "infra_environment" {
+  type        = string
+  description = "GitHub environment whose jobs may act as github-terraform (terraform apply)."
+}
+
 # ── Functions runtime ───────────────────────────────────────────────
 resource "google_service_account" "functions" {
   project      = var.project_id
@@ -31,13 +41,51 @@ locals {
     "roles/logging.logWriter",
   ]
 
+  # What `firebase deploy` (rules, functions, apphosting) needs from CI.
   deploy_roles = [
     "roles/cloudfunctions.admin",
     "roles/run.admin",
     "roles/firebase.admin",
+    "roles/firebaseapphosting.admin",
     "roles/iam.serviceAccountUser",
     "roles/storage.admin",
+    "roles/secretmanager.viewer", # deploy checks every bound secret has a version
+    "roles/cloudbuild.builds.editor",
+    "roles/artifactregistry.writer",
+    "roles/cloudscheduler.admin", # the scheduled backup
+    "roles/eventarc.admin",       # Firestore/Storage triggers
+    "roles/serviceusage.serviceUsageConsumer",
   ]
+
+  # Everything this Terraform manages. Effectively owner, which is why the binding below
+  # only admits jobs in the approval-gated infra environment (ADR 0019). Billing-budget
+  # rights live on the billing account and are granted by hand (docs/RUNBOOK.md).
+  terraform_roles = [
+    "roles/resourcemanager.projectIamAdmin",
+    "roles/iam.serviceAccountAdmin",
+    "roles/iam.workloadIdentityPoolAdmin",
+    "roles/iam.roleAdmin",
+    "roles/iam.serviceAccountUser",
+    "roles/serviceusage.serviceUsageAdmin",
+    "roles/secretmanager.admin",
+    "roles/datastore.owner",
+    "roles/storage.admin",
+    "roles/monitoring.admin",
+    "roles/logging.configWriter",
+    "roles/run.admin",
+    "roles/firebase.admin",
+    "roles/firebaseapphosting.admin",
+  ]
+
+  # terraform plan on PRs: read everything, change nothing.
+  plan_roles = [
+    "roles/viewer",
+    "roles/iam.securityReviewer",
+    "roles/secretmanager.viewer",
+    "roles/serviceusage.serviceUsageConsumer",
+  ]
+
+  pool = google_iam_workload_identity_pool.github.name
 }
 
 resource "google_project_iam_member" "functions" {
@@ -75,9 +123,12 @@ resource "google_iam_workload_identity_pool_provider" "github" {
   workload_identity_pool_id          = google_iam_workload_identity_pool.github.workload_identity_pool_id
   workload_identity_pool_provider_id = "github-provider"
 
+  # `environment` is only present for jobs that declare one; GitHub mints it only after
+  # that environment's branch policy and required reviewers have passed.
   attribute_mapping = {
-    "google.subject"       = "assertion.sub"
-    "attribute.repository" = "assertion.repository"
+    "google.subject"        = "assertion.sub"
+    "attribute.repository"  = "assertion.repository"
+    "attribute.environment" = "has(assertion.environment) ? assertion.environment : ''"
   }
 
   # Without this condition ANY GitHub repository could impersonate the deploy account.
@@ -101,15 +152,65 @@ resource "google_project_iam_member" "deploy" {
   member   = "serviceAccount:${google_service_account.deploy.email}"
 }
 
+# Bound to an environment, not the repository: a workflow on a PR branch can't enter a
+# main-only environment, so it can't deploy here at all.
 resource "google_service_account_iam_member" "deploy_wif" {
   service_account_id = google_service_account.deploy.name
   role               = "roles/iam.workloadIdentityUser"
-  member             = "principalSet://iam.googleapis.com/${google_iam_workload_identity_pool.github.name}/attribute.repository/${var.github_repo}"
+  member             = "principalSet://iam.googleapis.com/${local.pool}/attribute.environment/${var.deploy_environment}"
+}
+
+resource "google_service_account" "terraform" {
+  project      = var.project_id
+  account_id   = "github-terraform"
+  display_name = "GitHub Actions terraform apply"
+}
+
+resource "google_project_iam_member" "terraform" {
+  for_each = toset(local.terraform_roles)
+  project  = var.project_id
+  role     = each.value
+  member   = "serviceAccount:${google_service_account.terraform.email}"
+}
+
+resource "google_service_account_iam_member" "terraform_wif" {
+  service_account_id = google_service_account.terraform.name
+  role               = "roles/iam.workloadIdentityUser"
+  member             = "principalSet://iam.googleapis.com/${local.pool}/attribute.environment/${var.infra_environment}"
+}
+
+resource "google_service_account" "plan" {
+  project      = var.project_id
+  account_id   = "github-plan"
+  display_name = "GitHub Actions terraform plan (read-only)"
+}
+
+resource "google_project_iam_member" "plan" {
+  for_each = toset(local.plan_roles)
+  project  = var.project_id
+  role     = each.value
+  member   = "serviceAccount:${google_service_account.plan.email}"
+}
+
+# Plan takes the state lock, so it needs object write on the state bucket — nothing else.
+resource "google_storage_bucket_iam_member" "plan_state" {
+  bucket = "${var.project_id}-tfstate"
+  role   = "roles/storage.objectUser"
+  member = "serviceAccount:${google_service_account.plan.email}"
+}
+
+# Read-only, so any workflow in this repository may use it (fork PRs get no OIDC token).
+resource "google_service_account_iam_member" "plan_wif" {
+  service_account_id = google_service_account.plan.name
+  role               = "roles/iam.workloadIdentityUser"
+  member             = "principalSet://iam.googleapis.com/${local.pool}/attribute.repository/${var.github_repo}"
 }
 
 output "functions_sa" { value = google_service_account.functions.email }
 output "apphosting_sa" { value = google_service_account.apphosting.email }
 output "deploy_sa" { value = google_service_account.deploy.email }
+output "terraform_sa" { value = google_service_account.terraform.email }
+output "plan_sa" { value = google_service_account.plan.email }
 output "wif_provider" { value = google_iam_workload_identity_pool_provider.github.name }
 
 # Keyless signed upload URLs: the runtime may sign only as itself.
