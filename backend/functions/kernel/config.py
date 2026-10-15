@@ -4,13 +4,19 @@ live in that domain's own settings module, so the kernel knows no domain."""
 from functools import lru_cache
 from typing import Literal
 
+from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
-    firebase_project_id: str = "nikunjramani-in"
+    # A deployed project's dotenv can't set FIREBASE_PROJECT_ID (Firebase reserves the
+    # prefix); GCLOUD_PROJECT is set by the Firebase CLI at deploy discovery and at runtime.
+    firebase_project_id: str = Field(
+        default="nikunjramani-in",
+        validation_alias=AliasChoices("FIREBASE_PROJECT_ID", "GCLOUD_PROJECT"),
+    )
     environment: Literal["development", "production"] = "development"
     allowed_origins: str = "http://localhost:3000"
 

@@ -1,6 +1,6 @@
 # 0018 · A separate Firebase project for PR preview deploys
 
-**Status:** 🟡 Proposed · **Date:** 2026-10-13
+**Status:** ✅ Accepted (2026-10-15) · **Date:** 2026-10-13
 **Deciders:** Owner
 
 ---

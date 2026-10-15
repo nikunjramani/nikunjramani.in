@@ -28,6 +28,11 @@ locals {
     "billingbudgets.googleapis.com",
     "iamcredentials.googleapis.com",
     "firebaseapphosting.googleapis.com",
+    # `firebase deploy` checks these are on and would otherwise try to enable them itself,
+    # which CI's github-deploy can't (and shouldn't) do.
+    "developerconnect.googleapis.com", # App Hosting
+    "iam.googleapis.com",              # App Hosting
+    "pubsub.googleapis.com",           # event-triggered functions
   ]
 }
 

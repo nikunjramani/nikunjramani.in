@@ -92,15 +92,20 @@ terraform {
 
 The bucket is created by `bootstrap.sh` and then left alone. Never in git: `*.tfstate`, `*.tfvars`.
 
+Each project keeps its **own** state bucket: `nikunjramani-in-tfstate` for prod,
+`nikunjramani-in-staging-tfstate` (in the staging project) for staging — so no staging identity
+ever needs access to anything in prod (ADR 0018, ADR 0019).
+
 ---
 
 ## Environments
 
 Started prod-only; staging is now decided ([ADR 0018](../adr/0018-staging-project-for-pr-previews.md)).
 The modules were written to be environment-parameterised from day one specifically so this would be
-a new `envs/staging/main.tf` pointed at a second project, not a refactor — see
-[phase-7-cicd.md §7.3](./phases/phase-7-cicd.md#73--staging-project--preview-deploys--adr-0018) for
-the concrete build-out steps.
+a new `envs/staging/main.tf` pointed at a second project, not a refactor — and it was: staging
+uses the same modules, minus `monitoring` and the custom domain. See
+[phase-7-cicd.md §7.3](./phases/phase-7-cicd.md) and the
+[RUNBOOK](../RUNBOOK.md#cicd-and-staging).
 
 Staging is a **second Firebase project**, not a second environment inside the same one — a PR's
 functions deploy must never be able to land on top of prod's. It's one long-lived shared

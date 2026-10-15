@@ -1,0 +1,46 @@
+# Staging overrides for apphosting.yaml — App Hosting merges this file on top of it for the
+# backend whose environment name is "staging" (infra/terraform/envs/staging, ADR 0018).
+# Every project-specific value must be overridden here, or staging talks to prod.
+
+runConfig:
+  minInstances: 0
+  maxInstances: 1
+
+env:
+  - variable: NEXT_PUBLIC_FIREBASE_API_KEY
+    value: "AIzaSyBoA_sJ2cwaKsF6Hm3_rqJYa9tKgVjvsC8"
+    availability: [BUILD, RUNTIME]
+
+  - variable: NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
+    value: "nikunjramani-in-staging.firebaseapp.com"
+    availability: [BUILD, RUNTIME]
+
+  - variable: NEXT_PUBLIC_FIREBASE_PROJECT_ID
+    value: "nikunjramani-in-staging"
+    availability: [BUILD, RUNTIME]
+
+  - variable: NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
+    value: "nikunjramani-in-staging-media"
+    availability: [BUILD, RUNTIME]
+
+  - variable: NEXT_PUBLIC_FIREBASE_APP_ID
+    value: "1:659120187836:web:4c73d7d0c069f2490aa3b9"
+    availability: [BUILD, RUNTIME]
+
+  - variable: NEXT_PUBLIC_SITE_URL
+    value: "https://nikunjramani-in--nikunjramani-in-staging.asia-southeast1.hosted.app"
+    availability: [BUILD, RUNTIME]
+
+  - variable: FUNCTIONS_BASE_URL
+    value: "https://asia-south1-nikunjramani-in-staging.cloudfunctions.net"
+    availability: [BUILD, RUNTIME]
+
+  # Cloudflare's published always-passes test site key — pairs with the test secret in
+  # staging's TURNSTILE_SECRET_KEY. Never a real key.
+  - variable: NEXT_PUBLIC_TURNSTILE_SITE_KEY
+    value: "1x00000000000000000000AA"
+    availability: [BUILD, RUNTIME]
+
+  - variable: SITE_INDEXABLE
+    value: "false"
+    availability: [BUILD, RUNTIME]

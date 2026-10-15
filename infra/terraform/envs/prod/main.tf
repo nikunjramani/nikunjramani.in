@@ -37,9 +37,11 @@ module "project" {
 }
 
 module "iam" {
-  source      = "../../modules/iam"
-  project_id  = var.project_id
-  github_repo = var.github_repo
+  source             = "../../modules/iam"
+  project_id         = var.project_id
+  github_repo        = var.github_repo
+  deploy_environment = "production"
+  infra_environment  = "production-infra"
 
   depends_on = [module.project]
 }
@@ -96,6 +98,7 @@ module "app-hosting" {
   region               = var.apphosting_region
   service_account      = module.iam.apphosting_sa
   github_connection_id = var.apphosting_github_connection_id
+  custom_domain        = "nikunjramani.in"
 
   depends_on = [module.project, module.iam]
 }
