@@ -102,6 +102,16 @@ resource "google_service_account" "apphosting" {
   display_name = "App Hosting runtime (read-only)"
 }
 
+# The App Hosting CLI insists its default compute account exists and creates it on deploy if
+# missing — which CI can't. Our backend runs as apphosting-runtime, so this one gets no roles.
+# It already existed in prod (first manual deploy); adopt it rather than fail.
+resource "google_service_account" "apphosting_default" {
+  project                      = var.project_id
+  account_id                   = "firebase-app-hosting-compute"
+  display_name                 = "Firebase App Hosting compute service account"
+  create_ignore_already_exists = true
+}
+
 resource "google_project_iam_member" "apphosting" {
   for_each = toset(local.apphosting_roles)
   project  = var.project_id
