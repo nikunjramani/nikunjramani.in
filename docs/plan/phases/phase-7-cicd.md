@@ -114,8 +114,8 @@ count as passed.
 
 **CI — the `preview` job in `pr.yml`:**
 
-- [x] Runs after `checks`, for same-repo PRs that change something deployable; fork and
-      Dependabot PRs never reach it
+- [x] Runs after `checks`, for same-repo PRs that change something deployable; fork PRs never
+      reach it
 - [x] Deploys Firestore rules + indexes, **all** functions, App Hosting to staging as staging's
       `github-deploy`; narrowing to changed subdomains comes later
       ([05 · CI/CD](../05-cicd.md#deploying-only-what-changed))
@@ -151,7 +151,8 @@ count as passed.
 ### 7.6 · Monitoring & maintenance
 
 - [ ] `backup-verify.yml` nightly — needs an identity with object read on the backups bucket
-- [x] Dependabot: npm (frontend, codegen), uv, Actions, Terraform — weekly, grouped
+- [x] Dependency updates: **no bot** — Dependabot was tried and removed (one PR per ecosystem,
+      each a full pipeline run). Updates go in one deliberate PR (RUNBOOK · Updating dependencies)
 - [ ] Uptime alerts routed to email
 - [ ] Error-rate alert verified by deliberately triggering it
 
