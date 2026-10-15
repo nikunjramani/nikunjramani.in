@@ -65,10 +65,15 @@ jobs:
         with:
           workload_identity_provider: ${{ vars.WIF_PROVIDER }}
           service_account: ${{ vars.DEPLOY_SA }}
+      # Retried for the same transient Eventarc/Artifact Registry races as the staging preview.
       - name: Deploy rules, functions and App Hosting
-        run: >
-          firebase deploy --project "$PROJECT" --non-interactive --force
-          --only firestore:rules,firestore:indexes,storage,functions,apphosting
+        run: |
+          for attempt in 1 2 3; do
+            firebase deploy --project "$PROJECT" --non-interactive --force \
+              --only firestore:rules,firestore:indexes,storage,functions,apphosting && exit 0
+            [ "$attempt" -lt 3 ] && { echo "::warning::Deploy attempt $attempt failed; retrying in 90s"; sleep 90; }
+          done
+          exit 1
 
   smoke:
     needs: deploy

@@ -51,9 +51,9 @@ locals {
     "roles/storage.admin",
     "roles/secretmanager.viewer", # deploy checks every bound secret has a version
     "roles/cloudbuild.builds.editor",
-    "roles/artifactregistry.writer",
-    "roles/cloudscheduler.admin", # the scheduled backup
-    "roles/eventarc.admin",       # Firestore/Storage triggers
+    "roles/artifactregistry.repoAdmin", # writer + setting gcf-artifacts' image cleanup policy
+    "roles/cloudscheduler.admin",       # the scheduled backup
+    "roles/eventarc.admin",             # Firestore/Storage triggers
     "roles/serviceusage.serviceUsageConsumer",
   ]
 
@@ -109,6 +109,7 @@ resource "google_service_account" "apphosting_default" {
   project                      = var.project_id
   account_id                   = "firebase-app-hosting-compute"
   display_name                 = "Firebase App Hosting compute service account"
+  description                  = "Default service account used to run builds and deploys for Firebase App Hosting"
   create_ignore_already_exists = true
 }
 
