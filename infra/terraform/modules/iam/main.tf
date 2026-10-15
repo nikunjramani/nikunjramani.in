@@ -213,6 +213,42 @@ output "terraform_sa" { value = google_service_account.terraform.email }
 output "plan_sa" { value = google_service_account.plan.email }
 output "wif_provider" { value = google_iam_workload_identity_pool_provider.github.name }
 
+# ── Service-agent bindings for event-triggered functions ────────────
+# A project's first functions deploy grants these itself — which needs project IAM admin.
+# Declaring them here means CI's github-deploy never needs that: the CLI finds them present
+# and skips its own setIamPolicy (firebase-tools checkIam.ensureServiceAgentRoles).
+data "google_project" "this" {
+  project_id = var.project_id
+}
+
+# Google creates these agents lazily; asking for them makes sure they exist before binding.
+resource "google_project_service_identity" "pubsub" {
+  provider = google-beta
+  project  = var.project_id
+  service  = "pubsub.googleapis.com"
+}
+
+data "google_storage_project_service_account" "gcs" {
+  project = var.project_id
+}
+
+locals {
+  compute_default_sa = "${data.google_project.this.number}-compute@developer.gserviceaccount.com"
+  service_agent_bindings = {
+    "gcs-pubsub-publisher"   = { role = "roles/pubsub.publisher", member = data.google_storage_project_service_account.gcs.member }
+    "pubsub-token-creator"   = { role = "roles/iam.serviceAccountTokenCreator", member = google_project_service_identity.pubsub.member }
+    "compute-run-invoker"    = { role = "roles/run.invoker", member = "serviceAccount:${local.compute_default_sa}" }
+    "compute-event-receiver" = { role = "roles/eventarc.eventReceiver", member = "serviceAccount:${local.compute_default_sa}" }
+  }
+}
+
+resource "google_project_iam_member" "service_agents" {
+  for_each = local.service_agent_bindings
+  project  = var.project_id
+  role     = each.value.role
+  member   = each.value.member
+}
+
 # Keyless signed upload URLs: the runtime may sign only as itself.
 resource "google_service_account_iam_member" "functions_sign_blob" {
   service_account_id = google_service_account.functions.name
