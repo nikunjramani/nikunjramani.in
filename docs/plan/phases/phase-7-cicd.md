@@ -56,9 +56,11 @@ gated by GitHub environment; CI applies Terraform) · operating it:
 
 ### 7.2 · PR checks — `.github/workflows/pr.yml`
 
-One workflow, not one per area: a required check that lives in a path-filtered workflow never
-reports on PRs outside its paths, and blocks them forever. Path-skipped jobs inside one workflow
-count as passed.
+`pr.yml` is a thin orchestrator calling one reusable workflow per concern (`_schemas.yml`,
+`_backend.yml`, `_frontend.yml`, `_terraform-plan.yml`, `_firebase-deploy.yml`). They run as jobs
+of the one `pr.yml` run on purpose: a required check that lives in a separate path-filtered
+workflow never reports on PRs outside its paths, and blocks them forever; path-skipped jobs
+inside one run count as passed.
 
 - [x] `schemas` — validate, `make gen`, fail on diff (moved from `schemas.yml`, now deleted)
 - [x] `backend` — ruff, ruff format, mypy strict, import-linter, pytest on the Firestore

@@ -13,10 +13,13 @@ Designed now so the repo structure supports it; wired up in
 
 ## Workflows
 
-> **As built (Phase 7):** the PR checks are **jobs in one `pr.yml`**, not separate workflows. A
+> **As built (Phase 7):** two thin orchestrators — `pr.yml` and `deploy.yml` — call reusable
+> workflows that each do one job: `_schemas`, `_backend`, `_frontend`, `_terraform-plan`,
+> `_terraform-apply`, `_firebase-deploy` (shared by the preview, the prod deploy and its
+> rollback). The PR checks stay jobs of the one `pr.yml` run rather than separate workflows: a
 > required check in a path-filtered workflow never reports on PRs outside its paths and blocks
-> them forever; path-skipped jobs inside one workflow count as passed, and a `checks` job rolls
-> them up into the one required status check.
+> them forever, whereas path-skipped jobs inside one run count as passed and a `checks` job
+> rolls them up into the one required status check.
 
 | `pr.yml` job / workflow | Trigger | Does |
 |---|---|---|

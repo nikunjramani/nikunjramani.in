@@ -1,8 +1,11 @@
 name: pr
 
-# Every pull request: the checks that gate merging, then a preview deploy to the staging
-# project (ADR 0018). One workflow on purpose — jobs skipped by the path filter still report
-# as passing, so they can be required checks without blocking unrelated PRs.
+# Every pull request: decide what changed, run the matching checks, gate merging on one
+# `checks` result, then deploy a preview to the staging project (ADR 0018).
+#
+# The work lives in reusable workflows (_*.yml); this file only wires them together. They stay
+# jobs of this one workflow because a required check in a separate path-filtered workflow
+# never reports on PRs outside its paths — and blocks them forever.
 
 on:
   pull_request:
@@ -30,8 +33,7 @@ jobs:
       - uses: dorny/paths-filter@v4
         id: filter
         with:
-          # A workflow or action change runs everything: otherwise e.g. an actions bump only
-          # exercises the jobs that happened to be triggered by something else.
+          # A workflow or action change runs everything, so it's proven by the jobs it affects.
           filters: |
             ci: &ci
               - .github/workflows/**
@@ -66,174 +68,46 @@ jobs:
   schemas:
     needs: changes
     if: needs.changes.outputs.schemas == 'true'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: architecture/codegen/package-lock.json
-      - uses: astral-sh/setup-uv@v10
-        with:
-          enable-cache: true
-      - run: npm ci --prefix architecture/codegen
-      - run: make validate
-      - run: make gen
-      # Without this, the schemas quietly stop being the source of truth (ADR 0006).
-      - name: Fail if generated code is stale
-        run: |
-          if ! git diff --exit-code; then
-            echo "::error::Generated code is out of date. Run 'make gen' and commit the result."
-            exit 1
-          fi
+    uses: ./.github/workflows/_schemas.yml
 
   backend:
     needs: changes
     if: needs.changes.outputs.backend == 'true'
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: backend/functions
-    steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
-        with:
-          python-version: "3.13"
-      - uses: astral-sh/setup-uv@v10
-        with:
-          enable-cache: true
-          cache-dependency-glob: backend/functions/uv.lock
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 22
-      - uses: actions/setup-java@v6 # the Firestore emulator is a Java program
-        with:
-          distribution: temurin
-          java-version: 21
-      - uses: actions/cache@v6
-        with:
-          path: ~/.cache/firebase/emulators
-          key: firebase-emulators-${{ runner.os }}-v1
-      - run: npm install -g firebase-tools
-      - run: uv sync --all-extras --locked
-      - name: Lint
-        run: |
-          uv run ruff check .
-          uv run ruff format --check .
-          uv run mypy .
-          uv run lint-imports
-      - name: Test against the Firestore emulator
-        working-directory: .
-        env:
-          REQUIRE_FIRESTORE_EMULATOR: "1"
-        run: >
-          firebase emulators:exec --only firestore --project nikunjramani-in
-          "cd backend/functions && uv run pytest"
+    uses: ./.github/workflows/_backend.yml
 
   frontend:
     needs: changes
     if: needs.changes.outputs.frontend == 'true'
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: frontend
-    env:
-      # Public by design (apphosting.yaml); the build needs them, nothing secret here.
-      NEXT_PUBLIC_FIREBASE_PROJECT_ID: nikunjramani-in
-      NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: nikunjramani-in.firebaseapp.com
-      NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET: nikunjramani-in-media
-      NEXT_PUBLIC_SITE_URL: https://nikunjramani.in
-      FUNCTIONS_BASE_URL: https://asia-south1-nikunjramani-in.cloudfunctions.net
-    steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: frontend/package-lock.json
-      - run: npm ci
-      # RouteContext / LayoutProps etc. are generated into .next/types — absent on a fresh checkout.
-      - run: npx next typegen
-      - run: npx tsc --noEmit
-      - run: npm run lint
-      - run: npm test --if-present
-      - run: npm run build
+    uses: ./.github/workflows/_frontend.yml
 
   infra-plan:
+    name: infra-plan (${{ matrix.env }})
     needs: changes
     if: needs.changes.outputs.infra == 'true' && github.event.pull_request.head.repo.full_name == github.repository
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      id-token: write
-      pull-requests: write
     strategy:
       fail-fast: false
       matrix:
         include:
           - env: prod
-            wif_provider: PROD_WIF_PROVIDER
-            plan_sa: PROD_PLAN_SA
+            wif_provider: ${{ vars.PROD_WIF_PROVIDER }}
+            plan_sa: ${{ vars.PROD_PLAN_SA }}
           - env: staging
-            wif_provider: STAGING_WIF_PROVIDER
-            plan_sa: STAGING_PLAN_SA
-    env:
-      TF_VAR_billing_account: ${{ secrets.TF_VAR_BILLING_ACCOUNT }}
-      TF_VAR_alert_email: ${{ secrets.TF_VAR_ALERT_EMAIL }}
-      TF_IN_AUTOMATION: "1"
-    defaults:
-      run:
-        working-directory: infra/terraform/envs/${{ matrix.env }}
-    steps:
-      - uses: actions/checkout@v7
-      - uses: hashicorp/setup-terraform@v4
-        with:
-          terraform_wrapper: false
-      - run: terraform fmt -check -recursive ../..
-      # Empty values still "work" — and produce a wrong plan (an empty billing account plans a
-      # budget replacement), so fail loudly instead.
-      - name: Require the Terraform secrets
-        run: |
-          [ -n "$TF_VAR_billing_account" ] || { echo "::error::TF_VAR_BILLING_ACCOUNT is empty"; exit 1; }
-          [ "${{ matrix.env }}" != prod ] || [ -n "$TF_VAR_alert_email" ] || { echo "::error::TF_VAR_ALERT_EMAIL is empty"; exit 1; }
-      - uses: google-github-actions/auth@v3
-        with:
-          workload_identity_provider: ${{ vars[matrix.wif_provider] }}
-          service_account: ${{ vars[matrix.plan_sa] }}
-      - run: terraform init -input=false
-      - run: terraform validate
-      - name: Plan
-        id: plan
-        run: |
-          set -o pipefail
-          terraform plan -input=false -no-color -lock-timeout=120s 2>&1 | tee plan.txt
-      - name: Format the plan for the PR comment
-        if: always() && steps.plan.outcome != 'skipped'
-        env:
-          OUTCOME: ${{ steps.plan.outcome }}
-        run: |
-          {
-            echo "### \`terraform plan\` · ${{ matrix.env }} · ${OUTCOME}"
-            echo
-            grep -E '^Plan:|^No changes' plan.txt || true
-            echo
-            echo '<details><summary>Full plan</summary>'
-            echo
-            echo '```'
-            tail -c 60000 plan.txt
-            echo '```'
-            echo '</details>'
-          } > comment.md
-      - name: Comment the plan on the PR
-        if: always() && steps.plan.outcome != 'skipped'
-        uses: marocchino/sticky-pull-request-comment@v3
-        with:
-          header: infra-plan-${{ matrix.env }}
-          path: infra/terraform/envs/${{ matrix.env }}/comment.md
+            wif_provider: ${{ vars.STAGING_WIF_PROVIDER }}
+            plan_sa: ${{ vars.STAGING_PLAN_SA }}
+    permissions:
+      contents: read
+      id-token: write
+      pull-requests: write
+    uses: ./.github/workflows/_terraform-plan.yml
+    with:
+      env: ${{ matrix.env }}
+      workload_identity_provider: ${{ matrix.wif_provider }}
+      service_account: ${{ matrix.plan_sa }}
+    secrets:
+      TF_VAR_BILLING_ACCOUNT: ${{ secrets.TF_VAR_BILLING_ACCOUNT }}
+      TF_VAR_ALERT_EMAIL: ${{ secrets.TF_VAR_ALERT_EMAIL }}
 
-  # The one required status check (branch protection). Matrix and path-skipped jobs report
-  # under shifting names, so they're rolled up here: skipped is fine, failed is not.
+  # The one required status check (branch protection): skipped is fine, failed is not.
   checks:
     needs: [changes, schemas, backend, frontend, infra-plan]
     if: always()
@@ -249,57 +123,41 @@ jobs:
           done
 
   # ── preview ─────────────────────────────────────────────────────────
+  # After every check passed, for same-repo PRs that change something deployable. Fork PRs
+  # get no OIDC token, so they never reach staging.
   preview:
     needs: [changes, checks]
-    # Deploy only when every check that ran passed, for same-repo PRs that change something
-    # deployable. Fork PRs get no OIDC token, so they never reach staging.
     if: >
       always() && !failure() && !cancelled()
       && needs.changes.outputs.deployable == 'true'
       && github.event.pull_request.head.repo.full_name == github.repository
-    runs-on: ubuntu-latest
-    environment:
-      name: staging
-      url: ${{ steps.url.outputs.url }}
     concurrency:
       group: staging # one shared slot (ADR 0018); the newest push wins
       cancel-in-progress: true
     permissions:
       contents: read
       id-token: write
+    uses: ./.github/workflows/_firebase-deploy.yml
+    with:
+      environment: staging
+      project: nikunjramani-in-staging
+      url: https://nikunjramani-in--nikunjramani-in-staging.asia-southeast1.hosted.app
+      only: firestore:rules,firestore:indexes,functions,apphosting
+
+  preview-report:
+    needs: preview
+    runs-on: ubuntu-latest
+    permissions:
       pull-requests: write
     env:
-      PROJECT: nikunjramani-in-staging
+      URL: https://nikunjramani-in--nikunjramani-in-staging.asia-southeast1.hosted.app
     steps:
-      - uses: actions/checkout@v7
-      - uses: ./.github/actions/firebase-setup
-        with:
-          workload_identity_provider: ${{ vars.WIF_PROVIDER }}
-          service_account: ${{ vars.DEPLOY_SA }}
-      # Retried: a fresh project's first deploys hit documented propagation races (Eventarc
-      # service agent, gcf-artifacts repo, source bucket) whose remedy is "retry in a few minutes".
-      - name: Deploy rules, functions and App Hosting to staging
-        run: |
-          for attempt in 1 2 3; do
-            firebase deploy --project "$PROJECT" --non-interactive --force \
-              --only firestore:rules,firestore:indexes,functions,apphosting && exit 0
-            [ "$attempt" -lt 3 ] && { echo "::warning::Deploy attempt $attempt failed; retrying in 90s"; sleep 90; }
-          done
-          exit 1
-      - id: url
-        run: echo "url=https://nikunjramani-in--nikunjramani-in-staging.asia-southeast1.hosted.app" >> "$GITHUB_OUTPUT"
-      - name: Smoke test
-        env:
-          URL: ${{ steps.url.outputs.url }}
-        run: |
-          curl -fsS --retry 5 --retry-delay 10 --retry-all-errors -o /dev/null "$URL/"
-          curl -fsS --retry 5 --retry-delay 10 --retry-all-errors "$URL/api/v1/ops/health"
       # Report-only: scores land in the run's artifacts, nothing fails on them. Staging is
       # noindex and scales to zero, so its SEO and performance numbers aren't prod's anyway.
       - name: Lighthouse
         uses: treosh/lighthouse-ci-action@v12
         with:
-          urls: ${{ steps.url.outputs.url }}/
+          urls: ${{ env.URL }}/
           runs: 3
           uploadArtifacts: true
       - name: Comment the preview link on the PR
@@ -308,7 +166,7 @@ jobs:
           header: staging-preview
           message: |
             ### Staging preview
-            **${{ steps.url.outputs.url }}** — deployed from `${{ github.event.pull_request.head.sha }}`
+            **${{ env.URL }}** — deployed from `${{ github.event.pull_request.head.sha }}`
 
-            This is the shared **staging** project (`${{ env.PROJECT }}`), not production. It holds
-            placeholder data only, and the next PR push to deploy replaces it (ADR 0018).
+            This is the shared **staging** project (`nikunjramani-in-staging`), not production.
+            It holds placeholder data only, and the next PR push to deploy replaces it (ADR 0018).

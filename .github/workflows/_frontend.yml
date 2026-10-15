@@ -1,0 +1,37 @@
+name: frontend
+
+# Type-check, lint, unit tests and a production build of the Next.js app.
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    env:
+      # Public by design (apphosting.yaml); the build needs them, nothing secret here.
+      NEXT_PUBLIC_FIREBASE_PROJECT_ID: nikunjramani-in
+      NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: nikunjramani-in.firebaseapp.com
+      NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET: nikunjramani-in-media
+      NEXT_PUBLIC_SITE_URL: https://nikunjramani.in
+      FUNCTIONS_BASE_URL: https://asia-south1-nikunjramani-in.cloudfunctions.net
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      # RouteContext / LayoutProps etc. are generated into .next/types — absent on a fresh checkout.
+      - run: npx next typegen
+      - run: npx tsc --noEmit
+      - run: npm run lint
+      - run: npm test --if-present
+      - run: npm run build
