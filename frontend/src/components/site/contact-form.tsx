@@ -8,7 +8,7 @@ import { z } from "zod";
 
 import { ContactMessageSchema } from "@/generated/schemas.zod";
 import { Turnstile } from "@/components/site/turnstile";
-import { submitContact } from "@/lib/api/contact";
+import { submitContact } from "@/lib/contact";
 import { cn } from "@/lib/utils";
 
 // ContactMessageSchema is `.strict()` (ADR: server-set fields can never be client-supplied),
