@@ -48,15 +48,22 @@ jobs:
   deploy:
     needs: changes
     if: ${{ !inputs.infra_only }}
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: ${{ vars.SITE_URL }}
     permissions:
       contents: read
       id-token: write
-    uses: ./.github/workflows/_firebase-deploy.yml
-    with:
-      environment: production
-      project: nikunjramani-in
-      url: https://nikunjramani.in
-      only: firestore:rules,firestore:indexes,storage,functions,apphosting
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/firebase-deploy
+        with:
+          project: default
+          only: firestore:rules,firestore:indexes,storage,functions,apphosting
+          url: ${{ vars.SITE_URL }}
+          workload_identity_provider: ${{ vars.WIF_PROVIDER }}
+          service_account: ${{ vars.DEPLOY_SA }}
 
   # A failed deploy or smoke test redeploys the previous commit. Terraform isn't rolled back —
   # infra changes are reviewed in the approval step and are rarely what breaks a deploy.
@@ -66,16 +73,29 @@ jobs:
       always() && github.event_name == 'push'
       && needs.deploy.result == 'failure'
       && github.event.before != '0000000000000000000000000000000000000000'
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: ${{ vars.SITE_URL }}
     permissions:
       contents: read
       id-token: write
-    uses: ./.github/workflows/_firebase-deploy.yml
-    with:
-      environment: production
-      project: nikunjramani-in
-      url: https://nikunjramani.in
-      only: firestore:rules,firestore:indexes,storage,functions,apphosting
-      ref: ${{ github.event.before }}
+    steps:
+      # The previous commit's code, deployed by the current commit's action.
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.before }}
+      - uses: actions/checkout@v7
+        with:
+          path: .ci
+          sparse-checkout: .github/actions
+      - uses: ./.ci/.github/actions/firebase-deploy
+        with:
+          project: default
+          only: firestore:rules,firestore:indexes,storage,functions,apphosting
+          url: ${{ vars.SITE_URL }}
+          workload_identity_provider: ${{ vars.WIF_PROVIDER }}
+          service_account: ${{ vars.DEPLOY_SA }}
 
   terraform:
     name: terraform (${{ matrix.env }})
@@ -83,6 +103,7 @@ jobs:
     if: >
       always() && needs.changes.result == 'success'
       && (inputs.infra_only || (needs.changes.outputs.infra == 'true' && needs.deploy.result == 'success'))
+    runs-on: ubuntu-latest
     strategy:
       max-parallel: 1 # staging first — it's the rehearsal; a failure there stops prod
       matrix:
@@ -91,13 +112,16 @@ jobs:
             github_environment: staging-infra
           - env: prod
             github_environment: production-infra # required reviewer (ADR 0019)
+    environment: ${{ matrix.github_environment }}
     permissions:
       contents: read
       id-token: write
-    uses: ./.github/workflows/_terraform-apply.yml
-    with:
-      env: ${{ matrix.env }}
-      github_environment: ${{ matrix.github_environment }}
-    secrets:
-      TF_VAR_BILLING_ACCOUNT: ${{ secrets.TF_VAR_BILLING_ACCOUNT }}
-      TF_VAR_ALERT_EMAIL: ${{ secrets.TF_VAR_ALERT_EMAIL }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/terraform-apply
+        with:
+          env: ${{ matrix.env }}
+          workload_identity_provider: ${{ vars.WIF_PROVIDER }}
+          service_account: ${{ vars.TERRAFORM_SA }}
+          billing_account: ${{ secrets.TF_VAR_BILLING_ACCOUNT }}
+          alert_email: ${{ secrets.TF_VAR_ALERT_EMAIL }}

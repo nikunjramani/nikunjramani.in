@@ -1,11 +1,12 @@
 name: pr
 
-# Every pull request: decide what changed, run the matching checks, gate merging on one
-# `checks` result, then deploy a preview to the staging project (ADR 0018).
+# Every pull request: run the checks for what changed, gate merging on one `checks` result,
+# then deploy a preview to the staging project (ADR 0018). Each job's steps live in a
+# composite action under .github/actions/.
 #
-# The work lives in reusable workflows (_*.yml); this file only wires them together. They stay
-# jobs of this one workflow because a required check in a separate path-filtered workflow
-# never reports on PRs outside its paths — and blocks them forever.
+# Config comes from its source, not from this file: project IDs from .firebaserc aliases,
+# site URLs from each GitHub environment's SITE_URL variable, frontend build env from
+# frontend/apphosting.yaml.
 
 on:
   pull_request:
@@ -33,11 +34,10 @@ jobs:
       - uses: dorny/paths-filter@v4
         id: filter
         with:
-          # A workflow or action change runs everything, so it's proven by the jobs it affects.
+          # A CI change runs everything, so it's proven by the jobs it affects.
           filters: |
             ci: &ci
-              - .github/workflows/**
-              - .github/actions/**
+              - .github/**
             schemas:
               - *ci
               - architecture/**
@@ -48,6 +48,7 @@ jobs:
               - architecture/**
               - backend/**
               - firebase.json
+              - .firebaserc
             frontend:
               - *ci
               - architecture/**
@@ -68,22 +69,32 @@ jobs:
   schemas:
     needs: changes
     if: needs.changes.outputs.schemas == 'true'
-    uses: ./.github/workflows/_schemas.yml
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/schema-check
 
   backend:
     needs: changes
     if: needs.changes.outputs.backend == 'true'
-    uses: ./.github/workflows/_backend.yml
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/backend-checks
 
   frontend:
     needs: changes
     if: needs.changes.outputs.frontend == 'true'
-    uses: ./.github/workflows/_frontend.yml
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/frontend-checks
 
   infra-plan:
     name: infra-plan (${{ matrix.env }})
     needs: changes
     if: needs.changes.outputs.infra == 'true' && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
@@ -98,14 +109,15 @@ jobs:
       contents: read
       id-token: write
       pull-requests: write
-    uses: ./.github/workflows/_terraform-plan.yml
-    with:
-      env: ${{ matrix.env }}
-      workload_identity_provider: ${{ matrix.wif_provider }}
-      service_account: ${{ matrix.plan_sa }}
-    secrets:
-      TF_VAR_BILLING_ACCOUNT: ${{ secrets.TF_VAR_BILLING_ACCOUNT }}
-      TF_VAR_ALERT_EMAIL: ${{ secrets.TF_VAR_ALERT_EMAIL }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/terraform-plan
+        with:
+          env: ${{ matrix.env }}
+          workload_identity_provider: ${{ matrix.wif_provider }}
+          service_account: ${{ matrix.plan_sa }}
+          billing_account: ${{ secrets.TF_VAR_BILLING_ACCOUNT }}
+          alert_email: ${{ secrets.TF_VAR_ALERT_EMAIL }}
 
   # The one required status check (branch protection): skipped is fine, failed is not.
   checks:
@@ -131,42 +143,41 @@ jobs:
       always() && !failure() && !cancelled()
       && needs.changes.outputs.deployable == 'true'
       && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    environment:
+      name: staging
+      url: ${{ vars.SITE_URL }}
     concurrency:
       group: staging # one shared slot (ADR 0018); the newest push wins
       cancel-in-progress: true
     permissions:
       contents: read
       id-token: write
-    uses: ./.github/workflows/_firebase-deploy.yml
-    with:
-      environment: staging
-      project: nikunjramani-in-staging
-      url: https://nikunjramani-in--nikunjramani-in-staging.asia-southeast1.hosted.app
-      only: firestore:rules,firestore:indexes,functions,apphosting
-
-  preview-report:
-    needs: preview
-    runs-on: ubuntu-latest
-    permissions:
       pull-requests: write
-    env:
-      URL: https://nikunjramani-in--nikunjramani-in-staging.asia-southeast1.hosted.app
     steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/firebase-deploy
+        with:
+          project: staging
+          only: firestore:rules,firestore:indexes,functions,apphosting
+          url: ${{ vars.SITE_URL }}
+          workload_identity_provider: ${{ vars.WIF_PROVIDER }}
+          service_account: ${{ vars.DEPLOY_SA }}
       # Report-only: scores land in the run's artifacts, nothing fails on them. Staging is
       # noindex and scales to zero, so its SEO and performance numbers aren't prod's anyway.
       - name: Lighthouse
         uses: treosh/lighthouse-ci-action@v12
         with:
-          urls: ${{ env.URL }}/
+          urls: ${{ vars.SITE_URL }}/
           runs: 3
           uploadArtifacts: true
       - name: Comment the preview link on the PR
-        uses: marocchino/sticky-pull-request-comment@v3
+        uses: marocchino/sticky-pull-request-comment@v3.0.5
         with:
           header: staging-preview
           message: |
             ### Staging preview
-            **${{ env.URL }}** — deployed from `${{ github.event.pull_request.head.sha }}`
+            **${{ vars.SITE_URL }}** — deployed from `${{ github.event.pull_request.head.sha }}`
 
-            This is the shared **staging** project (`nikunjramani-in-staging`), not production.
-            It holds placeholder data only, and the next PR push to deploy replaces it (ADR 0018).
+            This is the shared **staging** project, not production. It holds placeholder data
+            only, and the next PR push to deploy replaces it (ADR 0018).

@@ -1,0 +1,29 @@
+name: schema-check
+description: >
+  Validate the JSON Schemas and their example fixtures, regenerate every model with `make gen`,
+  and fail if the committed generated code differs (ADR 0006).
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@v7
+      with:
+        node-version: 22
+        cache: npm
+        cache-dependency-path: architecture/codegen/package-lock.json
+    - uses: astral-sh/setup-uv@v10.3.0
+      with:
+        enable-cache: true
+    - shell: bash
+      run: npm ci --prefix architecture/codegen
+    - shell: bash
+      run: make validate
+    - shell: bash
+      run: make gen
+    - name: Fail if generated code is stale
+      shell: bash
+      run: |
+        if ! git diff --exit-code; then
+          echo "::error::Generated code is out of date. Run 'make gen' and commit the result."
+          exit 1
+        fi

@@ -142,7 +142,8 @@ Three CI identities per project, each gated by a GitHub environment (ADR 0019):
    - Environments: `staging` (any branch), `staging-infra` (main only), `production` (main only),
      `production-infra` (main only + **you** as required reviewer)
    - Environment variables from `terraform output`: `WIF_PROVIDER` on all four; `DEPLOY_SA` on
-     `staging` / `production`; `TERRAFORM_SA` on the two `-infra` ones
+     `staging` / `production`; `TERRAFORM_SA` on the two `-infra` ones. Plus `SITE_URL` on
+     `staging` / `production` — the deploy's smoke-test target and environment link
    - Repository variables: `PROD_WIF_PROVIDER`, `PROD_PLAN_SA`, `STAGING_WIF_PROVIDER`,
      `STAGING_PLAN_SA`. Repository secrets: `TF_VAR_BILLING_ACCOUNT`, `TF_VAR_ALERT_EMAIL`
      (`infra-plan` fails fast without them)

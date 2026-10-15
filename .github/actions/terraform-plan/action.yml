@@ -1,0 +1,82 @@
+name: terraform-plan
+description: >
+  `terraform plan` for one environment as its read-only github-plan identity (ADR 0019), posted
+  as a sticky PR comment.
+
+inputs:
+  env:
+    description: "prod | staging — the directory under infra/terraform/envs"
+    required: true
+  workload_identity_provider:
+    required: true
+  service_account:
+    required: true
+  billing_account:
+    required: true
+  alert_email:
+    description: "Required for prod"
+    required: false
+    default: ""
+
+runs:
+  using: composite
+  steps:
+    - uses: hashicorp/setup-terraform@v4
+      with:
+        terraform_wrapper: false
+    - shell: bash
+      run: terraform fmt -check -recursive infra/terraform
+    # Empty values still "work" — and produce a wrong plan (an empty billing account plans a
+    # budget replacement), so fail loudly instead.
+    - name: Require the Terraform variables
+      shell: bash
+      env:
+        ENV: ${{ inputs.env }}
+        BILLING: ${{ inputs.billing_account }}
+        EMAIL: ${{ inputs.alert_email }}
+      run: |
+        [ -n "$BILLING" ] || { echo "::error::TF_VAR_BILLING_ACCOUNT is empty"; exit 1; }
+        [ "$ENV" != prod ] || [ -n "$EMAIL" ] || { echo "::error::TF_VAR_ALERT_EMAIL is empty"; exit 1; }
+    - uses: google-github-actions/auth@v3
+      with:
+        workload_identity_provider: ${{ inputs.workload_identity_provider }}
+        service_account: ${{ inputs.service_account }}
+    - name: Plan
+      id: plan
+      shell: bash
+      working-directory: infra/terraform/envs/${{ inputs.env }}
+      env:
+        TF_IN_AUTOMATION: "1"
+        TF_VAR_billing_account: ${{ inputs.billing_account }}
+        TF_VAR_alert_email: ${{ inputs.alert_email }}
+      run: |
+        set -o pipefail
+        terraform init -input=false
+        terraform validate
+        terraform plan -input=false -no-color -lock-timeout=120s 2>&1 | tee plan.txt
+    - name: Format the plan for the PR comment
+      if: always() && steps.plan.outcome != 'skipped'
+      shell: bash
+      working-directory: infra/terraform/envs/${{ inputs.env }}
+      env:
+        ENV: ${{ inputs.env }}
+        OUTCOME: ${{ steps.plan.outcome }}
+      run: |
+        {
+          echo "### \`terraform plan\` · ${ENV} · ${OUTCOME}"
+          echo
+          grep -E '^Plan:|^No changes' plan.txt || true
+          echo
+          echo '<details><summary>Full plan</summary>'
+          echo
+          echo '```'
+          tail -c 60000 plan.txt 2>/dev/null || echo "(no plan output — see the job log)"
+          echo '```'
+          echo '</details>'
+        } > comment.md
+    - name: Comment the plan on the PR
+      if: always() && steps.plan.outcome != 'skipped'
+      uses: marocchino/sticky-pull-request-comment@v3.0.5
+      with:
+        header: infra-plan-${{ inputs.env }}
+        path: infra/terraform/envs/${{ inputs.env }}/comment.md
