@@ -30,7 +30,7 @@ The plan lives here, split by topic and phase. Start with the
 | 4 | [Public Site](./phases/phase-4-public-site.md) | ~16h | 🟡 Built & verified; blocked on Phase 2 content + Phase 6 Lighthouse |
 | 5 | [Admin Panel](./phases/phase-5-admin-panel.md) | ~14h | 🟡 Built; production admin claim and signed uploads verified |
 | 6 | [Deploy & DNS](./phases/phase-6-deploy.md) | ~5h | 🟡 `nikunjramani.in` live over HTTPS; a few launch checks remain |
-| 7 | [CI/CD Hardening](./phases/phase-7-cicd.md) | ~5h | 🟡 Built; awaiting first applies and runs |
+| 7 | [CI/CD Hardening](./phases/phase-7-cicd.md) | ~5h | 🟡 PR checks + staging previews live; prod deploys await the catch-up |
 | 8 | [Post-Launch](./phases/phase-8-post-launch.md) | ongoing | ⬜ Not started |
 
 **Launch is the end of Phase 6.** Total: ~67h of build + ~5h of your writing.

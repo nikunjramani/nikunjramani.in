@@ -2,7 +2,6 @@
  * DO NOT EDIT. Generated from architecture/api-routes.json by `make gen`.
  */
 /* eslint-disable */
-
 export const API_ROUTES = {
   content: {
     profile: "content/profile",
@@ -24,4 +23,5 @@ export const BACKEND_ROUTES = Object.values(API_ROUTES).flatMap((domain) =>
   Object.values(domain),
 );
 
-export type ContentApiDomain = (typeof API_ROUTES.content)[keyof typeof API_ROUTES.content];
+export type ContentApiDomain =
+  (typeof API_ROUTES.content)[keyof typeof API_ROUTES.content];

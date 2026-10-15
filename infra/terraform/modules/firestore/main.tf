@@ -26,6 +26,9 @@ resource "google_firestore_field" "contact_ttl" {
   field      = "expiresAt"
 
   ttl_config {}
+  # Empty = no single-field indexes, matching firestore.indexes.json's fieldOverrides
+  # ("indexes": []), which `firebase deploy` applies. Omitted, the two would undo each other.
+  index_config {}
 }
 
 # Rate-limit windows (shared/core/rate_limit.py) carry an expiresAt; without this policy
@@ -37,6 +40,7 @@ resource "google_firestore_field" "rate_limit_ttl" {
   field      = "expiresAt"
 
   ttl_config {}
+  index_config {} # see contact_ttl
 }
 
 output "database_name" { value = google_firestore_database.default.name }
