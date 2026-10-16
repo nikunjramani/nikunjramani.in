@@ -82,6 +82,11 @@ match /{allPaths=**} {
 }
 ```
 
+> **Not deployed.** The media bucket is a plain Cloud Storage bucket from Terraform, not a Firebase
+> Storage bucket, so these rules never apply in a real project — they run only in the emulator.
+> The same policy is enforced by IAM: a managed folder makes `public/` world-readable, and
+> nothing else is granted.
+
 Uploads: the admin panel asks the API for a signed URL, the API checks the admin claim and the
 content type, then the browser PUTs directly to Storage. Large files never pass through the function.
 
