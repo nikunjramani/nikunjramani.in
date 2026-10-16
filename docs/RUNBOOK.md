@@ -288,9 +288,15 @@ Email is the one part that needs secrets: `on_contact_created` binds `CONTACT_EM
 2. `gcloud secrets versions add` for `RESEND_API_KEY` and (if not already) `CONTACT_EMAIL_TO`.
 3. Deploy functions; submit the live form and confirm the email arrives.
 
-Until then, `RESEND_API_KEY` can hold an **empty** version (prod does, since 2026-10-16): the
-deploy accepts it and `send_email` logs `RESEND_API_KEY not set — skipping send` instead of
-failing. Messages are still stored in `contact_messages`.
+Until then, `RESEND_API_KEY` can hold a **single newline** (prod does, since 2026-10-16) —
+Secret Manager rejects an empty version, and the settings strip whitespace, so the deploy accepts
+it and `send_email` logs `RESEND_API_KEY not set — skipping send` instead of failing. Messages
+are still stored in `contact_messages`.
+
+```powershell
+$f = "$env:TEMP\newline"; [IO.File]::WriteAllBytes($f, [byte[]]@(10))
+gcloud secrets versions add RESEND_API_KEY --data-file="$f" --project nikunjramani-in
+```
 
 ### Removing REVALIDATE_TOKEN (one-time, ADR 0015)
 

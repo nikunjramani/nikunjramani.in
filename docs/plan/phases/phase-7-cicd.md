@@ -22,8 +22,9 @@ gated by GitHub environment; CI applies Terraform) · operating it:
 - [x] [05 · CI/CD](../05-cicd.md) read
 - [x] **Prod caught up with `main` before `PROD_DEPLOY_ENABLED` is set.** Done 2026-10-16 as a
       watched first run of `deploy.yml` (functions → App Hosting, `--force` deleting the old 12),
-      then `infra_only` for the Terraform drift. `RESEND_API_KEY` holds an empty placeholder until
-      Resend is set up — `send_email` skips sending on an empty key. Original note: as of
+      then `infra_only` for the Terraform drift. `RESEND_API_KEY` holds a single-newline placeholder
+      until Resend is set up (Secret Manager rejects empty) — `send_email` skips sending on a
+      blank key. Original note: as of
       2026-10-15 prod still runs the 12 pre-[ADR 0017](../../adr/0017-bounded-context-domains.md)
       functions (`api_contact`, `api_projects`, …); `main` has the 15 `api_<domain>_<sub>` ones,
       plus the unapplied [ADR 0015](../../adr/0015-remove-revalidation-webhook.md) secret cleanup.
