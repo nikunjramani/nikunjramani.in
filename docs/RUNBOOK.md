@@ -114,10 +114,23 @@ Three CI identities per project, each gated by a GitHub environment (ADR 0019):
 
 | Workflow | When | Identity · environment |
 |---|---|---|
-| `pr.yml` checks | every PR | — (`github-plan` for `terraform plan`, read-only) |
-| `pr.yml` preview | same-repo PRs, after checks | staging `github-deploy` · `staging` |
-| `deploy.yml` deploy | push to `main` | prod `github-deploy` · `production` (main only) |
+| `pr.yml` checks | every PR — only the suites its paths touch | — (`github-plan` for `terraform plan`, read-only) |
+| `pr.yml` preview | same-repo PRs, after checks — only the targets touched | staging `github-deploy` · `staging` |
+| `deploy.yml` deploy | push to `main` — only the targets touched | prod `github-deploy` · `production` (main only) |
 | `deploy.yml` terraform | `infra/terraform/**` changed | `github-terraform` · `staging-infra`, then `production-infra` (**your approval**) |
+
+What runs for what (`dorny/paths-filter`, same filters in both workflows):
+
+| Change | Checks | Deploys |
+|---|---|---|
+| `frontend/**` (design, pages) | frontend | App Hosting |
+| `backend/**` | backend | functions |
+| `infra/rules/**` | — | Firestore rules + indexes (+ Storage rules on prod) |
+| `infra/terraform/**` | `terraform plan` | — then, on `main`, `terraform apply` |
+| `architecture/**` | schemas, backend, frontend | functions + App Hosting |
+| `firebase.json`, `.firebaserc` | backend | everything |
+| `.github/**` | everything | everything |
+| docs, `*.md` | none (just the `checks` rollup, which branch protection requires) | nothing |
 
 ### First-time setup (done once)
 

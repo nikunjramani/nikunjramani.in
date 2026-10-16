@@ -123,8 +123,11 @@ from `.firebaserc`, URLs from each environment's `SITE_URL`, build env from `app
 
 - [x] Runs after `checks`, for same-repo PRs that change something deployable; fork PRs never
       reach it
-- [x] Deploys Firestore rules + indexes, **all** functions, App Hosting to staging as staging's
-      `github-deploy`; narrowing to changed subdomains comes later
+- [x] Deploys to staging, as staging's `github-deploy`, only the targets the PR touched:
+      Firestore rules + indexes (`infra/rules/**`), functions (`backend/**`), App Hosting
+      (`frontend/**`); `architecture/**` → functions + App Hosting; `.github/**`, `firebase.json`,
+      `.firebaserc` → all. Docs-only PRs run just `changes` + `checks`. Within functions it's
+      still **all** of them; narrowing to changed subdomains comes later
       ([05 · CI/CD](../05-cicd.md#deploying-only-what-changed))
 - [x] `concurrency: staging`, newest push wins
 - [x] Smoke test (homepage + `/api/v1/ops/health`); Lighthouse report-only (3 runs, uploaded as
@@ -139,6 +142,8 @@ from `.firebaserc`, URLs from each environment's `SITE_URL`, build env from `app
 
 - [x] On push to `main`, gated by `PROD_DEPLOY_ENABLED=true` (enabled 2026-10-16)
 - [x] `concurrency: production`, never cancelled mid-deploy
+- [x] Each push deploys only the targets it changed, with the same filters as the preview
+      (docs-only: nothing); a manual run deploys everything
 - [x] Order: rules → functions → App Hosting → smoke test → `terraform apply` (staging, then
       prod) only when `infra/terraform/**` changed. Code first because Firebase makes a new HTTP
       function public on create, whereas Terraform's invoker binding fails on a function that

@@ -1,7 +1,10 @@
 name: deploy
 
-# Push to main deploys production. Off until the repository variable PROD_DEPLOY_ENABLED is
-# "true" — set only once prod has been caught up with main by hand (phase-7-cicd.md).
+# Push to main deploys production. Off unless the repository variable PROD_DEPLOY_ENABLED is
+# "true" (RUNBOOK, "Turning on production deploys").
+#
+# A push deploys only the parts it changed — a docs-only push deploys nothing. A manual run
+# deploys everything.
 #
 # Order: deploy (rules → functions → App Hosting → smoke test) → rollback if that failed →
 # terraform apply when infra/terraform changed, staging then prod (prod behind approval).
@@ -30,8 +33,12 @@ jobs:
   changes:
     if: vars.PROD_DEPLOY_ENABLED == 'true'
     runs-on: ubuntu-latest
+    # The filter only runs on push; a manual run deploys every target.
     outputs:
       infra: ${{ steps.filter.outputs.infra }}
+      rules: ${{ github.event_name != 'push' || steps.filter.outputs.rules == 'true' }}
+      functions: ${{ github.event_name != 'push' || steps.filter.outputs.functions == 'true' }}
+      apphosting: ${{ github.event_name != 'push' || steps.filter.outputs.apphosting == 'true' }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -41,13 +48,36 @@ jobs:
         id: filter
         with:
           base: ${{ github.event.before }}
+          # Same deploy targets as pr.yml.
           filters: |
+            ci: &ci
+              - .github/**
             infra:
               - infra/terraform/**
+            rules:
+              - *ci
+              - infra/rules/**
+              - firebase.json
+              - .firebaserc
+            functions:
+              - *ci
+              - architecture/**
+              - backend/**
+              - firebase.json
+              - .firebaserc
+            apphosting:
+              - *ci
+              - architecture/**
+              - frontend/**
+              - firebase.json
+              - .firebaserc
 
   deploy:
     needs: changes
-    if: ${{ !inputs.infra_only }}
+    if: >
+      !inputs.infra_only
+      && (needs.changes.outputs.rules == 'true' || needs.changes.outputs.functions == 'true'
+          || needs.changes.outputs.apphosting == 'true')
     runs-on: ubuntu-latest
     environment:
       name: production
@@ -60,7 +90,10 @@ jobs:
       - uses: ./.github/actions/firebase-deploy
         with:
           project: default
-          only: firestore:rules,firestore:indexes,storage,functions,apphosting
+          rules: ${{ needs.changes.outputs.rules }}
+          storage: ${{ needs.changes.outputs.rules }}
+          functions: ${{ needs.changes.outputs.functions }}
+          apphosting: ${{ needs.changes.outputs.apphosting }}
           url: ${{ vars.SITE_URL }}
           workload_identity_provider: ${{ vars.WIF_PROVIDER }}
           service_account: ${{ vars.DEPLOY_SA }}
@@ -81,7 +114,7 @@ jobs:
       contents: read
       id-token: write
     steps:
-      # The previous commit's code, deployed by the current commit's action.
+      # The previous commit's code, all of it, deployed by the current commit's action.
       - uses: actions/checkout@v7
         with:
           ref: ${{ github.event.before }}
@@ -92,7 +125,7 @@ jobs:
       - uses: ./.ci/.github/actions/firebase-deploy
         with:
           project: default
-          only: firestore:rules,firestore:indexes,storage,functions,apphosting
+          storage: "true"
           url: ${{ vars.SITE_URL }}
           workload_identity_provider: ${{ vars.WIF_PROVIDER }}
           service_account: ${{ vars.DEPLOY_SA }}
@@ -102,7 +135,8 @@ jobs:
     needs: [changes, deploy]
     if: >
       always() && needs.changes.result == 'success'
-      && (inputs.infra_only || (needs.changes.outputs.infra == 'true' && needs.deploy.result == 'success'))
+      && (inputs.infra_only || (needs.changes.outputs.infra == 'true'
+          && contains(fromJSON('["success","skipped"]'), needs.deploy.result)))
     runs-on: ubuntu-latest
     strategy:
       max-parallel: 1 # staging first — it's the rehearsal; a failure there stops prod

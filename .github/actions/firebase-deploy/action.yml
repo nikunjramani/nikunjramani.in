@@ -8,9 +8,20 @@ inputs:
   project:
     description: ".firebaserc alias — staging | default"
     required: true
-  only:
-    description: "firebase deploy --only targets"
-    required: true
+  # What to deploy. Workflows pass their paths-filter results, so a change deploys only the
+  # parts it touches; everything defaults on except Storage rules (prod passes it explicitly).
+  rules:
+    description: "Firestore rules + indexes"
+    default: "true"
+  storage:
+    description: "Storage rules"
+    default: "false"
+  functions:
+    description: "Cloud Functions"
+    default: "true"
+  apphosting:
+    description: "App Hosting (the website)"
+    default: "true"
   url:
     description: "Site URL to smoke-test after the deploy"
     required: true
@@ -23,9 +34,11 @@ runs:
   using: composite
   steps:
     - uses: actions/setup-python@v7
+      if: inputs.functions == 'true'
       with:
         python-version-file: .python-version
     - uses: astral-sh/setup-uv@v10.3.0
+      if: inputs.functions == 'true'
       with:
         enable-cache: true
         cache-dependency-glob: backend/functions/uv.lock
@@ -40,6 +53,7 @@ runs:
         service_account: ${{ inputs.service_account }}
     # The Firebase CLI needs requirements.txt + a stdlib venv/ to load the Python functions.
     - shell: bash
+      if: inputs.functions == 'true'
       run: make setup-backend
     # Retried: a fresh project's first deploys hit documented propagation races (Eventarc
     # service agent, gcf-artifacts repo, source bucket) whose remedy is "retry in a few minutes".
@@ -47,8 +61,19 @@ runs:
       shell: bash
       env:
         PROJECT: ${{ inputs.project }}
-        ONLY: ${{ inputs.only }}
+        RULES: ${{ inputs.rules }}
+        STORAGE: ${{ inputs.storage }}
+        FUNCTIONS: ${{ inputs.functions }}
+        APPHOSTING: ${{ inputs.apphosting }}
       run: |
+        targets=()
+        [ "$RULES" = true ] && targets+=(firestore:rules firestore:indexes)
+        [ "$STORAGE" = true ] && targets+=(storage)
+        [ "$FUNCTIONS" = true ] && targets+=(functions)
+        [ "$APPHOSTING" = true ] && targets+=(apphosting)
+        [ ${#targets[@]} -gt 0 ] || { echo "::error::Nothing to deploy"; exit 1; }
+        ONLY=$(IFS=,; echo "${targets[*]}")
+        echo "Deploying: $ONLY"
         for attempt in 1 2 3; do
           firebase deploy --project "$PROJECT" --only "$ONLY" --non-interactive --force && exit 0
           [ "$attempt" -lt 3 ] && { echo "::warning::Deploy attempt $attempt failed; retrying in 90s"; sleep 90; }
