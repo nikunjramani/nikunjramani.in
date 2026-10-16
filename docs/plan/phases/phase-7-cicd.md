@@ -80,7 +80,8 @@ from `.firebaserc`, URLs from each environment's `SITE_URL`, build env from `app
 - [x] `kernel/config.py` reads the project from `GCLOUD_PROJECT` (Firebase reserves the
       `FIREBASE_` dotenv prefix) — staging functions run as staging's own runtime SA. Tested
 - [x] `backend/functions/.env.nikunjramani-in-staging` (and its `.gitignore` exception)
-- [x] `frontend/apphosting.staging.yaml` — staging Firebase config, functions URL, Turnstile
+- [x] `frontend/apphosting.staging.yaml` — staging Firebase config, functions URL, App Check
+      reCAPTCHA site key (ADR 0020; was a Turnstile test key)
       **test** site key, `SITE_INDEXABLE=false`
 - [x] Fill its `NEXT_PUBLIC_FIREBASE_API_KEY` / `APP_ID` from the staging web app after apply
 - [x] `SITE_INDEXABLE=false` → `robots.txt` disallows everything and every response carries
@@ -110,7 +111,7 @@ from `.firebaserc`, URLs from each environment's `SITE_URL`, build env from `app
 
 **Secrets & data:**
 
-- [x] Secret versions: Turnstile test secret, `CONTACT_EMAIL_TO` = the owner's inbox, a
+- [x] Secret versions: `CONTACT_EMAIL_TO` = the owner's inbox, a
       placeholder `RESEND_API_KEY` (staging email fails by design)
 - [ ] Admin claim for the owner on staging
 - [ ] Seed placeholder content from `architecture/examples/valid/` — never a prod export

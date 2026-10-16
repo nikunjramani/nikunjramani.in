@@ -31,6 +31,7 @@ reader would reasonably ask "why on earth is it like this?", belongs here.
 | [0017](./0017-bounded-context-domains.md) | Organise the backend as isolated domains of self-contained subdomains | ✅ Accepted | 2026-10-13 |
 | [0018](./0018-staging-project-for-pr-previews.md) | A separate Firebase project for PR preview deploys | ✅ Accepted | 2026-10-13 |
 | [0019](./0019-ci-identities-gated-by-github-environment.md) | CI identities are gated by GitHub environment, and CI applies Terraform | ✅ Accepted | 2026-10-15 |
+| [0020](./0020-app-check-replaces-turnstile.md) | Firebase App Check replaces Cloudflare Turnstile on the contact form | ✅ Accepted | 2026-10-16 |
 
 **Status:** 🟡 Proposed · ✅ Accepted · ⛔ Rejected · 🔄 Superseded · ⚠️ Deprecated
 

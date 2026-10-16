@@ -8,10 +8,10 @@ variable "accessor_service_accounts" {
 }
 
 locals {
+  # TURNSTILE_SECRET_KEY was removed with Turnstile (ADR 0020) — App Check needs no secret.
   secrets = [
     "RESEND_API_KEY",
     "CONTACT_EMAIL_TO",
-    "TURNSTILE_SECRET_KEY",
   ]
 }
 

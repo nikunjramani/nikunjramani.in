@@ -115,7 +115,7 @@ server-side.
 | Secret | Where it lives |
 |---|---|
 | Resend API key | Secret Manager → injected into the function by Terraform |
-| Turnstile secret | Secret Manager |
+| Contact-form abuse check | none — Firebase App Check needs no secret (ADR 0020) |
 | Firebase Admin credentials | Ambient — the runtime service account, no key file |
 | Public Firebase config | `NEXT_PUBLIC_*`, in the client bundle by design (it's not a secret) |
 
@@ -141,7 +141,9 @@ A public form that writes to your database is the one genuinely exposed surface 
 Five stacked defences:
 
 1. **Honeypot field** — hidden input; if filled, accept the request and silently discard it
-2. **Cloudflare Turnstile** — verified server-side, not just rendered
+2. **Firebase App Check** (reCAPTCHA Enterprise, score-based) — token verified server-side
+   before the rate limiter, so unverified requests can't exhaust it (ADR 0020; replaced
+   Cloudflare Turnstile)
 3. **Rate limit** — 3/hour per IP, 20/hour globally, in Firestore
 4. **Body size cap** — 5 KB, rejected before parsing
 5. **Spam scoring** — the Firestore trigger scores links, keywords and entropy, flags rather than deletes
@@ -155,7 +157,7 @@ Failures return a generic success message. Telling a bot *why* it was rejected j
 Set in `next.config.ts`:
 
 ```
-Content-Security-Policy       # scripts limited to self + Firebase + Turnstile
+Content-Security-Policy       # scripts limited to self + Firebase + reCAPTCHA (not yet set)
 Strict-Transport-Security     # max-age 63072000, includeSubDomains, preload
 X-Content-Type-Options        # nosniff
 Referrer-Policy               # strict-origin-when-cross-origin

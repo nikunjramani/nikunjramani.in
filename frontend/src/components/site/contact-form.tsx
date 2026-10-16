@@ -2,13 +2,13 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
 import { ContactMessageSchema } from "@/generated/schemas.zod";
-import { Turnstile } from "@/components/site/turnstile";
 import { submitContact } from "@/lib/contact";
+import { getAppCheckToken, initAppCheck } from "@/lib/firebase/app-check";
 import { cn } from "@/lib/utils";
 
 // ContactMessageSchema is `.strict()` (ADR: server-set fields can never be client-supplied),
@@ -30,7 +30,6 @@ type Status = "idle" | "submitting" | "success" | "error";
 
 export function ContactForm() {
   const [status, setStatus] = useState<Status>("idle");
-  const [turnstileToken, setTurnstileToken] = useState("");
   const {
     register,
     handleSubmit,
@@ -38,15 +37,22 @@ export function ContactForm() {
     formState: { errors },
   } = useForm<FormValues>({ resolver: zodResolver(FormSchema) });
 
+  // Start App Check while the visitor types, so reCAPTCHA has signals to score by submit.
+  useEffect(() => {
+    void initAppCheck();
+  }, []);
+
   async function onSubmit(values: FormValues) {
     setStatus("submitting");
     try {
-      await submitContact({
-        ...values,
-        // Honeypot stays empty for real users; a bot filling every field trips it server-side.
-        honeypot: values.honeypot ?? "",
-        turnstileToken,
-      });
+      await submitContact(
+        {
+          ...values,
+          // Honeypot stays empty for real users; a bot filling every field trips it server-side.
+          honeypot: values.honeypot ?? "",
+        },
+        await getAppCheckToken(),
+      );
       setStatus("success");
       reset();
     } catch {
@@ -124,8 +130,6 @@ export function ContactForm() {
         />
         {errors.message ? <p className="text-xs text-red-500">{errors.message.message}</p> : null}
       </div>
-
-      <Turnstile onVerify={setTurnstileToken} />
 
       {/* Safety net: a resolver error that isn't on name/email/message (a root-level Zod
           issue, say) would otherwise be silently swallowed — the exact failure mode this

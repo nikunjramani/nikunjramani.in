@@ -33,6 +33,8 @@ locals {
     "developerconnect.googleapis.com", # App Hosting
     "iam.googleapis.com",              # App Hosting
     "pubsub.googleapis.com",           # event-triggered functions
+    "firebaseappcheck.googleapis.com", # contact form abuse protection (ADR 0020)
+    "recaptchaenterprise.googleapis.com",
   ]
 }
 

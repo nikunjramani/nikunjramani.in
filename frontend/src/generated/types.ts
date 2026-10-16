@@ -120,7 +120,7 @@ export interface Audit {
   createdBy?: string;
 }
 /**
- * Never client-readable or client-writable. Created only by the API after Turnstile, honeypot and rate-limit checks pass. Server-set fields are marked below.
+ * Never client-readable or client-writable. Created only by the API after App Check, honeypot and rate-limit checks pass. Server-set fields are marked below.
  */
 export interface ContactMessage {
   name: string;

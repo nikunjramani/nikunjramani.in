@@ -35,10 +35,10 @@ env:
     value: "https://asia-south1-nikunjramani-in-staging.cloudfunctions.net"
     availability: [BUILD, RUNTIME]
 
-  # Cloudflare's published always-passes test site key — pairs with the test secret in
-  # staging's TURNSTILE_SECRET_KEY. Never a real key.
-  - variable: NEXT_PUBLIC_TURNSTILE_SITE_KEY
-    value: "1x00000000000000000000AA"
+  # Staging's own reCAPTCHA Enterprise key for App Check (ADR 0020), restricted to the staging
+  # hostname. `terraform output recaptcha_site_key` in envs/staging.
+  - variable: NEXT_PUBLIC_RECAPTCHA_SITE_KEY
+    value: "6Ld6bvEtAAAAAFxEalhzm4nZSj3YtuY4vSAIgKXg"
     availability: [BUILD, RUNTIME]
 
   - variable: SITE_INDEXABLE

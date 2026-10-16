@@ -8,14 +8,23 @@ export interface ContactSubmission {
   subject?: string;
   message: string;
   honeypot: string;
-  turnstileToken: string;
 }
 
-/** Public submission: unlike admin API calls, this intentionally has no Firebase token. */
-export async function submitContact(payload: ContactSubmission): Promise<void> {
+/**
+ * Public submission: no Firebase Auth token, but an App Check token proving it came from this
+ * site (ADR 0020). Empty only where App Check isn't configured (local dev); production rejects
+ * a submission without one.
+ */
+export async function submitContact(
+  payload: ContactSubmission,
+  appCheckToken: string,
+): Promise<void> {
   const res = await fetch(`/api/v1/${API_ROUTES.inbox.contact}`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      ...(appCheckToken ? { "X-Firebase-AppCheck": appCheckToken } : {}),
+    },
     body: JSON.stringify(payload),
   });
   if (!res.ok) throw new Error(`Contact submission failed with status ${res.status}.`);

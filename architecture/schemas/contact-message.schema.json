@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "contact-message.schema.json",
   "title": "ContactMessage",
-  "description": "Never client-readable or client-writable. Created only by the API after Turnstile, honeypot and rate-limit checks pass. Server-set fields are marked below.",
+  "description": "Never client-readable or client-writable. Created only by the API after App Check, honeypot and rate-limit checks pass. Server-set fields are marked below.",
   "x-version": "1.0.1",
   "x-firestore": {
     "collection": "contact_messages",

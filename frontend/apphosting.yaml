@@ -42,9 +42,8 @@ env:
   # account (apphosting-runtime@..., read-only) provides ambient credentials; see
   # frontend/src/lib/firebase/admin.ts.
 
-  # Required before launch: the contact function fails closed in production without its
-  # TURNSTILE_SECRET_KEY, so the form drops every message until this public site key is
-  # set and the matching secret has a version. See docs/RUNBOOK.md (Contact form keys).
-  # - variable: NEXT_PUBLIC_TURNSTILE_SITE_KEY
-  #   value: "<site key from the Cloudflare Turnstile dashboard>"
-  #   availability: [BUILD, RUNTIME]
+  # reCAPTCHA Enterprise key behind App Check on the contact form (ADR 0020) — public by
+  # design, restricted to this site's domains. `terraform output recaptcha_site_key`.
+  - variable: NEXT_PUBLIC_RECAPTCHA_SITE_KEY
+    value: "6LeZdfEtAAAAAO9YGAIwR-lLdmIOSyS_eFULqKlT"
+    availability: [BUILD, RUNTIME]

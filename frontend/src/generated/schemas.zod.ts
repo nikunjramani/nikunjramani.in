@@ -115,7 +115,7 @@ export const ContactMessageSchema = z
   })
   .strict()
   .describe(
-    "Never client-readable or client-writable. Created only by the API after Turnstile, honeypot and rate-limit checks pass. Server-set fields are marked below.",
+    "Never client-readable or client-writable. Created only by the API after App Check, honeypot and rate-limit checks pass. Server-set fields are marked below.",
   );
 export type ContactMessageInput = z.infer<typeof ContactMessageSchema>;
 
