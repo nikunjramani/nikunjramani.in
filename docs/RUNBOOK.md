@@ -161,8 +161,8 @@ code changes (zod, TypeScript, Vitest, Firebase, the `$ref` resolver) as their o
 
 ### Turning on production deploys
 
-`deploy.yml` does nothing until the repository variable `PROD_DEPLOY_ENABLED` is `true`. Set it
-only after prod has been caught up with `main` by hand:
+`deploy.yml` does nothing unless the repository variable `PROD_DEPLOY_ENABLED` is `true` — on
+since 2026-10-16. To pause prod deploys, delete it; to resume, once prod matches `main`:
 
 ```bash
 gh variable set PROD_DEPLOY_ENABLED --body true
@@ -274,6 +274,10 @@ Email is the one part that needs secrets: `on_contact_created` binds `CONTACT_EM
 1. Add a Resend API key with a verified sending domain.
 2. `gcloud secrets versions add` for `RESEND_API_KEY` and (if not already) `CONTACT_EMAIL_TO`.
 3. Deploy functions; submit the live form and confirm the email arrives.
+
+Until then, `RESEND_API_KEY` can hold an **empty** version (prod does, since 2026-10-16): the
+deploy accepts it and `send_email` logs `RESEND_API_KEY not set — skipping send` instead of
+failing. Messages are still stored in `contact_messages`.
 
 ### Removing REVALIDATE_TOKEN (one-time, ADR 0015)
 

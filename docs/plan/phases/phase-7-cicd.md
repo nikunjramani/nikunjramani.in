@@ -20,7 +20,10 @@ gated by GitHub environment; CI applies Terraform) · operating it:
 
 - [x] [Phase 6](./phase-6-deploy.md) done — deployed manually at least once
 - [x] [05 · CI/CD](../05-cicd.md) read
-- [ ] **Prod caught up with `main`, by hand, before `PROD_DEPLOY_ENABLED` is set.** As of
+- [x] **Prod caught up with `main` before `PROD_DEPLOY_ENABLED` is set.** Done 2026-10-16 as a
+      watched first run of `deploy.yml` (functions → App Hosting, `--force` deleting the old 12),
+      then `infra_only` for the Terraform drift. `RESEND_API_KEY` holds an empty placeholder until
+      Resend is set up — `send_email` skips sending on an empty key. Original note: as of
       2026-10-15 prod still runs the 12 pre-[ADR 0017](../../adr/0017-bounded-context-domains.md)
       functions (`api_contact`, `api_projects`, …); `main` has the 15 `api_<domain>_<sub>` ones,
       plus the unapplied [ADR 0015](../../adr/0015-remove-revalidation-webhook.md) secret cleanup.
@@ -134,7 +137,7 @@ from `.firebaserc`, URLs from each environment's `SITE_URL`, build env from `app
 
 ### 7.4 · Production deploy — `.github/workflows/deploy.yml`
 
-- [x] On push to `main`, inert until `PROD_DEPLOY_ENABLED=true` (see Prerequisites)
+- [x] On push to `main`, gated by `PROD_DEPLOY_ENABLED=true` (enabled 2026-10-16)
 - [x] `concurrency: production`, never cancelled mid-deploy
 - [x] Order: rules → functions → App Hosting → smoke test → `terraform apply` (staging, then
       prod) only when `infra/terraform/**` changed. Code first because Firebase makes a new HTTP
