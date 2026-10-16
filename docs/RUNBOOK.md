@@ -125,7 +125,7 @@ What runs for what (`dorny/paths-filter`, same filters in both workflows):
 |---|---|---|
 | `frontend/**` (design, pages) | frontend | App Hosting |
 | `backend/**` | backend | functions |
-| `infra/rules/**` | — | Firestore rules + indexes (+ Storage rules on prod) |
+| `infra/rules/**` | — | Firestore rules + indexes |
 | `infra/terraform/**` | `terraform plan` | — then, on `main`, `terraform apply` |
 | `architecture/**` | schemas, backend, frontend | functions + App Hosting |
 | `firebase.json`, `.firebaserc` | backend | everything |

@@ -80,7 +80,7 @@ build: ## Production build of both sides
 
 deploy: ## terraform apply, then deploy rules, functions and App Hosting
 	terraform -chdir=infra/terraform/envs/prod apply
-	firebase deploy --only firestore:rules,firestore:indexes,storage
+	firebase deploy --only firestore:rules,firestore:indexes
 	firebase deploy --only functions
 	firebase deploy --only apphosting
 

@@ -9,13 +9,11 @@ inputs:
     description: ".firebaserc alias — staging | default"
     required: true
   # What to deploy. Workflows pass their paths-filter results, so a change deploys only the
-  # parts it touches; everything defaults on except Storage rules (prod passes it explicitly).
+  # parts it touches; all default on. No Storage rules: the media bucket is plain Cloud Storage
+  # behind IAM (Terraform's storage module), not a Firebase Storage bucket.
   rules:
     description: "Firestore rules + indexes"
     default: "true"
-  storage:
-    description: "Storage rules"
-    default: "false"
   functions:
     description: "Cloud Functions"
     default: "true"
@@ -62,13 +60,11 @@ runs:
       env:
         PROJECT: ${{ inputs.project }}
         RULES: ${{ inputs.rules }}
-        STORAGE: ${{ inputs.storage }}
         FUNCTIONS: ${{ inputs.functions }}
         APPHOSTING: ${{ inputs.apphosting }}
       run: |
         targets=()
         [ "$RULES" = true ] && targets+=(firestore:rules firestore:indexes)
-        [ "$STORAGE" = true ] && targets+=(storage)
         [ "$FUNCTIONS" = true ] && targets+=(functions)
         [ "$APPHOSTING" = true ] && targets+=(apphosting)
         [ ${#targets[@]} -gt 0 ] || { echo "::error::Nothing to deploy"; exit 1; }
