@@ -75,6 +75,7 @@ locals {
     "roles/run.admin",
     "roles/firebase.admin",
     "roles/firebaseapphosting.admin",
+    "roles/recaptchaenterprise.admin", # the App Check key; firebase.admin covers App Check itself
   ]
 
   # terraform plan on PRs: read everything, change nothing.
