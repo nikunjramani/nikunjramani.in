@@ -1,6 +1,6 @@
 # Phase 2 · Content & Design Direction
 
-**~5 hours, mostly yours** · Status: ⬜ Not started
+**~5 hours, mostly yours** · Status: 🟡 Design chosen and built (2026-10-16); copy is live through the admin
 
 > **Goal:** Real copy written, and a visual direction chosen and encoded as design
 > tokens — so Phase 4 builds against reality instead of Lorem ipsum.
@@ -46,26 +46,26 @@ sketches of where they'd differ:
 | **Technical** | Monospace accents, dense information, terminal-ish, subtle grid | You want it to read as an engineer's site |
 | **Bold** | Big type, saturated accent, strong motion, high contrast | You want to be remembered |
 
-- [ ] Three mockups built
-- [ ] One chosen *(mixing elements is fine)*
+- [x] Three mockups built *(as layout sketches)*
+- [x] One chosen *(mixing elements is fine)* — **Technical**, 2026-10-16
 
 ### B.2 · Design tokens
 
 Once chosen, encode it — no ad-hoc values in components later.
 
-- [ ] Colour scale, dark-first, with a light theme
-- [ ] Single accent colour, contrast-checked against both themes
-- [ ] Type scale — fluid `clamp()`, 6 steps
-- [ ] Font choice, **self-hosted** and subset *(never a runtime Google Fonts fetch)*
-- [ ] 4pt spacing scale
-- [ ] Radii, shadows, border tokens
-- [ ] Motion: durations, easings, and a `prefers-reduced-motion` path
-- [ ] Breakpoints: 640 / 1024 / 1280
+- [x] Colour scale, dark-first, with a light theme
+- [x] Single accent colour, contrast-checked against both themes
+- [x] Type scale — fluid `clamp()`, 6 steps
+- [x] Font choice, **self-hosted** and subset *(never a runtime Google Fonts fetch)*
+- [x] 4pt spacing scale *(Tailwind's default)*
+- [x] Radii, shadows, border tokens *(no shadows by design)*
+- [x] Motion: durations, easings, and a `prefers-reduced-motion` path
+- [x] Breakpoints: 640 / 1024 / 1280 *(Tailwind's defaults)*
 
 ### B.3 · Write it down
 
-- [ ] `docs/DESIGN.md` — tokens, rules, dos and don'ts
-- [ ] Tokens implemented in `tailwind.config.ts`
+- [x] [`.docs/DESIGN.md`](../../DESIGN.md) — tokens, rules, dos and don'ts
+- [x] Tokens implemented in `frontend/src/site/site.css` *(Tailwind v4 has no config file)*
 - [ ] A `/styleguide` route rendering every token and component state
 
 ---

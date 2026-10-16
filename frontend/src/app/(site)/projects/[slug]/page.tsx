@@ -5,6 +5,7 @@ import { ArrowLeft, ArrowRight } from "lucide-react";
 
 import { JsonLd } from "@/site/components/json-ld";
 import { ProjectDetailView } from "@/site/components/project/project-detail-view";
+import { Container } from "@/site/components/spec";
 import { getProfile } from "@/lib/data/profile";
 import { getAllProjects, getProjectBySlug } from "@/lib/data/projects";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
@@ -57,65 +58,71 @@ export default async function ProjectDetailPage({ params }: { params: Params }) 
   const next = index >= 0 && index < allProjects.length - 1 ? allProjects[index + 1] : null;
 
   return (
-    <article className="mx-auto max-w-4xl px-6 py-16">
-      <JsonLd
-        data={{
-          "@context": "https://schema.org",
-          "@type": "BreadcrumbList",
-          itemListElement: [
-            { "@type": "ListItem", position: 1, name: "Home", item: SITE_URL },
-            { "@type": "ListItem", position: 2, name: "Projects", item: `${SITE_URL}/projects` },
-            { "@type": "ListItem", position: 3, name: project.title, item: `${SITE_URL}/projects/${slug}` },
-          ],
-        }}
-      />
-      <JsonLd
-        data={{
-          "@context": "https://schema.org",
-          "@type": "CreativeWork",
-          name: project.title,
-          description: project.summary,
-          url: `${SITE_URL}/projects/${slug}`,
-          ...(project.cover ? { image: project.cover.url } : {}),
-          ...(project.tags?.length ? { keywords: project.tags.join(", ") } : {}),
-          author: { "@type": "Person", name: profile?.name ?? SITE_NAME },
-        }}
-      />
+    <Container>
+      <article className="pt-10 sm:pt-14">
+        <JsonLd
+          data={{
+            "@context": "https://schema.org",
+            "@type": "BreadcrumbList",
+            itemListElement: [
+              { "@type": "ListItem", position: 1, name: "Home", item: SITE_URL },
+              { "@type": "ListItem", position: 2, name: "Projects", item: `${SITE_URL}/projects` },
+              { "@type": "ListItem", position: 3, name: project.title, item: `${SITE_URL}/projects/${slug}` },
+            ],
+          }}
+        />
+        <JsonLd
+          data={{
+            "@context": "https://schema.org",
+            "@type": "CreativeWork",
+            name: project.title,
+            description: project.summary,
+            url: `${SITE_URL}/projects/${slug}`,
+            ...(project.cover ? { image: project.cover.url } : {}),
+            ...(project.tags?.length ? { keywords: project.tags.join(", ") } : {}),
+            author: { "@type": "Person", name: profile?.name ?? SITE_NAME },
+          }}
+        />
 
-      <Link
-        href="/projects"
-        className="mb-8 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
-      >
-        <ArrowLeft className="h-4 w-4" /> All projects
-      </Link>
+        <Link
+          href="/projects"
+          className="mb-10 inline-flex items-center gap-2 font-mono text-xs text-muted-foreground hover:text-foreground"
+        >
+          <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" /> All projects
+        </Link>
 
-      <ProjectDetailView project={project} />
+        <ProjectDetailView project={project} />
 
-      {/* Prev / next */}
-      {prev || next ? (
-        <nav className="mt-16 flex items-center justify-between border-t border-border pt-8">
-          {prev ? (
-            <Link
-              href={`/projects/${prev.slug}`}
-              className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
-            >
-              <ArrowLeft className="h-4 w-4" /> {prev.title}
-            </Link>
-          ) : (
-            <span />
-          )}
-          {next ? (
-            <Link
-              href={`/projects/${next.slug}`}
-              className="flex items-center gap-1.5 text-right text-sm text-muted-foreground hover:text-foreground"
-            >
-              {next.title} <ArrowRight className="h-4 w-4" />
-            </Link>
-          ) : (
-            <span />
-          )}
-        </nav>
-      ) : null}
-    </article>
+        {prev || next ? (
+          <nav aria-label="More projects" className="mt-12 grid gap-px border-y border-border sm:grid-cols-2">
+            {prev ? (
+              <Link href={`/projects/${prev.slug}`} className="group flex flex-col gap-1 py-6 sm:pr-6">
+                <span className="inline-flex items-center gap-2 font-mono text-xs text-muted-foreground">
+                  <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" /> Previous
+                </span>
+                <span className="font-semibold font-stretch-112% underline decoration-transparent underline-offset-4 group-hover:decoration-accent">
+                  {prev.title}
+                </span>
+              </Link>
+            ) : (
+              <span />
+            )}
+            {next ? (
+              <Link
+                href={`/projects/${next.slug}`}
+                className="group flex flex-col gap-1 py-6 sm:items-end sm:pl-6 sm:text-right"
+              >
+                <span className="inline-flex items-center gap-2 font-mono text-xs text-muted-foreground">
+                  Next <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+                </span>
+                <span className="font-semibold font-stretch-112% underline decoration-transparent underline-offset-4 group-hover:decoration-accent">
+                  {next.title}
+                </span>
+              </Link>
+            ) : null}
+          </nav>
+        ) : null}
+      </article>
+    </Container>
   );
 }

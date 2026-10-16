@@ -26,7 +26,7 @@ The plan lives here, split by topic and phase. Start with the
 |---|---|---|---|
 | 0 | [Foundation & Infra](./phases/phase-0-foundation.md) | ~6h | ✅ Done |
 | 1 | [Schemas & Codegen](./phases/phase-1-schemas.md) | ~7h | ✅ Done |
-| 2 | [Content & Design](./phases/phase-2-content-design.md) | ~5h | ⬜ Not started |
+| 2 | [Content & Design](./phases/phase-2-content-design.md) | ~5h | 🟡 Technical design built; copy live via admin; `/styleguide` open |
 | 3 | [Backend](./phases/phase-3-backend.md) | ~14h | ✅ Done |
 | 4 | [Public Site](./phases/phase-4-public-site.md) | ~16h | 🟡 Built & verified; blocked on Phase 2 content + Phase 6 Lighthouse |
 | 5 | [Admin Panel](./phases/phase-5-admin-panel.md) | ~14h | 🟡 Built; production admin claim and signed uploads verified |

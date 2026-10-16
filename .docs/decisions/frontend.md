@@ -138,7 +138,7 @@ backfilled on 2026-10-16 from the code and its history.
 
 ### FE-20 · Fonts are self-hosted at build time; dark theme by default
 
-- **Where:** [shared/fonts.ts](../../frontend/src/shared/fonts.ts) (`next/font/google` Geist); each root layout (`next-themes` with `defaultTheme="dark"`)
+- **Where:** [site/fonts.ts](../../frontend/src/site/fonts.ts) and [admin/fonts.ts](../../frontend/src/admin/fonts.ts) (`next/font/google`); each root layout (`next-themes` with `defaultTheme="dark"`)
 - **Why:** `next/font` downloads at build — no runtime request to Google, no flash of unstyled text.
 
 ## Surfaces
@@ -174,4 +174,35 @@ backfilled on 2026-10-16 from the code and its history.
   renders site components with admin tokens, so after the redesign it matches the page in
   structure, not in colour and type.
 - **Related:** ADR 0021 · supersedes FE-19
+- **Since:** 2026-10-16
+
+### FE-23 · The site has its own typefaces and tokens; the admin keeps Geist
+
+- **Where:** [site/fonts.ts](../../frontend/src/site/fonts.ts) (Archivo with its width axis, IBM Plex Mono 400/500), [site/site.css](../../frontend/src/site/site.css) tokens; [admin/fonts.ts](../../frontend/src/admin/fonts.ts)
+- **Decision:** fonts are per surface, not shared. The site's tokens override `base.css` in
+  `site.css` only. Archivo is loaded with `axes: ["wdth"]` so headings can stretch
+  (`font-stretch-112%`/`125%`) without a second display family.
+- **Why:** the Technical redesign (.docs/DESIGN.md) changes type and colour for visitors only;
+  putting the faces in `shared/` would have made the admin download them too.
+- **Outcome:** each surface's CSS declares only its own families. Cost: the width axis makes the
+  Archivo file larger than a weight-only cut. Hex tokens in `site.css` are deliberate (the palette
+  was specified in hex and contrast-checked as such); components still use token names only.
+- **Related:** ADR 0021 · FE-20 · FE-21
+- **Since:** 2026-10-16
+
+### FE-24 · Site structure comes from `SpecTable` and `SpecSection`, not cards
+
+- **Where:** [site/components/spec.tsx](../../frontend/src/site/components/spec.tsx), [site/components/styles.ts](../../frontend/src/site/components/styles.ts)
+- **Decision:** every section is a `SpecSection` (label column + content) and every set of facts
+  is a `SpecTable` (ruled key/value rows that drop empty values). Button and chip classes are
+  string constants, not components.
+- **Why:** the design is a spec sheet (DESIGN.md); two components make that structure the easy
+  path on every page. `SpecTable` dropping falsy rows means a page can pass
+  `profile?.location && {…}` and never render an empty key (ADR 0008). Constants rather than
+  `<Button>` because links, anchors and submit buttons all need the same look and a component
+  would have to polymorph over all three.
+- **Outcome:** pages read as data → layout with no per-page spacing decisions. It also surfaced
+  `role`, `team` and `metrics` on projects, which the old detail view never rendered. Cost: the
+  admin preview uses these with admin tokens, so it doesn't match the page's colours (FE-22).
+- **Related:** ADR 0008 · .docs/DESIGN.md
 - **Since:** 2026-10-16

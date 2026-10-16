@@ -65,7 +65,7 @@ export function GalleryLightbox({ items }: { items: Media[] }) {
               triggerRef.current = e.currentTarget;
               setOpenIndex(i);
             }}
-            className="group relative aspect-video overflow-hidden rounded-md bg-muted focus-visible:outline-2 focus-visible:outline-accent"
+            className="group relative aspect-video overflow-hidden rounded-(--radius) border border-border bg-muted focus-visible:outline-2 focus-visible:outline-accent"
           >
             <Image
               src={item.url}

@@ -1,20 +1,28 @@
 import Link from "next/link";
 
+import { Container } from "@/site/components/spec";
+import { buttonPrimary } from "@/site/components/styles";
+
 /** The 404 body — inside the site layout for `notFound()`, and in the global 404 page. */
 export function NotFoundMessage() {
   return (
-    <div className="mx-auto flex max-w-4xl flex-col items-center justify-center gap-4 px-6 py-32 text-center">
-      <p className="text-sm text-muted-foreground">404</p>
-      <h1 className="text-2xl font-medium tracking-tight">Page not found</h1>
-      <p className="max-w-sm text-muted-foreground">
-        The page you&apos;re looking for doesn&apos;t exist, or has moved.
+    <Container className="py-24 sm:py-32">
+      <p className="font-mono text-xs text-muted-foreground">404</p>
+      <h1 className="mt-3 text-3xl font-semibold tracking-tight font-stretch-125% text-balance">
+        There&apos;s nothing at this address
+      </h1>
+      <p className="mt-4 max-w-md text-muted-foreground text-pretty">
+        The link may be mistyped, or the page has moved. The project list has everything that&apos;s
+        published.
       </p>
-      <Link
-        href="/"
-        className="mt-2 rounded-md bg-accent px-4 py-2 text-sm text-accent-foreground transition-opacity hover:opacity-90"
-      >
-        Back home
-      </Link>
-    </div>
+      <div className="mt-8 flex flex-wrap gap-3">
+        <Link href="/projects" className={buttonPrimary}>
+          See all projects
+        </Link>
+        <Link href="/" className="inline-flex items-center px-2 py-2.5 text-sm underline decoration-border underline-offset-4 hover:decoration-accent">
+          Go to the home page
+        </Link>
+      </div>
+    </Container>
   );
 }

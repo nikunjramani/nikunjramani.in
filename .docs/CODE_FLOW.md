@@ -57,9 +57,9 @@ Three rules shape every flow below:
 | [frontend/src/app/(admin)/](../frontend/src/app/%28admin%29/) | admin panel (`admin/login/`, `admin/(protected)/…`); its own root layout ([ADR 0021](./adr/0021-site-and-admin-are-separate-surfaces.md)) |
 | [frontend/src/app/global-not-found.tsx](../frontend/src/app/global-not-found.tsx) | 404 for a URL matching neither surface |
 | [frontend/src/app/api/admin/](../frontend/src/app/api/admin/) | the two Next.js route handlers: session cookie, media usage |
-| [frontend/src/site/](../frontend/src/site/) | public-only code: `components/`, `lib/` (contact form, App Check), `site.css` |
-| [frontend/src/admin/](../frontend/src/admin/) | admin-only code: `components/`, `api/` (every Python API **call**), `auth/` (session cookie), `lib/`, `admin.css` |
-| [frontend/src/shared/](../frontend/src/shared/) | UI both surfaces use: theme provider, skip link, error view, fonts, `styles/base.css` tokens |
+| [frontend/src/site/](../frontend/src/site/) | public-only code: `components/` (incl. `spec.tsx`, the layout primitives), `lib/` (contact form, App Check), `site.css`, `fonts.ts` — design in [DESIGN.md](./DESIGN.md) |
+| [frontend/src/admin/](../frontend/src/admin/) | admin-only code: `components/`, `api/` (every Python API **call**), `auth/` (session cookie), `lib/`, `admin.css`, `fonts.ts` |
+| [frontend/src/shared/](../frontend/src/shared/) | UI both surfaces use: theme provider, skip link, error view, `styles/base.css` tokens |
 | [frontend/src/lib/data/](../frontend/src/lib/data/) | every Firestore **read** (server-only) |
 | [frontend/src/lib/firebase/](../frontend/src/lib/firebase/) | Admin SDK (server), client SDK (Auth) |
 | [frontend/src/generated/](../frontend/src/generated/) | TS types, Zod, admin form schemas, API routes — generated |

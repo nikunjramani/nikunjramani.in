@@ -44,9 +44,9 @@ The site and the admin are separate surfaces — separate root layouts, styleshe
 
 | Used by | Goes in |
 |---|---|
-| the public site only | `src/site/` (`components/`, `lib/`), styles in `site/site.css` |
-| the admin only | `src/admin/` (`components/`, `api/`, `auth/`, `lib/`), styles in `admin/admin.css` |
-| both, UI | `src/shared/` (components, `fonts.ts`, `styles/base.css`) |
+| the public site only | `src/site/` (`components/`, `lib/`), styles in `site/site.css`, fonts in `site/fonts.ts` |
+| the admin only | `src/admin/` (`components/`, `api/`, `auth/`, `lib/`), styles in `admin/admin.css`, fonts in `admin/fonts.ts` |
+| both, UI | `src/shared/` (components, `styles/base.css`) |
 | both, non-UI | `src/lib/` (`data/`, `firebase/`, `utils`, `site`) |
 
 - Imports point one way: `site`/`admin` → `shared`/`lib`/`generated`; `shared` and `lib` never
@@ -62,6 +62,12 @@ The site and the admin are separate surfaces — separate root layouts, styleshe
   function, from the generated `api-routes.ts`.
 
 ## Design work
+
+**The public site's design system is `.docs/DESIGN.md` — read it before touching site UI.** In
+short: build pages from `SpecSection` / `SpecTable` (`site/components/spec.tsx`) and the class
+constants in `site/components/styles.ts`; tokens only; Archivo for text (headings stretched), Plex
+Mono for data only; amber means current/primary/measured, never decoration; sentence case, no `·`
+separators, no cards for lists; the hero's draw-in is the site's only animation.
 
 For visual design or redesign, use the `frontend-design` skill and check the result with
 `web-design-guidelines`; performance review with `react-best-practices`. Accessibility is not
