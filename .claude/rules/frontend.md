@@ -74,7 +74,7 @@ The site and the admin are separate surfaces — separate root layouts, styleshe
 **The public site's design system is `.docs/DESIGN.md` — read it before touching site UI.** In
 short: build pages from `SpecSection` / `SpecTable` (`site/components/spec.tsx`) and the class
 constants in `site/components/styles.ts`; tokens only; Archivo for text (headings stretched), Plex
-Mono for data only; amber means current/primary/measured, never decoration; sentence case, no `·`
+Mono for data only; the accent means current/primary/measured, never decoration; sentence case, no `·`
 separators, no cards for lists; the hero's draw-in is the site's only animation.
 
 For visual design or redesign, use the `frontend-design` skill and check the result with

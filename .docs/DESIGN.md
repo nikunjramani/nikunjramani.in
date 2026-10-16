@@ -19,19 +19,21 @@ sheet**: facts in ruled key/value tables, sections as labelled rows, one signal 
 
 ## Colour
 
-Dark is the default; both themes pass WCAG AA (ratios in the `site.css` header comment).
+Dark is the default; both themes pass WCAG AA (ratios in the `site.css` header comment). Dark keeps
+the site's original near-black and blue (the owner's choice, 2026-10-16); light is the Technical
+paper and amber. Each theme has one signal colour, so the accent differs between them.
 
 | Token | Dark | Light | Use |
 |---|---|---|---|
-| `background` | `#0c1b2a` ink | `#f4f7fa` paper | page |
-| `surface` | `#112437` panel | `#ffffff` | inputs, image plates |
-| `foreground` | `#e4ecf4` chalk | `#0c1b2a` ink | text |
-| `muted-foreground` | `#8da2b8` slate | `#4a5f74` | secondary text, spec keys |
-| `border` | `#22384f` | `#d3dde7` | every rule and outline |
-| `accent` | `#f2b33d` signal | `#9a5b00` | primary button, current nav item, bullets, highlights |
+| `background` | `oklch(0.14 0.005 260)` | `#f4f7fa` paper | page |
+| `surface` | `oklch(0.18 0.005 260)` | `#ffffff` | inputs, image plates |
+| `foreground` | `oklch(0.96 0 0)` | `#0c1b2a` ink | text |
+| `muted-foreground` | `oklch(0.65 0.01 260)` | `#4a5f74` | secondary text, spec keys |
+| `border` | `oklch(0.28 0.01 260)` | `#d3dde7` | every rule and outline |
+| `accent` | `oklch(0.72 0.16 255)` blue | `#9a5b00` amber | primary button, current nav item, bullets, highlights |
 | `danger` | `#f28b82` | `#b42318` | form errors only |
 
-**One signal colour.** Amber marks what's current, primary or measured — never decoration.
+**One signal colour.** The accent (blue in dark, amber in light) marks what's current, primary or measured — never decoration.
 Components use tokens only (`bg-accent`, `text-muted-foreground`); a hex value in a component is
 a bug.
 
@@ -56,7 +58,7 @@ a bug.
 - **Lists are ruled rows, not cards.** Projects on the home page, roles, education and
   certifications are rows divided by `border-border` rules. The `/projects` index is the one grid,
   because covers matter there.
-- Bullets are small amber squares (`list-[square] marker:text-accent`). No `·` separators —
+- Bullets are small accent-coloured squares (`list-[square] marker:text-accent`). No `·` separators —
   separate facts structurally (a spec row, a comma list) instead.
 - Corners are nearly square: `rounded-(--radius)` (4px) on everything that has one.
 - Layout is left-aligned in a `max-w-6xl` column with a 16px gutter on phones.

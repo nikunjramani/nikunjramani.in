@@ -13,10 +13,10 @@
 
 /*
  * Design: "Technical" (Phase 2, chosen 2026-10-16) — the site reads as an engineering spec
- * sheet. Blueprint ink and cool paper, one amber signal colour, Archivo + Plex Mono.
- * See .docs/DESIGN.md for the rules. Contrast (WCAG AA, checked per pair):
- *   dark  — foreground 14.6:1, muted 6.6:1 (6.0 on surface, 5.1 on muted), accent 9.4:1,
- *           danger 7.3:1; accent-foreground on accent 9.4:1
+ * sheet. Cool paper with an amber signal (light); the original near-black with a blue
+ * signal (dark). Archivo + Plex Mono. See .docs/DESIGN.md. Contrast (WCAG AA, checked per pair):
+ *   dark  — foreground 17.7:1, muted 6.2:1 (5.8 on surface, 5.6 on muted), accent 7.9:1,
+ *           danger 8.3:1; accent-foreground on accent 7.9:1
  *   light — foreground 16.2:1, muted 6.1:1 (6.6 on surface, 5.6 on muted), accent 5.0:1,
  *           danger 6.1:1; accent-foreground on accent 5.4:1
  */
@@ -35,15 +35,17 @@
 }
 
 .dark {
-  --background: #0c1b2a; /* ink */
-  --surface: #112437; /* panel */
-  --foreground: #e4ecf4; /* chalk */
-  --muted: #17304a;
-  --muted-foreground: #8da2b8; /* slate */
-  --border: #22384f;
-  --grid: rgb(141 162 184 / 0.08);
-  --accent: #f2b33d; /* signal */
-  --accent-foreground: #0c1b2a;
+  /* The original dark theme (same values as shared/styles/base.css), kept by the owner's choice:
+     neutral near-black with a blue accent. */
+  --background: oklch(0.14 0.005 260);
+  --surface: oklch(0.18 0.005 260);
+  --foreground: oklch(0.96 0 0);
+  --muted: oklch(0.2 0.005 260);
+  --muted-foreground: oklch(0.65 0.01 260);
+  --border: oklch(0.28 0.01 260);
+  --grid: oklch(0.65 0.01 260 / 0.08);
+  --accent: oklch(0.72 0.16 255);
+  --accent-foreground: oklch(0.14 0.005 260);
   --danger: #f28b82;
 }
 
