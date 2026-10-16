@@ -3,8 +3,8 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { useFeedback } from "@/admin/components/ui-feedback";
-import { ApiError } from "@/admin/api/client";
-import { deleteRecord, listRecords, reorderRecords, type RecordOut } from "@/admin/api/content";
+import { ApiError } from "@/admin/api-client/client";
+import { deleteRecord, listRecords, reorderRecords, type RecordOut } from "@/admin/api-client/content";
 import type { ContentApiDomain } from "@/generated/api-routes";
 
 /**

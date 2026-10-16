@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-import { listAuditLog, type AuditEntry } from "@/admin/api/audit";
+import { listAuditLog, type AuditEntry } from "@/admin/api-client/audit";
 
 /** Per-document history — GET /ops/audit, filtered to this one record. Every admin
  * mutation already writes one of these (shared/services/audit.py); this is just the first

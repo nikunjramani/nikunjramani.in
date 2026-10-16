@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
 
 import { AdminShell } from "@/admin/components/admin-shell";
-import { getAdminSession, isAdmin } from "@/admin/auth/session";
+import { getAdminSession, isAdmin } from "@/admin/auth/server";
 
 export default async function ProtectedAdminLayout({ children }: { children: ReactNode }) {
   const claims = await getAdminSession();

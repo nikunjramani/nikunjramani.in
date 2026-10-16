@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { GoogleIcon } from "@/admin/components/google-icon";
-import { createAdminSession, deleteAdminSession } from "@/admin/api/session";
+import { createAdminSession, deleteAdminSession } from "@/admin/auth/client";
 import { auth } from "@/lib/firebase/client";
 
 type Status = "idle" | "signing-in" | "not-admin" | "error";

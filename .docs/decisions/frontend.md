@@ -16,7 +16,7 @@ backfilled on 2026-10-16 from the code and its history.
 
 ### FE-02 · `import "server-only"` on every Admin-SDK file
 
-- **Where:** `lib/firebase/admin.ts`, `lib/data/*`, `admin/auth/session.ts`, the `api/admin/*` route handlers
+- **Where:** `lib/firebase/admin.ts`, `lib/data/*`, `admin/auth/server.ts`, the `api/admin/*` route handlers
 - **Why:** without it, an accidental import from a Client Component ships credentials to the browser
   and nothing fails; with it, that mistake is a build error.
 
@@ -60,7 +60,7 @@ backfilled on 2026-10-16 from the code and its history.
 
 ### FE-08 · Two admin gates: a cheap presence check, then real verification
 
-- **Where:** [src/proxy.ts](../../frontend/src/proxy.ts); [(protected)/layout.tsx](../../frontend/src/app/%28admin%29/admin/%28protected%29/layout.tsx); [admin/auth/session.ts](../../frontend/src/admin/auth/session.ts)
+- **Where:** [src/proxy.ts](../../frontend/src/proxy.ts); [(protected)/layout.tsx](../../frontend/src/app/%28admin%29/admin/%28protected%29/layout.tsx); [admin/auth/server.ts](../../frontend/src/admin/auth/server.ts)
 - **Decision:** the proxy only checks a `session` cookie exists; the protected layout verifies it
   (`verifySessionCookie(..., checkRevoked=true)`) and the `admin` claim.
 - **Why:** logged-out visitors bounce without crypto; Next's own guidance is not to rely on the
@@ -68,7 +68,7 @@ backfilled on 2026-10-16 from the code and its history.
 
 ### FE-09 · A session cookie for navigation; a fresh ID token for every API call
 
-- **Where:** [app/api/admin/session/route.ts](../../frontend/src/app/api/admin/session/route.ts); [admin/api/client.ts](../../frontend/src/admin/api/client.ts)
+- **Where:** [app/(admin)/api/admin/session/route.ts](../../frontend/src/app/%28admin%29/api/admin/session/route.ts); [admin/api-client/client.ts](../../frontend/src/admin/api-client/client.ts)
 - **Decision:** after Google sign-in the ID token is exchanged for a 5-day httpOnly cookie; API calls
   attach `getIdToken()` after `authStateReady()`.
 - **Why:** ID tokens last an hour and are awkward across page loads — cookies suit navigation. The
@@ -77,7 +77,7 @@ backfilled on 2026-10-16 from the code and its history.
 
 ### FE-10 · A 401 from the API is a hard navigation to login
 
-- **Where:** `rawFetch` in admin/api/client.ts
+- **Where:** `rawFetch` in admin/api-client/client.ts
 - **Why:** helpers have no router; a full reload also clears whatever stale state caused the 401.
 
 ### FE-11 · Admin saves send a real merge patch
@@ -107,7 +107,7 @@ backfilled on 2026-10-16 from the code and its history.
 
 ### FE-15 · The CSV export downloads through `fetch` + a Blob URL
 
-- **Where:** `apiFetchBlob` in admin/api/client.ts
+- **Where:** `apiFetchBlob` in admin/api-client/client.ts
 - **Why:** a plain `<a href>` can't carry the `Authorization` header the API requires.
 
 ## Public site
@@ -206,3 +206,21 @@ backfilled on 2026-10-16 from the code and its history.
   admin preview uses these with admin tokens, so it doesn't match the page's colours (FE-22).
 - **Related:** ADR 0008 · .docs/DESIGN.md
 - **Since:** 2026-10-16
+
+### FE-25 · Admin route handlers live in `(admin)`; "API" means one thing per folder
+
+- **Where:** [app/(admin)/api/admin/](../../frontend/src/app/%28admin%29/api/admin/), [admin/api-client/](../../frontend/src/admin/api-client/), [admin/auth/](../../frontend/src/admin/auth/), [admin/data/media-usage.ts](../../frontend/src/admin/data/media-usage.ts)
+- **Decision:** the two Next.js route handlers moved from `app/api/admin/` into the `(admin)` route
+  group (URLs unchanged: `/api/admin/session`, `/api/admin/media/[id]/usage`). The browser-side
+  Python API client is `admin/api-client/`, not `admin/api/`. Auth is one folder: `cookie.ts`
+  (name and lifetime, no imports — safe for `proxy.ts`), `server.ts` (verify), `client.ts`
+  (sign-in exchange). The admin-only media-usage read moved from `lib/data/` to `admin/data/`.
+- **Why:** route handlers must sit under `app/` to be served, but at `app/api/` they belonged to
+  neither surface; and two folders both named `api` — one Next server endpoints, one a client for
+  Python — read as the same thing. The cookie name was a string literal in three files.
+- **Outcome:** every file's owner is visible from its path, and `lib/` holds only what both
+  surfaces use. Cost: the URLs keep `/api/admin/…` rather than moving under `/admin`, because the
+  proxy's matcher redirects cookieless `/admin/*` requests — the sign-in exchange has no cookie yet.
+- **Related:** ADR 0021 · FE-08 · FE-09 · FE-22
+- **Since:** 2026-10-16
+

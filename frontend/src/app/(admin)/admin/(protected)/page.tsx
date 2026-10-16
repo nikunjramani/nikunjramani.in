@@ -11,9 +11,9 @@ import {
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
-import { listRecords } from "@/admin/api/content";
-import { listMessages } from "@/admin/api/messages";
-import { listAuditLog, type AuditEntry } from "@/admin/api/audit";
+import { listRecords } from "@/admin/api-client/content";
+import { listMessages } from "@/admin/api-client/messages";
+import { listAuditLog, type AuditEntry } from "@/admin/api-client/audit";
 import { ADMIN_SCHEMAS } from "@/generated/admin-schemas";
 import { timeAgo } from "@/admin/lib/format";
 

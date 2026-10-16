@@ -6,7 +6,7 @@ with their own root layouts and stylesheets ([ADR 0021](../.docs/adr/0021-site-a
 - `src/app/(site)/` — public pages, Server Components, server-rendered for SEO
 - `src/app/(admin)/` — the authenticated editor, client-rendered
 - `src/site/` — public-only components, helpers and `site.css`
-- `src/admin/` — admin-only components, the typed Python API client (`api/`, writes only), `admin.css`
+- `src/admin/` — admin-only components, the typed Python API client (`api-client/`, writes only), auth, `admin.css`
 - `src/shared/` — UI both surfaces use (theme, fonts, base tokens)
 - `src/lib/data/` — the only place Firestore is queried (server-side, Admin SDK)
 - `src/generated/` — codegen output from `architecture/schemas`. Never hand-edit.

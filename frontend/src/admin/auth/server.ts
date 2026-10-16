@@ -3,6 +3,7 @@ import "server-only";
 import { cookies } from "next/headers";
 import type { DecodedIdToken } from "firebase-admin/auth";
 
+import { SESSION_COOKIE } from "@/admin/auth/cookie";
 import { adminAuth } from "@/lib/firebase/admin";
 
 /**
@@ -14,7 +15,7 @@ import { adminAuth } from "@/lib/firebase/admin";
  * re-authorised server-side by the Python API regardless of what this returns.
  */
 export async function getAdminSession(): Promise<DecodedIdToken | null> {
-  const cookie = (await cookies()).get("session")?.value;
+  const cookie = (await cookies()).get(SESSION_COOKIE)?.value;
   if (!cookie) return null;
   try {
     // checkRevoked: true — a revoked session (sign-out-everywhere, or the admin claim

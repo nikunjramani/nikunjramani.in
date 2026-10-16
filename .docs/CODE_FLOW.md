@@ -56,9 +56,9 @@ Three rules shape every flow below:
 | [frontend/src/app/(site)/](../frontend/src/app/%28site%29/) | public pages (Server Components); its `layout.tsx` is the site's **root** layout |
 | [frontend/src/app/(admin)/](../frontend/src/app/%28admin%29/) | admin panel (`admin/login/`, `admin/(protected)/…`); its own root layout ([ADR 0021](./adr/0021-site-and-admin-are-separate-surfaces.md)) |
 | [frontend/src/app/global-not-found.tsx](../frontend/src/app/global-not-found.tsx) | 404 for a URL matching neither surface |
-| [frontend/src/app/api/admin/](../frontend/src/app/api/admin/) | the two Next.js route handlers: session cookie, media usage |
+| [frontend/src/app/(admin)/api/admin/](../frontend/src/app/%28admin%29/api/admin/) | the admin's two **Next.js** route handlers (served at `/api/admin/…`): session cookie, media usage. Not the Python API |
 | [frontend/src/site/](../frontend/src/site/) | public-only code: `components/` (incl. `spec.tsx`, the layout primitives), `lib/` (contact form, App Check), `site.css`, `fonts.ts` — design in [DESIGN.md](./DESIGN.md) |
-| [frontend/src/admin/](../frontend/src/admin/) | admin-only code: `components/`, `api/` (every Python API **call**), `auth/` (session cookie), `lib/`, `admin.css`, `fonts.ts` |
+| [frontend/src/admin/](../frontend/src/admin/) | admin-only code: `components/`, `api-client/` (every Python API **call**), `auth/` (`cookie.ts` · `server.ts` verify · `client.ts` sign-in exchange), `data/` (admin-only reads), `lib/`, `admin.css`, `fonts.ts` |
 | [frontend/src/shared/](../frontend/src/shared/) | UI both surfaces use: theme provider, skip link, error view, `styles/base.css` tokens |
 | [frontend/src/lib/data/](../frontend/src/lib/data/) | every Firestore **read** (server-only) |
 | [frontend/src/lib/firebase/](../frontend/src/lib/firebase/) | Admin SDK (server), client SDK (Auth) |
@@ -121,7 +121,7 @@ HTML with the real content (SEO: view-source shows it) + JSON-LD (site/component
 ```
 /admin/login  admin/components/sign-in-panel.tsx  (client)
   1. signInWithPopup(GoogleAuthProvider)                       Firebase Auth → ID token (1 h)
-  2. POST /api/admin/session { idToken }                       app/api/admin/session/route.ts
+  2. POST /api/admin/session { idToken }                       app/(admin)/api/admin/session/route.ts
         adminAuth().createSessionCookie(idToken, 5 days)       verifies the token first
         → Set-Cookie: session=…; HttpOnly; Secure; SameSite=Lax
   3. getIdTokenResult().claims.admin !== true ?
@@ -152,11 +152,11 @@ Example: editing a skill on `/admin/skills`.
 
 ```
 BROWSER  admin/components/content-collection-screen.tsx
-  ├─ list:  useRecordList → admin/api/content.ts → apiFetch("GET /content/skills/")
+  ├─ list:  useRecordList → admin/api-client/content.ts → apiFetch("GET /content/skills/")
   └─ save:  <RecordFormDialog> → <SchemaForm> (generated admin schema + Zod, drafts in localStorage)
             toMergePatch(original, edited)      admin/lib/merge-patch.ts — a cleared field becomes null
             apiFetch("PATCH /content/skills/<id>", patch)
-  admin/api/client.ts
+  admin/api-client/client.ts
      auth().authStateReady() → currentUser.getIdToken()   fresh token, refreshed by the SDK
      fetch("/api/v1/content/skills/<id>", Authorization: Bearer <token>)
      401 → hard navigation to /admin/login;  !ok → ApiError(message from {"error":{…}})
@@ -239,7 +239,7 @@ documents and messages expire through Firestore TTL policies on `expiresAt`.
 
 ```
 1 · ASK    admin /admin/media  admin/components/media/upload-zone.tsx
-           admin/api/media.ts requestUploadUrl(type, size) → POST /media/upload
+           admin/api-client/media.ts requestUploadUrl(type, size) → POST /media/upload
            src/media/upload/service.py  validate (webp/jpeg/png/gif, ≤ 20 MiB)
                                         path = uploads/media/<uuid32>/original.<ext>
            src/media/upload/storage.py  v4 signed PUT URL, 15 min, signed via IAM signBlob as the
@@ -259,7 +259,7 @@ documents and messages expire through Firestore TTL policies on `expiresAt`.
 5 · MANAGE /media/library: list, set alt text/caption (required before an asset can be picked),
            delete → best-effort delete of all three objects, then the document; audited.
            "Where is this used?" is a Next.js read, not Python:
-           app/api/admin/media/[id]/usage/route.ts → lib/data/media-usage.ts (session-cookie authorised)
+           app/(admin)/api/admin/media/[id]/usage/route.ts → admin/data/media-usage.ts (session-cookie authorised)
 ```
 
 `uploadedBy` is read from the object's metadata if present; the admin client doesn't set it today.

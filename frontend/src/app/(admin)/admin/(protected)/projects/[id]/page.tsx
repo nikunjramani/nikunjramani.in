@@ -10,8 +10,8 @@ import { ProjectDetailView } from "@/site/components/project/project-detail-view
 import { ADMIN_SCHEMAS } from "@/generated/admin-schemas";
 import { ProjectSchema } from "@/generated/schemas.zod";
 import type { Project } from "@/generated/types";
-import { ApiError } from "@/admin/api/client";
-import { createRecord, getRecord, patchRecord } from "@/admin/api/content";
+import { ApiError } from "@/admin/api-client/client";
+import { createRecord, getRecord, patchRecord } from "@/admin/api-client/content";
 import { toMergePatch } from "@/admin/lib/merge-patch";
 import type { z } from "zod";
 

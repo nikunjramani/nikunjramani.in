@@ -8,7 +8,7 @@ import { RecordFormDialog } from "@/admin/components/record-form-dialog";
 import { useFeedback } from "@/admin/components/ui-feedback";
 import { useRecordList } from "@/admin/components/use-record-list";
 import type { AdminSchemaEntry } from "@/generated/admin-schemas";
-import { createRecord, patchRecord, type RecordOut } from "@/admin/api/content";
+import { createRecord, patchRecord, type RecordOut } from "@/admin/api-client/content";
 import { toMergePatch } from "@/admin/lib/merge-patch";
 
 type Data = Record<string, unknown>;
