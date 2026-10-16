@@ -48,12 +48,14 @@ jobs:
         id: filter
         with:
           base: ${{ github.event.before }}
-          # Same deploy targets as pr.yml.
+          # Same deploy targets and markdown exclusions as pr.yml.
+          predicate-quantifier: some-with-excludes
           filters: |
             ci: &ci
               - .github/**
             infra:
               - infra/terraform/**
+              - '!**/*.md'
             rules:
               - *ci
               - infra/rules/**
@@ -65,12 +67,14 @@ jobs:
               - backend/**
               - firebase.json
               - .firebaserc
+              - '!**/*.md'
             apphosting:
               - *ci
               - architecture/**
               - frontend/**
               - firebase.json
               - .firebaserc
+              - '!**/*.md'
 
   deploy:
     needs: changes

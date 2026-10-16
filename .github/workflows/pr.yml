@@ -38,6 +38,9 @@ jobs:
         with:
           # A CI change runs everything, so it's proven by the jobs it affects. A change matching
           # nothing (docs) runs only `changes` + `checks` — the required check still has to report.
+          # Markdown is docs wherever it lives: `!**/*.md` keeps a README edit under backend/ or
+          # frontend/ from running checks or deploying (some-with-excludes honours the `!` rules).
+          predicate-quantifier: some-with-excludes
           filters: |
             ci: &ci
               - .github/**
@@ -52,13 +55,16 @@ jobs:
               - backend/**
               - firebase.json
               - .firebaserc
+              - '!**/*.md'
             frontend:
               - *ci
               - architecture/**
               - frontend/**
+              - '!**/*.md'
             infra:
               - *ci
               - infra/terraform/**
+              - '!**/*.md'
             # Deploy targets — the preview deploys only the ones that changed.
             rules:
               - *ci
@@ -71,12 +77,14 @@ jobs:
               - backend/**
               - firebase.json
               - .firebaserc
+              - '!**/*.md'
             apphosting:
               - *ci
               - architecture/**
               - frontend/**
               - firebase.json
               - .firebaserc
+              - '!**/*.md'
 
   # ── checks ──────────────────────────────────────────────────────────
   schemas:

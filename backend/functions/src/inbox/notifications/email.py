@@ -1,4 +1,4 @@
-"""Resend wrapper, with a retry. See docs/plan/03-security.md."""
+"""Resend wrapper, with a retry. See .docs/plan/03-security.md."""
 
 from __future__ import annotations
 

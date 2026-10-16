@@ -1,4 +1,4 @@
-"""A lightweight spam heuristic. Flags, never blocks — see docs/plan/03-security.md.
+"""A lightweight spam heuristic. Flags, never blocks — see .docs/plan/03-security.md.
 
 This is a personal-site contact form, not a general-purpose abuse pipeline: three cheap
 signals (link count, all-caps ratio, repeated characters) catch the overwhelming majority

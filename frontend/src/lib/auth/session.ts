@@ -10,7 +10,7 @@ import { adminAuth } from "@/lib/firebase/admin";
  * cookie is present, by design (see its own comment). This is the layer that actually
  * verifies it, in (admin)/admin/(protected)/layout.tsx.
  *
- * Convenience only, same as the plan's own reminder (docs/plan/03-security.md): every write is
+ * Convenience only, same as the plan's own reminder (.docs/plan/03-security.md): every write is
  * re-authorised server-side by the Python API regardless of what this returns.
  */
 export async function getAdminSession(): Promise<DecodedIdToken | null> {

@@ -13,18 +13,22 @@ page (client)  →  lib/api/*   →  Python API              ← writes
 ```
 
 Reads never go through the Python API. Writes never go straight to Firestore.
-→ [ADR 0005](../../../docs/adr/0005-reads-bypass-python.md) · [ADR 0007](../../../docs/adr/0007-deny-all-client-writes.md)
+→ [ADR 0005](../../../.docs/adr/0005-reads-bypass-python.md) · [ADR 0007](../../../.docs/adr/0007-deny-all-client-writes.md)
 
 `lib/data/` is the **only** place Firestore is queried. Components never import the SDK.
 
 ## Public pages — `src/app/(site)/`
 
 Server Components by default. This is what makes the site SEO-viable — the whole reason the project
-isn't Flutter. → [ADR 0001](../../../docs/adr/0001-nextjs-instead-of-flutter-web.md)
+isn't Flutter. → [ADR 0001](../../../.docs/adr/0001-nextjs-instead-of-flutter-web.md)
 
 ```tsx
-export async function generateMetadata({ params }): Promise<Metadata> {
-  const project = await getProject(params.slug);
+// Next 16: params and searchParams are Promises — always await them.
+type Params = Promise<{ slug: string }>;
+
+export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
+  const { slug } = await params;
+  const project = await getProjectBySlug(slug);
   if (!project) return {};
   return {
     title: project.seo?.metaTitle ?? project.title,
@@ -34,10 +38,11 @@ export async function generateMetadata({ params }): Promise<Metadata> {
   };
 }
 
-export default async function Page({ params }) {
-  const project = await getProject(params.slug);
+export default async function Page({ params }: { params: Params }) {
+  const { slug } = await params;
+  const project = await getProjectBySlug(slug);
   if (!project) notFound();
-  return <ProjectDetail project={project} />;
+  return <ProjectDetailView project={project} />;
 }
 ```
 
@@ -54,7 +59,7 @@ Reach for a Client Component only for: event handlers, hooks, browser APIs, or F
 ## Optional fields render conditionally
 
 The models are a small required core plus many optional fields. Render a section **only** when its
-data exists. → [ADR 0008](../../../docs/adr/0008-projects-drop-start-end-dates.md)
+data exists. → [ADR 0008](../../../.docs/adr/0008-projects-drop-start-end-dates.md)
 
 ```tsx
 {project.content?.challenges?.length ? (
@@ -67,12 +72,13 @@ look intentional, not broken.
 
 ## Admin screens — `src/app/(admin)/admin/`
 
-- Client Components, behind the auth guard in `(admin)/layout.tsx`
+- Behind two gates: `src/proxy.ts` (session-cookie presence, cheap) and
+  `(admin)/admin/(protected)/layout.tsx` (`verifySessionCookie` + the `admin` claim — the real check)
 - Writes go through `lib/api/`, never Firestore directly
 - Forms use `<SchemaForm>` with the generated Zod validators — adding a field to a schema should
   make it appear in the form with **no form code changes**
 - Optimistic updates need a rollback path; a silent revert reads as a bug
-- Nothing in `(site)/` may import from `(admin)/` — ESLint enforces this
+- Nothing in `(site)/` or `components/site/` may import admin code — ESLint enforces this
 
 ## Non-negotiables
 

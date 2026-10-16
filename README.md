@@ -3,7 +3,7 @@
 Source for my personal site — portfolio, projects and writing.
 Live at **[nikunjramani.in](https://nikunjramani.in)**.
 
-> 📋 Full architecture and build plan: **[docs/plan/](./docs/plan/README.md)**
+> 📋 How it all works: **[.docs/CODE_FLOW.md](./.docs/CODE_FLOW.md)** · every doc: **[.docs/](./.docs/README.md)**
 
 ---
 
@@ -13,10 +13,10 @@ Live at **[nikunjramani.in](https://nikunjramani.in)**.
 |---|---|
 | Frontend | Next.js 16 (App Router) · TypeScript · Tailwind v4 · shadcn/ui |
 | Backend | Python 3.13 · FastAPI on Cloud Functions for Firebase (2nd gen) |
-| Data | Cloud Firestore · Firebase Storage · Firebase Auth |
+| Data | Cloud Firestore · Cloud Storage · Firebase Auth · App Check |
 | Hosting | Firebase App Hosting |
-| Infra | Terraform (`google` / `google-beta`) |
-| CI | GitHub Actions — schema validation + codegen drift (lint/test/deploy workflows: Phase 7) |
+| Infra | Terraform (`google` / `google-beta`) — a prod and a staging project |
+| CI/CD | GitHub Actions — path-filtered checks, a staging preview per PR, prod deploy on merge |
 
 Public pages are server-rendered from Firestore, so the site is real HTML for crawlers.
 Python owns every write; nothing on the read path can cold-start.
@@ -28,8 +28,8 @@ architecture/   JSON Schemas — the single source of truth for every model
 frontend/       Next.js app (public site + /admin)
 backend/        Python Firebase Functions (API, triggers, scheduled jobs)
 infra/          Terraform for Firebase/GCP + security rules
-docs/plan/      The build plan, per phase
-docs/adr/       Architecture decision records
+.docs/          Code flow, code decisions, ADRs, runbook, build plan
+.claude/        Rules and skills for Claude Code
 ```
 
 ### Schema-first
@@ -54,7 +54,7 @@ make gen       # regenerate models from architecture/schemas
 make validate  # validate schemas + example fixtures
 make lint      # eslint + ruff + mypy + import-linter
 make test      # vitest + pytest
-make deploy    # terraform apply + deploy functions and App Hosting
+make deploy    # break-glass only — production deploys run in CI on merge to main
 ```
 
 **Prerequisites:** Node 22+, Python 3.13, Terraform 1.9+, Firebase CLI, gcloud CLI.
@@ -63,13 +63,16 @@ make deploy    # terraform apply + deploy functions and App Hosting
 
 | | |
 |---|---|
-| [docs/plan/](./docs/plan/README.md) | The build plan — architecture, data model, security, and nine phase docs |
-| [docs/adr/](./docs/adr/README.md) | Architecture decision records — what was decided and why |
-| [CLAUDE.md](./CLAUDE.md) | Development context and the project's non-negotiable rules |
+| [.docs/CODE_FLOW.md](./.docs/CODE_FLOW.md) | Every flow — page read, admin edit, contact form, media, codegen, infra, CI/CD — file by file |
+| [.docs/decisions/](./.docs/decisions/README.md) | Why the code is written the way it is, per area |
+| [.docs/adr/](./.docs/adr/README.md) | Architecture decision records — what was decided and why |
+| [.docs/RUNBOOK.md](./.docs/RUNBOOK.md) | Operating it: dev, CI/CD, deploy, rollback, secrets, backups |
+| [.docs/plan/](./.docs/plan/README.md) | The build plan — architecture, data model, security, and nine phase docs |
+| [CLAUDE.md](./CLAUDE.md) · [.claude/](./.claude/) | Context, rules and skills for Claude Code |
 
 ## Status
 
-See the [phase table in docs/plan/](./docs/plan/README.md#phases--work-these-in-order) for
+See the [phase table in .docs/plan/](./.docs/plan/README.md#phases--work-these-in-order) for
 current build status — kept in one place so it doesn't drift out of sync with reality.
 
 ## License

@@ -1,7 +1,7 @@
 """Contact form business rules.
 
 Every anti-abuse check here fails *silently* — the caller always sees success. This is a
-deliberate trade documented in docs/plan/03-security.md: telling a bot which check it hit
+deliberate trade documented in .docs/plan/03-security.md: telling a bot which check it hit
 only helps it get past the next one. The cost is that a genuine sender who trips a false
 positive (a shared office IP that used up its rate-limit window, say) will not be told why
 their message did not arrive. That trade only makes sense because this is a low-volume

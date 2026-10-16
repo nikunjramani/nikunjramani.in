@@ -6,7 +6,7 @@ description: Add or modify an endpoint in the Python Firebase Functions backend.
 # Adding a backend endpoint
 
 Read [backend/functions/README.md](../../../backend/functions/README.md) first — it has the domain
-map and the rules. → [ADR 0017](../../../docs/adr/0017-bounded-context-domains.md)
+map and the rules. → [ADR 0017](../../../.docs/adr/0017-bounded-context-domains.md)
 
 ## First: which domain and subdomain?
 
@@ -88,8 +88,9 @@ fails silently in production:
 
 1. **`src/<domain>/main.py`** — add `"api_<domain>_<sub>": "src.<domain>.<sub>.main"` to
    `FUNCTIONS` (triggers too, under their own names). Not listed → never deployed.
-2. **`frontend/next.config.ts`** — add `"<domain>/<sub>"` to `ROUTES`. Missing → a 404 that reads
-   like a routing bug.
+2. **`architecture/api-routes.json`** — add `"<sub>": "<domain>/<sub>"` under its domain, then
+   `make gen` (it generates the Next.js rewrites in `frontend/src/generated/api-routes.ts`).
+   Missing → a 404 that reads like a routing bug.
 3. **`backend/functions/pyproject.toml`** — add the subdomain to its domain's independence
    contract and to the layers contract's `containers`.
 4. **`infra/terraform/modules/functions/main.tf`** — add `api_<domain>_<sub>` to

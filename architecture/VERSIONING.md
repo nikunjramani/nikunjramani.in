@@ -18,7 +18,7 @@ Every schema declares `"x-version": "MAJOR.MINOR.PATCH"`.
 | Tightened constraint (shorter maxLength) | **major** | Yes — existing data may violate it |
 
 Most changes are additive, which is the point of a model that is mostly optional fields
-([ADR 0008](../docs/adr/0008-projects-drop-start-end-dates.md)).
+([ADR 0008](../.docs/adr/0008-projects-drop-start-end-dates.md)).
 
 ## Breaking changes
 
