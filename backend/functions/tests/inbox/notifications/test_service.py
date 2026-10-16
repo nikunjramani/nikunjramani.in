@@ -75,13 +75,15 @@ def test_notify_owner_sends_the_rendered_email() -> None:
 def test_whitespace_placeholder_key_skips_the_send(monkeypatch: pytest.MonkeyPatch) -> None:
     from unittest.mock import patch
 
+    import httpx
+
     from src.inbox.notifications import email
     from src.inbox.notifications.settings import NotificationSettings
 
     monkeypatch.setenv("RESEND_API_KEY", "\n")
     with (
         patch.object(email, "get_notification_settings", return_value=NotificationSettings()),
-        patch.object(email.httpx, "post") as post,
+        patch.object(httpx, "post") as post,
     ):
         email.send_email(to="me@x.dev", subject="s", html="h")
     post.assert_not_called()
