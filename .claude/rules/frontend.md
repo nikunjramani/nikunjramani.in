@@ -14,7 +14,7 @@ async `params`/`searchParams`/`cookies()`).
 
 - **Reads never touch Python** (ADR 0005). Server Components read Firestore through `lib/data/*`
   with the Admin SDK. Never route page data through the API.
-- **Clients never write Firestore** (ADR 0007). Admin writes go through `admin/api/*` → the Python
+- **Clients never write Firestore** (ADR 0007). Admin writes go through `admin/api-client/*` → the Python
   API. There is no Firestore client SDK in the browser at all.
 - **`import "server-only"`** at the top of every file touching the Admin SDK — without it the
   failure mode is a leaked credential, not a build error.
@@ -44,9 +44,10 @@ The site and the admin are separate surfaces — separate root layouts, styleshe
 
 | Used by | Goes in |
 |---|---|
-| the public site only | `src/site/` (`components/`, `lib/`), styles in `site/site.css` |
-| the admin only | `src/admin/` (`components/`, `api/`, `auth/`, `lib/`), styles in `admin/admin.css` |
-| both, UI | `src/shared/` (components, `fonts.ts`, `styles/base.css`) |
+| the public site only | `src/site/` (`components/`, `lib/`), styles in `site/site.css`, fonts in `site/fonts.ts` |
+| the admin only | `src/admin/` (`components/`, `api-client/`, `auth/`, `data/`, `lib/`), styles in `admin/admin.css`, fonts in `admin/fonts.ts` |
+| a URL (page, route handler) | `src/app/` — Next only serves what's there. Under `(site)/` or `(admin)/` by owner; keep files thin and import the logic from the surface folder |
+| both, UI | `src/shared/` (components, `styles/base.css`) |
 | both, non-UI | `src/lib/` (`data/`, `firebase/`, `utils`, `site`) |
 
 - Imports point one way: `site`/`admin` → `shared`/`lib`/`generated`; `shared` and `lib` never
@@ -57,11 +58,24 @@ The site and the admin are separate surfaces — separate root layouts, styleshe
 - A token change for one surface goes in that surface's stylesheet; `shared/styles/base.css` is
   for what both genuinely share.
 - Crossing between `/admin` and the site is a full page load — use `<a>`, not `<Link>`.
+- **Two different "APIs":** `app/(admin)/api/` holds Next.js *route handlers* (served by the
+  Next server itself — the session cookie and media-usage check). `admin/api-client/` is the
+  browser-side client for the *Python* API. Never add a Next route handler that writes content;
+  writes go to Python (ADR 0007).
+- `(site)` and `(admin)` are route groups — the parentheses keep the folder name out of the URL.
+  That's why the admin is `(admin)/admin/…`: the group owns the layout, the inner `admin`
+  folder is the `/admin` URL segment.
 - `next/image` with correct `sizes`; design tokens only, no hard-coded hex.
 - API calls go to `/api/v1/<domain>/<sub>/…` (same origin); `next.config.ts` rewrites them to the
   function, from the generated `api-routes.ts`.
 
 ## Design work
+
+**The public site's design system is `.docs/DESIGN.md` — read it before touching site UI.** In
+short: build pages from `SpecSection` / `SpecTable` (`site/components/spec.tsx`) and the class
+constants in `site/components/styles.ts`; tokens only; Archivo for text (headings stretched), Plex
+Mono for data only; the accent means current/primary/measured, never decoration; sentence case, no `·`
+separators, no cards for lists; the hero's draw-in is the site's only animation.
 
 For visual design or redesign, use the `frontend-design` skill and check the result with
 `web-design-guidelines`; performance review with `react-best-practices`. Accessibility is not

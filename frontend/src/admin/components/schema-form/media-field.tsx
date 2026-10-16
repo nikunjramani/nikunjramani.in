@@ -5,7 +5,7 @@ import Image from "next/image";
 import { useEffect, useState } from "react";
 import { useFormContext } from "react-hook-form";
 
-import { listMedia } from "@/admin/api/media";
+import { listMedia } from "@/admin/api-client/media";
 import type { MediaAsset } from "@/generated/types";
 import { cn } from "@/lib/utils";
 import { emptyToUndefined, fieldLabel, inputClass } from "./field-utils";

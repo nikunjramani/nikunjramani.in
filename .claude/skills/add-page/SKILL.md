@@ -9,7 +9,7 @@ description: Add or modify a page in the Next.js frontend — public site route,
 
 ```
 page (server)  →  lib/data/*  →  Firebase Admin SDK      ← reads
-page (client)  →  admin/api/*   →  Python API              ← writes
+page (client)  →  admin/api-client/*   →  Python API              ← writes
 ```
 
 Reads never go through the Python API. Writes never go straight to Firestore.
@@ -81,7 +81,7 @@ look intentional, not broken.
 
 - Behind two gates: `src/proxy.ts` (session-cookie presence, cheap) and
   `(admin)/admin/(protected)/layout.tsx` (`verifySessionCookie` + the `admin` claim — the real check)
-- Writes go through `admin/api/`, never Firestore directly
+- Writes go through `admin/api-client/`, never Firestore directly
 - Forms use `<SchemaForm>` with the generated Zod validators — adding a field to a schema should
   make it appear in the form with **no form code changes**
 - Optimistic updates need a rollback path; a silent revert reads as a bug

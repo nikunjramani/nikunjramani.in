@@ -14,7 +14,7 @@ say so. (`.claude/rules/security.md`)
 
 **Status:** Phases 0, 1, 3, 4 and 5 are implemented; Phase 6 is live at `https://nikunjramani.in`
 with a few launch checks open; Phase 7 CI/CD is live — PR checks, staging previews, and prod
-deploys on merge (since 2026-10-16). Phase 2 needs the owner's content. Backend: 172 tests (61
+deploys on merge (since 2026-10-16). Phase 2: the Technical design is built (`.docs/DESIGN.md`). Backend: 172 tests (61
 need the Firestore emulator). Full plan: [`.docs/plan/`](./.docs/plan/README.md).
 
 ## Where things are
@@ -25,6 +25,7 @@ need the Firestore emulator). Full plan: [`.docs/plan/`](./.docs/plan/README.md)
 | Why a piece of code is written this way | [`.docs/decisions/`](./.docs/decisions/README.md) |
 | Architecture decisions | [`.docs/adr/`](./.docs/adr/README.md) |
 | Operating it (CI/CD, deploy, rollback, secrets) | [`.docs/RUNBOOK.md`](./.docs/RUNBOOK.md) |
+| The public site's design system (tokens, type, structure) | [`.docs/DESIGN.md`](./.docs/DESIGN.md) |
 | How to work here (verify, PRs, CI, docs upkeep) | `.claude/rules/workflow.md` — always loaded |
 | Mistakes not to repeat | `.claude/rules/lessons-learned.md` — always loaded |
 | Area rules (backend, frontend, schemas, infra, CI, docs) | `.claude/rules/*.md` — load with matching files |

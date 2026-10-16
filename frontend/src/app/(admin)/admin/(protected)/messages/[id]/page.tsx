@@ -6,14 +6,14 @@ import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { useFeedback } from "@/admin/components/ui-feedback";
-import { ApiError } from "@/admin/api/client";
+import { ApiError } from "@/admin/api-client/client";
 import {
   deleteMessage,
   getMessage,
   markMessageRead,
   markMessageReplied,
   type MessageRecordOut,
-} from "@/admin/api/messages";
+} from "@/admin/api-client/messages";
 
 export default function AdminMessageDetailPage() {
   const params = useParams<{ id: string }>();

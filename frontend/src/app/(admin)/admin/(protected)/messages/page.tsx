@@ -4,7 +4,7 @@ import { AlertTriangle, Download } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
-import { downloadMessagesCsv, listMessages, type MessageRecordOut } from "@/admin/api/messages";
+import { downloadMessagesCsv, listMessages, type MessageRecordOut } from "@/admin/api-client/messages";
 import { timeAgo } from "@/admin/lib/format";
 import { cn } from "@/lib/utils";
 

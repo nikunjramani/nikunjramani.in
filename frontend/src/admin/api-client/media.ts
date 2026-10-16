@@ -2,8 +2,8 @@
 
 /** The backend's media domain: `upload` issues signed URLs, `library` lists, edits and
  * deletes assets (which the processing trigger creates — never a POST body). */
-import { ApiError, apiFetch } from "@/admin/api/client";
-import type { RecordOut } from "@/admin/api/content";
+import { ApiError, apiFetch } from "@/admin/api-client/client";
+import type { RecordOut } from "@/admin/api-client/content";
 import type { MediaAsset } from "@/generated/types";
 import { API_ROUTES } from "@/generated/api-routes";
 

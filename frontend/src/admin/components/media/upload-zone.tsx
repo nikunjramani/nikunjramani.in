@@ -3,7 +3,7 @@
 import { Loader2, UploadCloud, CheckCircle2, XCircle } from "lucide-react";
 import { useCallback, useRef, useState } from "react";
 
-import { requestUploadUrl, uploadToSignedUrl } from "@/admin/api/media";
+import { requestUploadUrl, uploadToSignedUrl } from "@/admin/api-client/media";
 import { cn } from "@/lib/utils";
 
 const ACCEPTED_TYPES = ["image/webp", "image/jpeg", "image/png", "image/gif"];

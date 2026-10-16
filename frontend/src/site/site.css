@@ -10,3 +10,73 @@
 @source "../app/global-not-found.tsx";
 @source "./";
 @source "../shared";
+
+/*
+ * Design: "Technical" (Phase 2, chosen 2026-10-16) — the site reads as an engineering spec
+ * sheet. Cool paper with an amber signal (light); the original near-black with a blue
+ * signal (dark). Archivo + Plex Mono. See .docs/DESIGN.md. Contrast (WCAG AA, checked per pair):
+ *   dark  — foreground 17.7:1, muted 6.2:1 (5.8 on surface, 5.6 on muted), accent 7.9:1,
+ *           danger 8.3:1; accent-foreground on accent 7.9:1
+ *   light — foreground 16.2:1, muted 6.1:1 (6.6 on surface, 5.6 on muted), accent 5.0:1,
+ *           danger 6.1:1; accent-foreground on accent 5.4:1
+ */
+:root {
+  --background: #f4f7fa; /* paper */
+  --surface: #ffffff;
+  --foreground: #0c1b2a; /* ink */
+  --muted: #e7edf3;
+  --muted-foreground: #4a5f74;
+  --border: #d3dde7; /* rules */
+  --grid: rgb(12 27 42 / 0.06);
+  --accent: #9a5b00; /* signal, darkened for paper */
+  --accent-foreground: #ffffff;
+  --danger: #b42318;
+  --radius: 0.25rem;
+}
+
+.dark {
+  /* The original dark theme (same values as shared/styles/base.css), kept by the owner's choice:
+     neutral near-black with a blue accent. */
+  --background: oklch(0.14 0.005 260);
+  --surface: oklch(0.18 0.005 260);
+  --foreground: oklch(0.96 0 0);
+  --muted: oklch(0.2 0.005 260);
+  --muted-foreground: oklch(0.65 0.01 260);
+  --border: oklch(0.28 0.01 260);
+  --grid: oklch(0.65 0.01 260 / 0.08);
+  --accent: oklch(0.72 0.16 255);
+  --accent-foreground: oklch(0.14 0.005 260);
+  --danger: #f28b82;
+}
+
+@theme inline {
+  --color-danger: var(--danger);
+  --color-grid: var(--grid);
+  --text-display: clamp(2.75rem, 1.6rem + 5vw, 5.5rem);
+}
+
+/* The blueprint grid behind the hero — 24px cells, faded out towards the bottom. */
+.blueprint-grid {
+  background-image:
+    linear-gradient(to right, var(--grid) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--grid) 1px, transparent 1px);
+  background-size: 24px 24px;
+  mask-image: linear-gradient(to bottom, black 55%, transparent);
+}
+
+/* The one orchestrated motion on the site: the hero's title-block rules draw in on load.
+   prefers-reduced-motion (base.css) collapses it to an instant state. */
+@keyframes draw-rule {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+.draw-rule {
+  transform-origin: left;
+  animation: draw-rule 700ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  animation-delay: calc(var(--row, 0) * 90ms + 150ms);
+}

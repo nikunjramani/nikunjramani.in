@@ -3,8 +3,8 @@ import "server-only";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-import { getAdminSession, isAdmin } from "@/admin/auth/session";
-import { findMediaUsage } from "@/lib/data/media-usage";
+import { getAdminSession, isAdmin } from "@/admin/auth/server";
+import { findMediaUsage } from "@/admin/data/media-usage";
 
 /** GET — which content documents still use this media asset. Checked by the admin media
  * library before a delete. Session-cookie authorised (same origin as the admin panel). */

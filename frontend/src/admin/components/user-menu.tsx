@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { auth } from "@/lib/firebase/client";
-import { deleteAdminSession } from "@/admin/api/session";
+import { deleteAdminSession } from "@/admin/auth/client";
 
 export function UserMenu({ email }: { email: string | undefined }) {
   const [signingOut, setSigningOut] = useState(false);
