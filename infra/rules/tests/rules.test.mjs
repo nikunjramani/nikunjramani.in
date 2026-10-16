@@ -2,7 +2,7 @@
  * Firestore rules tests.
  *
  * The emulator alone does not prove the rules are right — you have to assert against them.
- * These cover the three claims docs/plan/03-security.md makes.
+ * These cover the three claims .docs/plan/03-security.md makes.
  */
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";

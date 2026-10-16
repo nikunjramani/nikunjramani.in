@@ -1,6 +1,6 @@
 rules_version = '2';
 
-// Security posture, in one screen. See docs/plan/03-security.md and ADR 0007.
+// Security posture, in one screen. See .docs/plan/03-security.md and ADR 0007.
 //
 // Clients may read published content and may write NOTHING — not even the admin.
 // Every mutation goes through the Python API, so validation, rate limiting and audit
@@ -12,7 +12,7 @@ service cloud.firestore {
     // ── BEGIN GENERATED: architecture/codegen/gen-rules.py — DO NOT EDIT BY HAND ──
     // Derived from every schema's `x-firestore.publicRead` flag and `required` list.
     // `make gen` regenerates this block; CI fails if it drifts from the schemas.
-    // See ADR 0006 and docs/plan/phases/phase-1-schemas.md §1.6.
+    // See ADR 0006 and .docs/plan/phases/phase-1-schemas.md §1.6.
 
     function isPublicCollection(col) {
       return col in ['certifications', 'education', 'experience', 'posts', 'profile', 'projects', 'site_config', 'skills'];

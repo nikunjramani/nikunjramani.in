@@ -2,7 +2,7 @@
 # One-time project bootstrap.
 #
 # Does everything that has a CLI, and prints a checklist for the console-only steps
-# Terraform genuinely cannot perform. See docs/plan/04-infrastructure.md.
+# Terraform genuinely cannot perform. See .docs/plan/04-infrastructure.md.
 set -euo pipefail
 
 PROJECT_ID="${PROJECT_ID:-nikunjramani-in}"

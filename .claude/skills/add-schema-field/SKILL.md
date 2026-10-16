@@ -9,11 +9,11 @@ description: Add or change a field on any content model (project, skill, experie
 
 ## Never do this
 
-- ❌ Edit a file under `frontend/src/generated/` or `backend/functions/generated/`
+- ❌ Edit a file under `frontend/src/generated/` or `backend/functions/shared/generated/`
 - ❌ Add a field to a Pydantic model or TypeScript interface directly
 - ❌ Add a form input to the admin panel by hand
 
-All four are generated from the schema. CI fails on drift. → [ADR 0006](../../../docs/adr/0006-json-schema-source-of-truth.md)
+All four are generated from the schema. CI fails on drift. → [ADR 0006](../../../.docs/adr/0006-json-schema-source-of-truth.md)
 
 ## Steps
 

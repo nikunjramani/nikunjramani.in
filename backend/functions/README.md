@@ -2,11 +2,14 @@
 
 The Python API behind nikunjramani.in: every **write** the site makes, plus a few triggers
 and jobs. Reads never come here; Next.js reads Firestore directly
-([ADR 0005](../../docs/adr/0005-reads-bypass-python.md)).
+([ADR 0005](../../.docs/adr/0005-reads-bypass-python.md)).
 
 The code is organised as **main domains**, each made of **subdomains**. A subdomain does one
 job, owns every file for that job, and deploys as its own Cloud Function. Domains and
-subdomains never import each other. → [ADR 0017](../../docs/adr/0017-bounded-context-domains.md)
+subdomains never import each other. → [ADR 0017](../../.docs/adr/0017-bounded-context-domains.md)
+
+How a request moves through it: [CODE_FLOW §5–9](../../.docs/CODE_FLOW.md#5--the-admin-edits-content).
+Why each piece is written the way it is: [decisions/backend.md](../../.docs/decisions/backend.md).
 
 ---
 
@@ -25,7 +28,7 @@ subdomains never import each other. → [ADR 0017](../../docs/adr/0017-bounded-c
 | **media** | `upload` | `api_media_upload` | `/api/v1/media/upload` | signed upload URLs into `uploads/media/` |
 | | `processing` | `on_media_uploaded` | *Storage trigger* | WebP + thumbnail + blurhash → new `media_assets` doc |
 | | `library` | `api_media_library` | `/api/v1/media/library` | list, alt text, delete for `media_assets` and its files |
-| **inbox** | `contact` | `api_inbox_contact` | `/api/v1/inbox/contact` (public) | Turnstile, honeypot, spam score, `_rate_limits` → new `contact_messages` doc |
+| **inbox** | `contact` | `api_inbox_contact` | `/api/v1/inbox/contact` (public) | App Check, honeypot, spam score, `_rate_limits` → new `contact_messages` doc |
 | | `messages` | `api_inbox_messages` | `/api/v1/inbox/messages` | read, mark, delete and CSV export of `contact_messages` |
 | | `notifications` | `on_contact_created` | *Firestore trigger* | emails each new message to the owner (Resend) |
 | **ops** | `health` | `api_ops_health` | `/api/v1/ops/health` (public) | liveness |
@@ -140,7 +143,7 @@ FUNCTIONS = {"api_content_skills": "src.content.skills.main", ...}
 4. **Register it** — `tests/test_domain_registry.py` fails until all are done:
    - the domain's `src/<domain>/main.py` `FUNCTIONS` table
    - `pyproject.toml`: the domain's subdomain-independence contract and the layers `containers`
-   - `frontend/next.config.ts`: `ROUTES`
+   - `architecture/api-routes.json`, then `make gen` (generates the Next.js rewrites)
    - `infra/terraform/modules/functions`: `http_functions`
 5. **Secrets** are bound in code, `make_function(..., secrets=["NAME"])`, and must have a
    Secret Manager version before deploy.
@@ -163,7 +166,7 @@ firebase deploy --only functions:api_content_projects    # one subdomain
 
 Debug a subdomain directly with `functions-framework` (VS Code: "Backend: debug a subdomain",
 e.g. `content_projects`), never through the Functions emulator — see
-[docs/RUNBOOK.md](../../docs/RUNBOOK.md#debugging-vs-code).
+[.docs/RUNBOOK.md](../../.docs/RUNBOOK.md#debugging-vs-code).
 
 ---
 

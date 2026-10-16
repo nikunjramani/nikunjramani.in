@@ -1,6 +1,6 @@
 ---
 name: write-adr
-description: Record an architecture decision in docs/adr/. Use whenever an architectural choice is made or changed — framework, data model shape, security posture, deployment topology, or anything a future reader would question.
+description: Record an architecture decision in .docs/adr/. Use whenever an architectural choice is made or changed — framework, data model shape, security posture, deployment topology, or anything a future reader would question.
 ---
 
 # Writing an ADR
@@ -17,12 +17,12 @@ like this?"*
 
 ## Steps
 
-**1 · Next number.** `ls docs/adr/` and take the next in sequence. Never reuse or renumber.
+**1 · Next number.** `ls .docs/adr/` and take the next in sequence. Never reuse or renumber.
 
 **2 · Copy the template.**
 
 ```bash
-cp docs/adr/TEMPLATE.md docs/adr/0011-short-kebab-title.md
+cp .docs/adr/TEMPLATE.md .docs/adr/0011-short-kebab-title.md
 ```
 
 Title states the decision, not the topic: `0011-cache-projects-in-redis`, not `0011-caching`.
@@ -39,7 +39,7 @@ Title states the decision, not the topic: `0011-cache-projects-in-redis`, not `0
 - **Revisit if** — the conditions that would reopen this. Turns a historical note into something
   actionable.
 
-**4 · Add the index row** in `docs/adr/README.md`, with status and date.
+**4 · Add the index row** in `.docs/adr/README.md`, with status and date.
 
 **5 · Commit it with the change it describes.** Same PR, not a follow-up.
 
@@ -59,4 +59,4 @@ Plain and specific. Name the real constraint — a learning curve, a free tier, 
 Vague ADRs ("for better maintainability") are worthless; the honest ones ("this costs a week and a
 real learning curve, accepted because SEO is the product requirement") are what future readers need.
 
-See [ADR 0001](../../../docs/adr/0001-nextjs-instead-of-flutter-web.md) for the shape.
+See [ADR 0001](../../../.docs/adr/0001-nextjs-instead-of-flutter-web.md) for the shape.

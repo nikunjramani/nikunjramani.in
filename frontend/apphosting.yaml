@@ -1,5 +1,5 @@
 # Firebase App Hosting runtime config for the Next.js frontend.
-# See docs/RUNBOOK.md (App Hosting), ADR 0013 and docs/plan/04-infrastructure.md.
+# See .docs/RUNBOOK.md (App Hosting), ADR 0013 and .docs/plan/04-infrastructure.md.
 #
 # NEXT_PUBLIC_* values are public by design (security is in Firestore rules, not in
 # hiding this config) — safe to commit plaintext. This app reads no secrets.

@@ -1,77 +1,66 @@
 ---
 name: ship
-description: Deploy this project to production, or roll back a bad deploy. Use for any deploy, rollback, secret rotation, or backup restore — the order of operations matters and getting it wrong takes the site down.
+description: Get a change to production, roll back a bad deploy, approve an infra change, add or rotate a secret, or restore a backup. Use for anything deploy- or rollback-shaped — production deploys run in CI on merge to main, and the order of operations matters.
 ---
 
 # Shipping
 
-## Order matters
+Production deploys are **CI's job**: merge to `main` → `deploy.yml`. Full flow:
+[.docs/CODE_FLOW.md](../../../.docs/CODE_FLOW.md) (CI/CD). Operations detail:
+[.docs/RUNBOOK.md](../../../.docs/RUNBOOK.md).
 
-Dependencies run one way. This sequence is not optional:
+## The normal path
 
-```
-1. terraform apply        infra, IAM, secrets, indexes
-2. firebase deploy        rules + indexes
-3. firebase deploy        functions      ← needs secrets to exist
-4. App Hosting            auto-builds from the git push
-5. smoke test
-```
+1. PR → `pr.yml` runs only the checks its paths touch, then deploys only the touched targets to
+   **staging** and comments the URL. Check the preview.
+2. CI green → merge (squash). Use the `pull-request` skill.
+3. `deploy.yml` on `main`: `changes` → `deploy` (rules → functions → App Hosting, retried 3×) →
+   smoke test (`/` and `/api/v1/ops/health`) → `rollback` if that failed → `terraform` if
+   `infra/terraform/**` changed (staging, then prod behind the owner's `production-infra` approval).
+4. Watch the `deploy` run to the end and report the result. A failed `deploy` with a green
+   `rollback` means prod is back on the previous commit — still a failure to fix.
 
-```bash
-make deploy    # runs 1–3 in order
-```
+## Order traps
 
-## Pre-flight
-
-- [ ] `make lint` and `make test` green
-- [ ] `make gen && git diff --exit-code` clean — no stale generated code
-- [ ] `terraform plan` reviewed; nothing unexpected being destroyed
-- [ ] New secrets present in Secret Manager
-- [ ] New Firestore indexes deployed **before** the code that queries them
-- [ ] Not a Friday evening
-
-## Smoke test — every time
-
-- [ ] `https://nikunjramani.in` loads over HTTPS
-- [ ] A project detail page renders fully
-- [ ] `view-source` shows real content, not an empty shell
-- [ ] Contact form delivers an email
-- [ ] `/admin` login works
-- [ ] An admin edit appears on the public site within seconds
-- [ ] Function logs clean — check immediately, this is where missing secrets surface
+- **A function binding a brand-new secret**: CI deploys code before Terraform, so the secret
+  wouldn't exist yet. Run the workflow manually with `infra_only` first, have the owner add the
+  value, then merge the code.
+- **A new Firestore query**: its composite index ships in the same deploy (rules + indexes go
+  first) but builds asynchronously — the query can fail for minutes after deploy.
+- **A module adding a new GCP resource type**: the Terraform *apply* identity needs a role for it
+  (`.claude/rules/infra.md`), granted by hand once in existing projects.
 
 ## Rollback
 
 | Broken | Fix |
 |---|---|
-| Functions | `firebase functions:rollback` |
+| A deploy (automatic) | `deploy.yml`'s `rollback` job redeploys the previous commit |
+| Functions, by hand | worktree at a known-good commit → `make setup-backend` → `firebase deploy --only functions:<name>` |
 | Frontend | App Hosting console → previous release |
-| Rules | `git revert`, then `firebase deploy --only firestore:rules` |
-| Infra | `git revert`, then `terraform apply` |
-| Data | Restore from the nightly Storage export |
+| Rules | revert PR → merge (CI redeploys rules) |
+| Infra | revert PR → merge → approve the apply |
+| Data | restore from the nightly export (below) |
 
-**Roll back first, diagnose after.** A reverted deploy costs minutes; a debugging session on a live
-broken site costs an afternoon.
+**Roll back first, diagnose after.**
 
-## Secret rotation
+## Secrets
 
-1. Add the new version in Secret Manager
-2. Redeploy functions so they pick it up
-3. Verify the dependent path works (send a test email, submit a contact form)
-4. Disable the old version — don't delete it until the new one is proven
+The owner adds values; the agent never writes to Secret Manager. Give them the exact command,
+value piped, not on disk:
 
-## Restoring a backup
+```bash
+echo -n "value" | gcloud secrets versions add NAME --data-file=- --project=<project>
+```
 
-Exports land nightly in Storage, retained 30 days. Restore into the **emulator** first and verify
-before touching production, always.
+Rotation: add the new version → redeploy functions → verify the path that uses it → disable the
+old version. Not-yet-configured secret: a single newline (empty versions are rejected).
 
-## Gotchas
+## Backups
 
-- **Secrets are runtime-only, not deploy-time.** Reading one at module import fails the deploy with
-  an unhelpful error.
-- **Indexes before queries.** Deploy the index, wait for it to build, then deploy the code.
-- **Localhost Lighthouse scores lie.** Only production numbers count.
-- **Check DNS with `dig`, not a browser.** Browsers and ISPs cache aggressively.
-- **`/docs` must be disabled in production.**
+Nightly per-document JSON export into `<project>-backups` (30-day retention). Restore into the
+**emulator** first and verify, always, before touching production.
 
-Full detail: [Phase 6](../../../docs/plan/phases/phase-6-deploy.md) · `docs/RUNBOOK.md`
+## Smoke test by hand
+
+Site over HTTPS · a project page renders · `view-source` shows real content · contact form stores
+a message · `/admin` login works · an admin edit shows publicly at once · function logs clean.

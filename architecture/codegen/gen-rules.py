@@ -53,7 +53,7 @@ def main() -> int:
         "    // Derived from every schema's `x-firestore.publicRead` flag and `required` list."
     )
     body.append("    // `make gen` regenerates this block; CI fails if it drifts from the schemas.")
-    body.append("    // See ADR 0006 and docs/plan/phases/phase-1-schemas.md §1.6.")
+    body.append("    // See ADR 0006 and .docs/plan/phases/phase-1-schemas.md §1.6.")
     body.append("")
     body.append("    function isPublicCollection(col) {")
     quoted = ", ".join(f"'{n}'" for n in names)
