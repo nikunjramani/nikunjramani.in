@@ -3,8 +3,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 
-import { JsonLd } from "@/components/site/json-ld";
-import { ProjectDetailView } from "@/components/site/project/project-detail-view";
+import { JsonLd } from "@/site/components/json-ld";
+import { ProjectDetailView } from "@/site/components/project/project-detail-view";
 import { getProfile } from "@/lib/data/profile";
 import { getAllProjects, getProjectBySlug } from "@/lib/data/projects";
 import { SITE_NAME, SITE_URL } from "@/lib/site";

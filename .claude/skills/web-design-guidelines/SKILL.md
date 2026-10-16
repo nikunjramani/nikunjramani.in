@@ -23,7 +23,7 @@ can't change without a commit. Source and licence: `.claude/skills/THIRD_PARTY.m
 
 - **Copy casing**: sentence case for headings and buttons, not the snapshot's Title Case — the
   `frontend-design` skill's writing guidance and the existing site use sentence case.
-- **Dates/numbers**: formatting helpers belong in `lib/format.ts`, built on `Intl.*`; flag
+- **Dates/numbers**: formatting helpers belong in `admin/lib/format.ts`, built on `Intl.*`; flag
   hand-rolled formats in components.
 - **Virtualisation**: no list on this site approaches 50 items; don't add a virtualisation
   dependency for one.

@@ -4,13 +4,13 @@ import { ChevronDown, ChevronUp, Copy, Plus, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 
-import { useFeedback } from "@/components/admin/ui-feedback";
-import { useRecordList } from "@/components/admin/use-record-list";
+import { useFeedback } from "@/admin/components/ui-feedback";
+import { useRecordList } from "@/admin/components/use-record-list";
 import { ADMIN_SCHEMAS } from "@/generated/admin-schemas";
 import type { Project } from "@/generated/types";
-import { ApiError } from "@/lib/api/client";
-import type { RecordOut } from "@/lib/api/content";
-import { duplicateProject } from "@/lib/api/projects";
+import { ApiError } from "@/admin/api/client";
+import type { RecordOut } from "@/admin/api/content";
+import { duplicateProject } from "@/admin/api/projects";
 
 const entry = ADMIN_SCHEMAS.Project;
 const KIND_OPTIONS = (entry.properties.kind.enum ?? []) as string[];

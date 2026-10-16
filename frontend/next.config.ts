@@ -26,6 +26,10 @@ const FUNCTIONS_BASE =
 const nextConfig: NextConfig = {
   reactStrictMode: true,
 
+  // The site and the admin are separate root layouts (ADR 0021), so a URL matching neither
+  // needs a 404 that brings its own <html>: app/global-not-found.tsx.
+  experimental: { globalNotFound: true },
+
   images: {
     remotePatterns: [
       { protocol: "https", hostname: "storage.googleapis.com" },

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
-import { ProjectFilters } from "@/components/site/project-filters";
-import { ProjectCard } from "@/components/site/project-card";
+import { ProjectFilters } from "@/site/components/project-filters";
+import { ProjectCard } from "@/site/components/project-card";
 import { getAllProjects } from "@/lib/data/projects";
 
 export const metadata: Metadata = {

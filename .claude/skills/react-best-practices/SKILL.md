@@ -152,7 +152,7 @@ with this repository's ADRs, the ADR wins:
 
 - **`server-cache-lru`, `client-swr-dedup`, `client-event-listeners` (SWR)** — don't apply. Content
   renders fresh per request with no cross-request cache (ADR 0014, ADR 0015), and there is no
-  SWR; admin data loads through `lib/api/*` (ADR 0007).
+  SWR; admin data loads through `admin/api/*` (ADR 0007).
 - **`async-dependencies` (`better-all`)** — use the dependency-free `Promise.all` variant from the
   same file; don't add the package.
 - **`server-cache-react`** — yes: `lib/data/*` readers are wrapped in `React.cache` already.

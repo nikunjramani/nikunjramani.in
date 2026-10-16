@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import { Download } from "lucide-react";
 
-import { Markdown } from "@/components/site/markdown";
-import { SkillMatrix } from "@/components/site/skill-matrix";
+import { Markdown } from "@/site/components/markdown";
+import { SkillMatrix } from "@/site/components/skill-matrix";
 import { blurhashToDataURL } from "@/lib/blurhash";
 import { getProfile } from "@/lib/data/profile";
 import { getSkills } from "@/lib/data/skills";

@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import { ArrowRight } from "lucide-react";
 import Link from "next/link";
 
-import { ProjectCard } from "@/components/site/project-card";
-import { SkillPills } from "@/components/site/skill-pills";
+import { ProjectCard } from "@/site/components/project-card";
+import { SkillPills } from "@/site/components/skill-pills";
 import { getFeaturedProjects } from "@/lib/data/projects";
 import { getProfile } from "@/lib/data/profile";
 import { getFeaturedSkills } from "@/lib/data/skills";

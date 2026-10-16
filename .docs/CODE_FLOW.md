@@ -53,12 +53,15 @@ Three rules shape every flow below:
 | [architecture/schemas/](../architecture/schemas/) | JSON Schemas — every model, defined once |
 | [architecture/api-routes.json](../architecture/api-routes.json) | the HTTP subdomains, `domain/sub` |
 | [architecture/codegen/](../architecture/codegen/) | generators run by `make gen` |
-| [frontend/src/app/(site)/](../frontend/src/app/%28site%29/) | public pages (Server Components) |
-| [frontend/src/app/(admin)/admin/](../frontend/src/app/%28admin%29/admin/) | admin panel (`login/`, `(protected)/…`) |
+| [frontend/src/app/(site)/](../frontend/src/app/%28site%29/) | public pages (Server Components); its `layout.tsx` is the site's **root** layout |
+| [frontend/src/app/(admin)/](../frontend/src/app/%28admin%29/) | admin panel (`admin/login/`, `admin/(protected)/…`); its own root layout ([ADR 0021](./adr/0021-site-and-admin-are-separate-surfaces.md)) |
+| [frontend/src/app/global-not-found.tsx](../frontend/src/app/global-not-found.tsx) | 404 for a URL matching neither surface |
 | [frontend/src/app/api/admin/](../frontend/src/app/api/admin/) | the two Next.js route handlers: session cookie, media usage |
+| [frontend/src/site/](../frontend/src/site/) | public-only code: `components/`, `lib/` (contact form, App Check), `site.css` |
+| [frontend/src/admin/](../frontend/src/admin/) | admin-only code: `components/`, `api/` (every Python API **call**), `auth/` (session cookie), `lib/`, `admin.css` |
+| [frontend/src/shared/](../frontend/src/shared/) | UI both surfaces use: theme provider, skip link, error view, fonts, `styles/base.css` tokens |
 | [frontend/src/lib/data/](../frontend/src/lib/data/) | every Firestore **read** (server-only) |
-| [frontend/src/lib/api/](../frontend/src/lib/api/) | every Python API **call** (admin, client-side) |
-| [frontend/src/lib/firebase/](../frontend/src/lib/firebase/) | Admin SDK (server), client SDK (Auth), App Check |
+| [frontend/src/lib/firebase/](../frontend/src/lib/firebase/) | Admin SDK (server), client SDK (Auth) |
 | [frontend/src/generated/](../frontend/src/generated/) | TS types, Zod, admin form schemas, API routes — generated |
 | [backend/functions/main.py](../backend/functions/main.py) | the one module Firebase loads |
 | [backend/functions/src/\<domain\>/\<sub\>/](../backend/functions/src/) | one job each: `main → routes → schemas → service → repository` |
@@ -78,7 +81,8 @@ Three rules shape every flow below:
 GET /projects/acme-rebuild
   │
   ▼ App Hosting → Next.js server
-frontend/src/app/(site)/layout.tsx            revalidate = 0 → rendered per request (ADR 0014)
+frontend/src/app/(site)/layout.tsx            root layout: <html>, site.css, nav/footer;
+                                              revalidate = 0 → rendered per request (ADR 0014)
   ├─ getProfile()                             lib/data/profile.ts       ─┐
   │                                                                       │ React.cache: one read
 frontend/src/app/(site)/projects/[slug]/page.tsx                          │ per request, even if
@@ -93,7 +97,7 @@ frontend/src/app/(site)/projects/[slug]/page.tsx                          │ pe
         ▼ lib/data/projects.ts                 visibility must be public|unlisted, else null → 404;
                                                client.confidential → name + logo deleted HERE
   ▼
-HTML with the real content (SEO: view-source shows it) + JSON-LD (components/site/json-ld.tsx)
+HTML with the real content (SEO: view-source shows it) + JSON-LD (site/components/json-ld.tsx)
 ```
 
 - **Lists** (`/projects`, home) go through `listPublished()` in
@@ -101,7 +105,7 @@ HTML with the real content (SEO: view-source shows it) + JSON-LD (components/sit
   `where visibility == "public"` (+ optional equality filters) `orderBy order`. Each filter combination
   needs its composite index, declared in the schema (section 10).
 - **Filters** on `/projects` live in the URL (`?kind=&tech=&status=`) —
-  [components/site/project-filters.tsx](../frontend/src/components/site/project-filters.tsx) is the
+  [site/components/project-filters.tsx](../frontend/src/site/components/project-filters.tsx) is the
   only client piece.
 - **`unlisted`** projects render at their URL (with `noindex`) but `getAllProjects()` never returns
   them, so they're absent from lists and [sitemap.ts](../frontend/src/app/sitemap.ts).
@@ -115,7 +119,7 @@ HTML with the real content (SEO: view-source shows it) + JSON-LD (components/sit
 ## 4 · The admin signs in
 
 ```
-/admin/login  components/admin/sign-in-panel.tsx  (client)
+/admin/login  admin/components/sign-in-panel.tsx  (client)
   1. signInWithPopup(GoogleAuthProvider)                       Firebase Auth → ID token (1 h)
   2. POST /api/admin/session { idToken }                       app/api/admin/session/route.ts
         adminAuth().createSessionCookie(idToken, 5 days)       verifies the token first
@@ -147,12 +151,12 @@ the panel's **Access** page (`api_identity_admins`, section 9).
 Example: editing a skill on `/admin/skills`.
 
 ```
-BROWSER  components/admin/content-collection-screen.tsx
-  ├─ list:  useRecordList → lib/api/content.ts → apiFetch("GET /content/skills/")
+BROWSER  admin/components/content-collection-screen.tsx
+  ├─ list:  useRecordList → admin/api/content.ts → apiFetch("GET /content/skills/")
   └─ save:  <RecordFormDialog> → <SchemaForm> (generated admin schema + Zod, drafts in localStorage)
-            toMergePatch(original, edited)      lib/merge-patch.ts — a cleared field becomes null
+            toMergePatch(original, edited)      admin/lib/merge-patch.ts — a cleared field becomes null
             apiFetch("PATCH /content/skills/<id>", patch)
-  lib/api/client.ts
+  admin/api/client.ts
      auth().authStateReady() → currentUser.getIdToken()   fresh token, refreshed by the SDK
      fetch("/api/v1/content/skills/<id>", Authorization: Bearer <token>)
      401 → hard navigation to /admin/login;  !ok → ApiError(message from {"error":{…}})
@@ -192,7 +196,7 @@ NEXT VISIT to the public page reads Firestore fresh (section 3) — no cache to 
   [kernel/http.py](../backend/functions/kernel/http.py) turns them into
   `{"error": {"code", "message"}}` with the right status; `client.ts` shows `message`.
 - The **audit trail** shows inside each record's editor
-  ([components/admin/audit-trail.tsx](../frontend/src/components/admin/audit-trail.tsx)), read via
+  ([admin/components/audit-trail.tsx](../frontend/src/admin/components/audit-trail.tsx)), read via
   `api_ops_audit` — newest first, filtered by collection and document, 50 entries.
 
 ---
@@ -200,10 +204,10 @@ NEXT VISIT to the public page reads Firestore fresh (section 3) — no cache to 
 ## 6 · The contact form
 
 ```
-BROWSER  /contact  components/site/contact-form.tsx (client)
-  initAppCheck() early     lib/firebase/app-check.ts — lazy-imports the SDK; reCAPTCHA Enterprise
+BROWSER  /contact  site/components/contact-form.tsx (client)
+  initAppCheck() early     site/lib/app-check.ts — lazy-imports the SDK; reCAPTCHA Enterprise
                            scores the visitor invisibly (no-op in local dev: no site key)
-  submit → getAppCheckToken() → lib/contact.ts submitContact()
+  submit → getAppCheckToken() → site/lib/contact.ts submitContact()
            POST /api/v1/inbox/contact  {name, email, subject?, message, honeypot}
                 X-Firebase-AppCheck: <token>
         ▼ rewrite → api_inbox_contact (public)
@@ -234,8 +238,8 @@ documents and messages expire through Firestore TTL policies on `expiresAt`.
 ## 7 · Media: upload, processing, library
 
 ```
-1 · ASK    admin /admin/media  components/admin/media/upload-zone.tsx
-           lib/api/media.ts requestUploadUrl(type, size) → POST /media/upload
+1 · ASK    admin /admin/media  admin/components/media/upload-zone.tsx
+           admin/api/media.ts requestUploadUrl(type, size) → POST /media/upload
            src/media/upload/service.py  validate (webp/jpeg/png/gif, ≤ 20 MiB)
                                         path = uploads/media/<uuid32>/original.<ext>
            src/media/upload/storage.py  v4 signed PUT URL, 15 min, signed via IAM signBlob as the

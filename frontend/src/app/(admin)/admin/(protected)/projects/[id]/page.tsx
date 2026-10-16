@@ -3,16 +3,16 @@
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
-import { AuditTrail } from "@/components/admin/audit-trail";
-import { SchemaForm } from "@/components/admin/schema-form/schema-form";
-import { useFeedback } from "@/components/admin/ui-feedback";
-import { ProjectDetailView } from "@/components/site/project/project-detail-view";
+import { AuditTrail } from "@/admin/components/audit-trail";
+import { SchemaForm } from "@/admin/components/schema-form/schema-form";
+import { useFeedback } from "@/admin/components/ui-feedback";
+import { ProjectDetailView } from "@/site/components/project/project-detail-view";
 import { ADMIN_SCHEMAS } from "@/generated/admin-schemas";
 import { ProjectSchema } from "@/generated/schemas.zod";
 import type { Project } from "@/generated/types";
-import { ApiError } from "@/lib/api/client";
-import { createRecord, getRecord, patchRecord } from "@/lib/api/content";
-import { toMergePatch } from "@/lib/merge-patch";
+import { ApiError } from "@/admin/api/client";
+import { createRecord, getRecord, patchRecord } from "@/admin/api/content";
+import { toMergePatch } from "@/admin/lib/merge-patch";
 import type { z } from "zod";
 
 type ProjectFormValues = z.infer<typeof ProjectSchema>;

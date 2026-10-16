@@ -14,7 +14,7 @@ async `params`/`searchParams`/`cookies()`).
 
 - **Reads never touch Python** (ADR 0005). Server Components read Firestore through `lib/data/*`
   with the Admin SDK. Never route page data through the API.
-- **Clients never write Firestore** (ADR 0007). Admin writes go through `lib/api/*` → the Python
+- **Clients never write Firestore** (ADR 0007). Admin writes go through `admin/api/*` → the Python
   API. There is no Firestore client SDK in the browser at all.
 - **`import "server-only"`** at the top of every file touching the Admin SDK — without it the
   failure mode is a leaked credential, not a build error.
@@ -32,11 +32,31 @@ async `params`/`searchParams`/`cookies()`).
 - Optional fields render conditionally — no empty headings, no placeholders (ADR 0008).
 - Public queries filter `visibility == "public"` and sort by `order`; `unlisted` is reachable by
   URL (with `noindex`) but never listed or in the sitemap; drafts 404.
-- Admin saves send a real merge patch built with `lib/merge-patch.ts`'s `toMergePatch`.
+- Admin saves send a real merge patch built with `admin/lib/merge-patch.ts`'s `toMergePatch`.
 - Admin forms render from the generated schemas (`<SchemaForm>`); a new schema field should need
   no form code.
 - Public site code never imports admin code — `eslint.config.mjs` (`no-restricted-imports`)
   fails the build, because it would ship the admin bundle to visitors.
+
+## Where code goes (ADR 0021)
+
+The site and the admin are separate surfaces — separate root layouts, stylesheets and designs.
+
+| Used by | Goes in |
+|---|---|
+| the public site only | `src/site/` (`components/`, `lib/`), styles in `site/site.css` |
+| the admin only | `src/admin/` (`components/`, `api/`, `auth/`, `lib/`), styles in `admin/admin.css` |
+| both, UI | `src/shared/` (components, `fonts.ts`, `styles/base.css`) |
+| both, non-UI | `src/lib/` (`data/`, `firebase/`, `utils`, `site`) |
+
+- Imports point one way: `site`/`admin` → `shared`/`lib`/`generated`; `shared` and `lib` never
+  import a surface; the admin may import `site/components` (the editor previews with them). ESLint
+  enforces all of it.
+- Each stylesheet scans only its own folders (`@source`). A new folder holding classes for a
+  surface must be added to that surface's `@source` list, or its classes silently won't exist.
+- A token change for one surface goes in that surface's stylesheet; `shared/styles/base.css` is
+  for what both genuinely share.
+- Crossing between `/admin` and the site is a full page load — use `<a>`, not `<Link>`.
 - `next/image` with correct `sizes`; design tokens only, no hard-coded hex.
 - API calls go to `/api/v1/<domain>/<sub>/…` (same origin); `next.config.ts` rewrites them to the
   function, from the generated `api-routes.ts`.
