@@ -1,12 +1,18 @@
 # frontend
 
-Next.js 16 (App Router) — the public site and the `/admin` panel.
+Next.js 16 (App Router) — the public site and the `/admin` panel, as two separate surfaces
+with their own root layouts and stylesheets ([ADR 0021](../.docs/adr/0021-site-and-admin-are-separate-surfaces.md)).
 
 - `src/app/(site)/` — public pages, Server Components, server-rendered for SEO
 - `src/app/(admin)/` — the authenticated editor, client-rendered
+- `src/site/` — public-only components, helpers and `site.css`
+- `src/admin/` — admin-only components, the typed Python API client (`api/`, writes only), `admin.css`
+- `src/shared/` — UI both surfaces use (theme, fonts, base tokens)
 - `src/lib/data/` — the only place Firestore is queried (server-side, Admin SDK)
-- `src/lib/api/` — typed client for the Python API (writes only)
 - `src/generated/` — codegen output from `architecture/schemas`. Never hand-edit.
+
+Imports point one way — `site`/`admin` → `shared`/`lib`, and `admin` → `site/components` for the
+editor's preview; ESLint fails anything else.
 
 Run from the repo root: `make dev` · `make lint` · `make build`
 

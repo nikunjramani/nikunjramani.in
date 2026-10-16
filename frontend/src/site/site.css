@@ -1,0 +1,12 @@
+/*
+ * The public site's stylesheet — loaded only by app/(site)/layout.tsx and the global 404.
+ * source(none) + @source limits class scanning to code a visitor can actually render, so
+ * no admin-only utility ever reaches the site's CSS. (ADR 0021)
+ */
+@import "tailwindcss" source(none);
+@import "../shared/styles/base.css";
+
+@source "../app/(site)";
+@source "../app/global-not-found.tsx";
+@source "./";
+@source "../shared";

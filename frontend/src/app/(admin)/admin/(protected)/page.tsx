@@ -11,11 +11,11 @@ import {
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
-import { listRecords } from "@/lib/api/content";
-import { listMessages } from "@/lib/api/messages";
-import { listAuditLog, type AuditEntry } from "@/lib/api/audit";
+import { listRecords } from "@/admin/api/content";
+import { listMessages } from "@/admin/api/messages";
+import { listAuditLog, type AuditEntry } from "@/admin/api/audit";
 import { ADMIN_SCHEMAS } from "@/generated/admin-schemas";
-import { timeAgo } from "@/lib/format";
+import { timeAgo } from "@/admin/lib/format";
 
 const COUNTED = [
   { key: "Project", label: "Projects", icon: FolderKanban, href: "/admin/projects" },

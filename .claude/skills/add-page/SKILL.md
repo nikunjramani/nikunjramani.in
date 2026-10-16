@@ -9,13 +9,20 @@ description: Add or modify a page in the Next.js frontend — public site route,
 
 ```
 page (server)  →  lib/data/*  →  Firebase Admin SDK      ← reads
-page (client)  →  lib/api/*   →  Python API              ← writes
+page (client)  →  admin/api/*   →  Python API              ← writes
 ```
 
 Reads never go through the Python API. Writes never go straight to Firestore.
 → [ADR 0005](../../../.docs/adr/0005-reads-bypass-python.md) · [ADR 0007](../../../.docs/adr/0007-deny-all-client-writes.md)
 
 `lib/data/` is the **only** place Firestore is queried. Components never import the SDK.
+
+## Where the files go
+
+Public-site components → `src/site/components/`; admin components → `src/admin/components/`;
+UI both use → `src/shared/`. If you add a new folder of components, add it to the matching
+stylesheet's `@source` list (`site/site.css` or `admin/admin.css`) or its Tailwind classes won't be
+generated. Full table: `.claude/rules/frontend.md` → "Where code goes" (ADR 0021).
 
 ## Public pages — `src/app/(site)/`
 
@@ -74,11 +81,11 @@ look intentional, not broken.
 
 - Behind two gates: `src/proxy.ts` (session-cookie presence, cheap) and
   `(admin)/admin/(protected)/layout.tsx` (`verifySessionCookie` + the `admin` claim — the real check)
-- Writes go through `lib/api/`, never Firestore directly
+- Writes go through `admin/api/`, never Firestore directly
 - Forms use `<SchemaForm>` with the generated Zod validators — adding a field to a schema should
   make it appear in the form with **no form code changes**
 - Optimistic updates need a rollback path; a silent revert reads as a bug
-- Nothing in `(site)/` or `components/site/` may import admin code — ESLint enforces this
+- Nothing in `(site)/` or `site/components/` may import admin code — ESLint enforces this
 
 ## Non-negotiables
 

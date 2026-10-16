@@ -1,0 +1,11 @@
+/*
+ * The admin panel's stylesheet — loaded only by app/(admin)/layout.tsx. Scans admin code,
+ * shared code, and the site components the editor previews with (ADR 0021).
+ */
+@import "tailwindcss" source(none);
+@import "../shared/styles/base.css";
+
+@source "../app/(admin)";
+@source "./";
+@source "../shared";
+@source "../site/components";

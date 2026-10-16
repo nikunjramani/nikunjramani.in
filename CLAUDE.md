@@ -44,7 +44,7 @@ need the Firestore emulator). Full plan: [`.docs/plan/`](./.docs/plan/README.md)
 
 ```
 architecture/   JSON Schemas + api-routes.json — the single source of truth for every model
-frontend/       Next.js app: (site) public + (admin) private
+frontend/       Next.js app: site/ · admin/ · shared/ — two surfaces, two root layouts (ADR 0021)
 backend/        Python Firebase Functions — src/<domain>/<subdomain>, kernel/, shared/generated
 infra/          Terraform envs + modules · Firestore rules
 .github/        pr.yml · deploy.yml · composite actions
@@ -113,7 +113,7 @@ stranger would ask "why is it like this?" about. ADRs are immutable — supersed
 - **Every content collection has `visibility` and `order`.** Public queries filter
   `visibility == "public"` and sort by `order`; `unlisted` is served at its URL with `noindex` but
   never listed.
-- **Admin saves send a real merge patch** built with `lib/merge-patch.ts`'s `toMergePatch`.
+- **Admin saves send a real merge patch** built with `admin/lib/merge-patch.ts`'s `toMergePatch`.
 - **Timestamps** are ISO strings in schemas, Firestore `Timestamp`s in the database, converted in
   exactly one place per side.
 - **Secrets** live in Secret Manager, never in `.env` or git. `NEXT_PUBLIC_*` Firebase config is

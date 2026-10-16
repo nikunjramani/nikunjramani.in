@@ -32,6 +32,7 @@ reader would reasonably ask "why on earth is it like this?", belongs here.
 | [0018](./0018-staging-project-for-pr-previews.md) | A separate Firebase project for PR preview deploys | ✅ Accepted | 2026-10-13 |
 | [0019](./0019-ci-identities-gated-by-github-environment.md) | CI identities are gated by GitHub environment, and CI applies Terraform | ✅ Accepted | 2026-10-15 |
 | [0020](./0020-app-check-replaces-turnstile.md) | Firebase App Check replaces Cloudflare Turnstile on the contact form | ✅ Accepted | 2026-10-16 |
+| [0021](./0021-site-and-admin-are-separate-surfaces.md) | The public site and the admin are separate surfaces with their own root layouts | ✅ Accepted | 2026-10-16 |
 
 **Status:** 🟡 Proposed · ✅ Accepted · ⛔ Rejected · 🔄 Superseded · ⚠️ Deprecated
 

@@ -16,7 +16,7 @@ backfilled on 2026-10-16 from the code and its history.
 
 ### FE-02 · `import "server-only"` on every Admin-SDK file
 
-- **Where:** `lib/firebase/admin.ts`, `lib/data/*`, `lib/auth/session.ts`, the `api/admin/*` route handlers
+- **Where:** `lib/firebase/admin.ts`, `lib/data/*`, `admin/auth/session.ts`, the `api/admin/*` route handlers
 - **Why:** without it, an accidental import from a Client Component ships credentials to the browser
   and nothing fails; with it, that mistake is a build error.
 
@@ -60,7 +60,7 @@ backfilled on 2026-10-16 from the code and its history.
 
 ### FE-08 · Two admin gates: a cheap presence check, then real verification
 
-- **Where:** [src/proxy.ts](../../frontend/src/proxy.ts); [(protected)/layout.tsx](../../frontend/src/app/%28admin%29/admin/%28protected%29/layout.tsx); [lib/auth/session.ts](../../frontend/src/lib/auth/session.ts)
+- **Where:** [src/proxy.ts](../../frontend/src/proxy.ts); [(protected)/layout.tsx](../../frontend/src/app/%28admin%29/admin/%28protected%29/layout.tsx); [admin/auth/session.ts](../../frontend/src/admin/auth/session.ts)
 - **Decision:** the proxy only checks a `session` cookie exists; the protected layout verifies it
   (`verifySessionCookie(..., checkRevoked=true)`) and the `admin` claim.
 - **Why:** logged-out visitors bounce without crypto; Next's own guidance is not to rely on the
@@ -68,7 +68,7 @@ backfilled on 2026-10-16 from the code and its history.
 
 ### FE-09 · A session cookie for navigation; a fresh ID token for every API call
 
-- **Where:** [app/api/admin/session/route.ts](../../frontend/src/app/api/admin/session/route.ts); [lib/api/client.ts](../../frontend/src/lib/api/client.ts)
+- **Where:** [app/api/admin/session/route.ts](../../frontend/src/app/api/admin/session/route.ts); [admin/api/client.ts](../../frontend/src/admin/api/client.ts)
 - **Decision:** after Google sign-in the ID token is exchanged for a 5-day httpOnly cookie; API calls
   attach `getIdToken()` after `authStateReady()`.
 - **Why:** ID tokens last an hour and are awkward across page loads — cookies suit navigation. The
@@ -77,12 +77,12 @@ backfilled on 2026-10-16 from the code and its history.
 
 ### FE-10 · A 401 from the API is a hard navigation to login
 
-- **Where:** `rawFetch` in lib/api/client.ts
+- **Where:** `rawFetch` in admin/api/client.ts
 - **Why:** helpers have no router; a full reload also clears whatever stale state caused the 401.
 
 ### FE-11 · Admin saves send a real merge patch
 
-- **Where:** [lib/merge-patch.ts](../../frontend/src/lib/merge-patch.ts) — `toMergePatch(original, edited)`
+- **Where:** [admin/lib/merge-patch.ts](../../frontend/src/admin/lib/merge-patch.ts) — `toMergePatch(original, edited)`
 - **Why:** a cleared field is `undefined`, which `JSON.stringify` drops — sending form values could
   never clear anything. The diff turns clears into `null` (BE-10).
 
@@ -95,7 +95,7 @@ backfilled on 2026-10-16 from the code and its history.
 
 ### FE-13 · Forms render from generated schemas
 
-- **Where:** [components/admin/schema-form/](../../frontend/src/components/admin/schema-form/), `src/generated/admin-schemas.ts`
+- **Where:** [admin/components/schema-form/](../../frontend/src/admin/components/schema-form/), `src/generated/admin-schemas.ts`
 - **Decision:** `<SchemaForm>` walks the generated schema and Zod validator to choose controls.
 - **Why:** a new schema field should appear in the admin with no form code (ADR 0006, 0009).
 
@@ -107,14 +107,14 @@ backfilled on 2026-10-16 from the code and its history.
 
 ### FE-15 · The CSV export downloads through `fetch` + a Blob URL
 
-- **Where:** `apiFetchBlob` in lib/api/client.ts
+- **Where:** `apiFetchBlob` in admin/api/client.ts
 - **Why:** a plain `<a href>` can't carry the `Authorization` header the API requires.
 
 ## Public site
 
 ### FE-16 · App Check's SDK loads only with the contact form, and starts early
 
-- **Where:** [lib/firebase/app-check.ts](../../frontend/src/lib/firebase/app-check.ts)
+- **Where:** [site/lib/app-check.ts](../../frontend/src/site/lib/app-check.ts)
 - **Decision:** dynamic `import("firebase/app-check")` on first use; `initAppCheck()` runs when the
   form mounts so reCAPTCHA has signals by submit time. No site key (local dev) → off.
 - **Related:** ADR 0020, BE-19
@@ -130,7 +130,7 @@ backfilled on 2026-10-16 from the code and its history.
 - **Where:** `headers()` in next.config.ts; `SITE_INDEXABLE` in `apphosting.staging.yaml`
 - **Why:** App Hosting serves Next's headers as-is; a preview must never be indexed. CSP is not set yet.
 
-### FE-19 · Public code can't import admin code — ESLint enforces it
+### ~~FE-19~~ Superseded by [FE-22](#fe-22--each-surface-is-a-folder-imports-point-one-way) · Public code can't import admin code — ESLint enforces it
 
 - **Where:** `no-restricted-imports` in [eslint.config.mjs](../../frontend/eslint.config.mjs)
 - **Why:** one import would ship the admin editor, the form renderer and the client SDK to every visitor.
@@ -138,5 +138,40 @@ backfilled on 2026-10-16 from the code and its history.
 
 ### FE-20 · Fonts are self-hosted at build time; dark theme by default
 
-- **Where:** `src/app/layout.tsx` (`next/font/google` Geist, `next-themes` with `defaultTheme="dark"`)
+- **Where:** [shared/fonts.ts](../../frontend/src/shared/fonts.ts) (`next/font/google` Geist); each root layout (`next-themes` with `defaultTheme="dark"`)
 - **Why:** `next/font` downloads at build — no runtime request to Google, no flash of unstyled text.
+
+## Surfaces
+
+### FE-21 · Two root layouts, one stylesheet each, scoped with `@source`
+
+- **Where:** [app/(site)/layout.tsx](../../frontend/src/app/%28site%29/layout.tsx), [app/(admin)/layout.tsx](../../frontend/src/app/%28admin%29/layout.tsx), [site/site.css](../../frontend/src/site/site.css), [admin/admin.css](../../frontend/src/admin/admin.css), [app/global-not-found.tsx](../../frontend/src/app/global-not-found.tsx)
+- **Decision:** each route group renders its own `<html>` and imports its own stylesheet; each
+  stylesheet imports Tailwind with `source(none)` and lists the folders it may use. Both import
+  `shared/styles/base.css` for the common tokens. Unmatched URLs get `global-not-found.tsx`
+  (`experimental.globalNotFound`), styled as the site without nav or footer.
+- **Why:** the site is being redesigned while the admin stays as is; one stylesheet meant every
+  token change hit both, and every admin utility shipped to visitors. Without a top-level layout
+  there's nowhere for a normal 404 to render, hence the global one.
+- **Outcome:** site CSS ≈21 KB with no admin classes; admin CSS ≈27 KB. Costs: a full page load
+  crossing `/admin` ↔ site; `<html>` + theme provider written three times; a new component folder
+  must be added to its surface's `@source` or its classes silently don't generate.
+- **Related:** ADR 0021 · FE-22
+- **Since:** 2026-10-16
+
+### FE-22 · Each surface is a folder; imports point one way
+
+- **Where:** `src/site/`, `src/admin/`, `src/shared/`, `src/lib/`; rules in [eslint.config.mjs](../../frontend/eslint.config.mjs)
+- **Decision:** public-only code lives in `site/`, admin-only code (API client, session cookie
+  code, merge patch, formatting) in `admin/`, UI used by both in `shared/`, non-UI used by both in
+  `lib/`. ESLint forbids `site` → `admin`, and `shared`/`lib` → either surface. `admin` →
+  `site/components` stays allowed.
+- **Why:** FE-19 stopped the worst import, but `lib/` still mixed admin-only helpers with shared
+  ones, so the path didn't say who owned a file. The admin's project editor previews with the
+  real `ProjectDetailView` and `Markdown` so the preview can't drift from the page — that one
+  crossing is deliberate.
+- **Outcome:** ownership is visible from the path and enforced by lint. Cost: the admin preview
+  renders site components with admin tokens, so after the redesign it matches the page in
+  structure, not in colour and type.
+- **Related:** ADR 0021 · supersedes FE-19
+- **Since:** 2026-10-16

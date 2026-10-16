@@ -1,6 +1,6 @@
 "use client";
 
-import { ContentCollectionScreen } from "@/components/admin/content-collection-screen";
+import { ContentCollectionScreen } from "@/admin/components/content-collection-screen";
 import { ADMIN_SCHEMAS } from "@/generated/admin-schemas";
 import { SkillSchema } from "@/generated/schemas.zod";
 

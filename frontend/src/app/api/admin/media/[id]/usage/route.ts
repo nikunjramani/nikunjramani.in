@@ -3,7 +3,7 @@ import "server-only";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-import { getAdminSession, isAdmin } from "@/lib/auth/session";
+import { getAdminSession, isAdmin } from "@/admin/auth/session";
 import { findMediaUsage } from "@/lib/data/media-usage";
 
 /** GET — which content documents still use this media asset. Checked by the admin media

@@ -2,9 +2,9 @@
 
 import { useCallback, useEffect, useState } from "react";
 
-import { MediaCard } from "@/components/admin/media/media-card";
-import { UploadZone } from "@/components/admin/media/upload-zone";
-import { listMedia, type MediaRecordOut } from "@/lib/api/media";
+import { MediaCard } from "@/admin/components/media/media-card";
+import { UploadZone } from "@/admin/components/media/upload-zone";
+import { listMedia, type MediaRecordOut } from "@/admin/api/media";
 
 export default function AdminMediaPage() {
   const [assets, setAssets] = useState<MediaRecordOut[] | null>(null);

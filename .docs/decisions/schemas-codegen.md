@@ -28,7 +28,7 @@ Entries SC-01…SC-07 were backfilled on 2026-10-16.
 ### SC-04 · `architecture/api-routes.json` is the manifest of HTTP subdomains
 
 - **Where:** [api-routes.json](../../architecture/api-routes.json) → `frontend/src/generated/api-routes.ts`
-  → `next.config.ts` rewrites and `lib/contact.ts`; checked by `tests/test_domain_registry.py`
+  → `next.config.ts` rewrites and `site/lib/contact.ts`; checked by `tests/test_domain_registry.py`
 - **Why:** the frontend's routes, the backend's functions and Terraform's invoker list must agree;
   one manifest plus a test makes disagreement a failing test instead of a production 404.
 - **Since:** 2026-10-13

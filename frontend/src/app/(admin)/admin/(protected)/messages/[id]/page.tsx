@@ -5,15 +5,15 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
-import { useFeedback } from "@/components/admin/ui-feedback";
-import { ApiError } from "@/lib/api/client";
+import { useFeedback } from "@/admin/components/ui-feedback";
+import { ApiError } from "@/admin/api/client";
 import {
   deleteMessage,
   getMessage,
   markMessageRead,
   markMessageReplied,
   type MessageRecordOut,
-} from "@/lib/api/messages";
+} from "@/admin/api/messages";
 
 export default function AdminMessageDetailPage() {
   const params = useParams<{ id: string }>();

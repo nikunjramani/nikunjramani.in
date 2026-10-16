@@ -90,7 +90,7 @@ Entries BE-01…BE-38 were backfilled on 2026-10-16 from the code and its histor
 - **Decision:** `DomainError` subclasses carry `status_code` and `code`; the app's exception handler
   returns `{"error": {"code", "message"}}`.
 - **Why:** services must not import HTTP concepts (BE-07), yet each failure needs a precise status.
-- **Outcome:** one error shape the frontend parses (`lib/api/client.ts`).
+- **Outcome:** one error shape the frontend parses (`admin/api/client.ts`).
 
 ### BE-09 · Generic content CRUD lives once in `kernel.crud`; routes stay written out
 

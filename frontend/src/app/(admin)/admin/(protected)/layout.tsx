@@ -1,8 +1,8 @@
 import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
 
-import { AdminShell } from "@/components/admin/admin-shell";
-import { getAdminSession, isAdmin } from "@/lib/auth/session";
+import { AdminShell } from "@/admin/components/admin-shell";
+import { getAdminSession, isAdmin } from "@/admin/auth/session";
 
 export default async function ProtectedAdminLayout({ children }: { children: ReactNode }) {
   const claims = await getAdminSession();
@@ -18,7 +18,7 @@ export default async function ProtectedAdminLayout({ children }: { children: Rea
   // authorised), so this shows an explicit refusal instead — see 5.1's own requirement.
   if (!isAdmin(claims)) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-3 px-6 text-center">
+      <main id="main-content" className="flex min-h-screen flex-col items-center justify-center gap-3 px-6 text-center">
         <p className="font-medium">Signed in, but this account isn&apos;t an admin.</p>
         <p className="max-w-sm text-sm text-muted-foreground">
           {claims.email} doesn&apos;t have admin access. Grant it with{" "}
@@ -28,7 +28,7 @@ export default async function ProtectedAdminLayout({ children }: { children: Rea
         <a href="/admin/login" className="mt-2 text-sm text-accent hover:underline">
           Back to sign in
         </a>
-      </div>
+      </main>
     );
   }
 
