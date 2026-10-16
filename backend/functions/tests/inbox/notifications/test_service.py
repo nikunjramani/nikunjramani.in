@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import pytest
+
 from src.inbox.notifications.service import render_email
 
 
@@ -68,3 +70,20 @@ def test_notify_owner_sends_the_rendered_email() -> None:
         service.notify_owner({"name": "A", "message": "hello"})
     assert send.call_args.kwargs["to"] == "me@x.dev"
     assert "hello" in send.call_args.kwargs["html"]
+
+
+def test_whitespace_placeholder_key_skips_the_send(monkeypatch: pytest.MonkeyPatch) -> None:
+    from unittest.mock import patch
+
+    import httpx
+
+    from src.inbox.notifications import email
+    from src.inbox.notifications.settings import NotificationSettings
+
+    monkeypatch.setenv("RESEND_API_KEY", "\n")
+    with (
+        patch.object(email, "get_notification_settings", return_value=NotificationSettings()),
+        patch.object(httpx, "post") as post,
+    ):
+        email.send_email(to="me@x.dev", subject="s", html="h")
+    post.assert_not_called()

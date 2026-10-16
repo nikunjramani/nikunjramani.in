@@ -114,10 +114,23 @@ Three CI identities per project, each gated by a GitHub environment (ADR 0019):
 
 | Workflow | When | Identity · environment |
 |---|---|---|
-| `pr.yml` checks | every PR | — (`github-plan` for `terraform plan`, read-only) |
-| `pr.yml` preview | same-repo PRs, after checks | staging `github-deploy` · `staging` |
-| `deploy.yml` deploy | push to `main` | prod `github-deploy` · `production` (main only) |
+| `pr.yml` checks | every PR — only the suites its paths touch | — (`github-plan` for `terraform plan`, read-only) |
+| `pr.yml` preview | same-repo PRs, after checks — only the targets touched | staging `github-deploy` · `staging` |
+| `deploy.yml` deploy | push to `main` — only the targets touched | prod `github-deploy` · `production` (main only) |
 | `deploy.yml` terraform | `infra/terraform/**` changed | `github-terraform` · `staging-infra`, then `production-infra` (**your approval**) |
+
+What runs for what (`dorny/paths-filter`, same filters in both workflows):
+
+| Change | Checks | Deploys |
+|---|---|---|
+| `frontend/**` (design, pages) | frontend | App Hosting |
+| `backend/**` | backend | functions |
+| `infra/rules/**` | — | Firestore rules + indexes (+ Storage rules on prod) |
+| `infra/terraform/**` | `terraform plan` | — then, on `main`, `terraform apply` |
+| `architecture/**` | schemas, backend, frontend | functions + App Hosting |
+| `firebase.json`, `.firebaserc` | backend | everything |
+| `.github/**` | everything | everything |
+| docs, `*.md` | none (just the `checks` rollup, which branch protection requires) | nothing |
 
 ### First-time setup (done once)
 
@@ -161,8 +174,8 @@ code changes (zod, TypeScript, Vitest, Firebase, the `$ref` resolver) as their o
 
 ### Turning on production deploys
 
-`deploy.yml` does nothing until the repository variable `PROD_DEPLOY_ENABLED` is `true`. Set it
-only after prod has been caught up with `main` by hand:
+`deploy.yml` does nothing unless the repository variable `PROD_DEPLOY_ENABLED` is `true` — on
+since 2026-10-16. To pause prod deploys, delete it; to resume, once prod matches `main`:
 
 ```bash
 gh variable set PROD_DEPLOY_ENABLED --body true
@@ -274,6 +287,16 @@ Email is the one part that needs secrets: `on_contact_created` binds `CONTACT_EM
 1. Add a Resend API key with a verified sending domain.
 2. `gcloud secrets versions add` for `RESEND_API_KEY` and (if not already) `CONTACT_EMAIL_TO`.
 3. Deploy functions; submit the live form and confirm the email arrives.
+
+Until then, `RESEND_API_KEY` can hold a **single newline** (prod does, since 2026-10-16) —
+Secret Manager rejects an empty version, and the settings strip whitespace, so the deploy accepts
+it and `send_email` logs `RESEND_API_KEY not set — skipping send` instead of failing. Messages
+are still stored in `contact_messages`.
+
+```powershell
+$f = "$env:TEMP\newline"; [IO.File]::WriteAllBytes($f, [byte[]]@(10))
+gcloud secrets versions add RESEND_API_KEY --data-file="$f" --project nikunjramani-in
+```
 
 ### Removing REVALIDATE_TOKEN (one-time, ADR 0015)
 

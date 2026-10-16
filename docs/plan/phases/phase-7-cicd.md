@@ -20,7 +20,11 @@ gated by GitHub environment; CI applies Terraform) · operating it:
 
 - [x] [Phase 6](./phase-6-deploy.md) done — deployed manually at least once
 - [x] [05 · CI/CD](../05-cicd.md) read
-- [ ] **Prod caught up with `main`, by hand, before `PROD_DEPLOY_ENABLED` is set.** As of
+- [x] **Prod caught up with `main` before `PROD_DEPLOY_ENABLED` is set.** Done 2026-10-16 as a
+      watched first run of `deploy.yml` (functions → App Hosting, `--force` deleting the old 12),
+      then `infra_only` for the Terraform drift. `RESEND_API_KEY` holds a single-newline placeholder
+      until Resend is set up (Secret Manager rejects empty) — `send_email` skips sending on a
+      blank key. Original note: as of
       2026-10-15 prod still runs the 12 pre-[ADR 0017](../../adr/0017-bounded-context-domains.md)
       functions (`api_contact`, `api_projects`, …); `main` has the 15 `api_<domain>_<sub>` ones,
       plus the unapplied [ADR 0015](../../adr/0015-remove-revalidation-webhook.md) secret cleanup.
@@ -120,8 +124,11 @@ from `.firebaserc`, URLs from each environment's `SITE_URL`, build env from `app
 
 - [x] Runs after `checks`, for same-repo PRs that change something deployable; fork PRs never
       reach it
-- [x] Deploys Firestore rules + indexes, **all** functions, App Hosting to staging as staging's
-      `github-deploy`; narrowing to changed subdomains comes later
+- [x] Deploys to staging, as staging's `github-deploy`, only the targets the PR touched:
+      Firestore rules + indexes (`infra/rules/**`), functions (`backend/**`), App Hosting
+      (`frontend/**`); `architecture/**` → functions + App Hosting; `.github/**`, `firebase.json`,
+      `.firebaserc` → all. Docs-only PRs run just `changes` + `checks`. Within functions it's
+      still **all** of them; narrowing to changed subdomains comes later
       ([05 · CI/CD](../05-cicd.md#deploying-only-what-changed))
 - [x] `concurrency: staging`, newest push wins
 - [x] Smoke test (homepage + `/api/v1/ops/health`); Lighthouse report-only (3 runs, uploaded as
@@ -134,8 +141,10 @@ from `.firebaserc`, URLs from each environment's `SITE_URL`, build env from `app
 
 ### 7.4 · Production deploy — `.github/workflows/deploy.yml`
 
-- [x] On push to `main`, inert until `PROD_DEPLOY_ENABLED=true` (see Prerequisites)
+- [x] On push to `main`, gated by `PROD_DEPLOY_ENABLED=true` (enabled 2026-10-16)
 - [x] `concurrency: production`, never cancelled mid-deploy
+- [x] Each push deploys only the targets it changed, with the same filters as the preview
+      (docs-only: nothing); a manual run deploys everything
 - [x] Order: rules → functions → App Hosting → smoke test → `terraform apply` (staging, then
       prod) only when `infra/terraform/**` changed. Code first because Firebase makes a new HTTP
       function public on create, whereas Terraform's invoker binding fails on a function that

@@ -26,7 +26,9 @@ jobs:
       backend: ${{ steps.filter.outputs.backend }}
       frontend: ${{ steps.filter.outputs.frontend }}
       infra: ${{ steps.filter.outputs.infra }}
-      deployable: ${{ steps.filter.outputs.deployable }}
+      rules: ${{ steps.filter.outputs.rules }}
+      functions: ${{ steps.filter.outputs.functions }}
+      apphosting: ${{ steps.filter.outputs.apphosting }}
     permissions:
       pull-requests: read
     steps:
@@ -34,7 +36,8 @@ jobs:
       - uses: dorny/paths-filter@v4
         id: filter
         with:
-          # A CI change runs everything, so it's proven by the jobs it affects.
+          # A CI change runs everything, so it's proven by the jobs it affects. A change matching
+          # nothing (docs) runs only `changes` + `checks` — the required check still has to report.
           filters: |
             ci: &ci
               - .github/**
@@ -56,12 +59,22 @@ jobs:
             infra:
               - *ci
               - infra/terraform/**
-            deployable:
+            # Deploy targets — the preview deploys only the ones that changed.
+            rules:
+              - *ci
+              - infra/rules/**
+              - firebase.json
+              - .firebaserc
+            functions:
               - *ci
               - architecture/**
               - backend/**
+              - firebase.json
+              - .firebaserc
+            apphosting:
+              - *ci
+              - architecture/**
               - frontend/**
-              - infra/rules/**
               - firebase.json
               - .firebaserc
 
@@ -135,13 +148,15 @@ jobs:
           done
 
   # ── preview ─────────────────────────────────────────────────────────
-  # After every check passed, for same-repo PRs that change something deployable. Fork PRs
+  # After every check passed, for same-repo PRs that change something deployable — and only
+  # those parts: a frontend-only PR redeploys App Hosting and nothing else. Fork PRs
   # get no OIDC token, so they never reach staging.
   preview:
     needs: [changes, checks]
     if: >
       always() && !failure() && !cancelled()
-      && needs.changes.outputs.deployable == 'true'
+      && (needs.changes.outputs.rules == 'true' || needs.changes.outputs.functions == 'true'
+          || needs.changes.outputs.apphosting == 'true')
       && github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     environment:
@@ -159,7 +174,9 @@ jobs:
       - uses: ./.github/actions/firebase-deploy
         with:
           project: staging
-          only: firestore:rules,firestore:indexes,functions,apphosting
+          rules: ${{ needs.changes.outputs.rules }}
+          functions: ${{ needs.changes.outputs.functions }}
+          apphosting: ${{ needs.changes.outputs.apphosting }}
           url: ${{ vars.SITE_URL }}
           workload_identity_provider: ${{ vars.WIF_PROVIDER }}
           service_account: ${{ vars.DEPLOY_SA }}
