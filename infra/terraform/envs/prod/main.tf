@@ -102,3 +102,16 @@ module "app-hosting" {
 
   depends_on = [module.project, module.iam]
 }
+
+module "app-check" {
+  source     = "../../modules/app-check"
+  project_id = var.project_id
+  web_app_id = module.app-hosting.web_app_id
+  allowed_domains = [
+    "nikunjramani.in",
+    "www.nikunjramani.in",
+    var.apphosting_backend_host,
+  ]
+
+  depends_on = [module.project]
+}

@@ -187,8 +187,8 @@ add the secret's value (`gcloud secrets versions add`), then merge the code.
 - Placeholder data only — never a prod export, never real names (the repo is public).
 - Admin sign-in: sign in once on the staging URL, then
   `python infra/scripts/set_admin_claim.py <email> --project nikunjramani-in-staging`.
-- Contact form uses Cloudflare's always-passes Turnstile test keys; email is a placeholder
-  key, so notifications fail by design until a real Resend key exists.
+- Contact form is protected by staging's own App Check / reCAPTCHA Enterprise key (ADR 0020);
+  email is a placeholder key, so notifications fail by design until a real Resend key exists.
 
 ---
 
@@ -262,17 +262,18 @@ echo -n "value" | gcloud secrets versions add RESEND_API_KEY --data-file=- --pro
 
 ### Contact form keys — required before the next functions deploy
 
-`api_contact` binds `TURNSTILE_SECRET_KEY`; `on_contact_created` binds `CONTACT_EMAIL_TO` and
-`RESEND_API_KEY`. `firebase deploy` rejects a function whose bound secret has no version, and in
-production the contact service **drops every submission** while Turnstile is unconfigured
-(it fails closed — an unprotected form lets anyone exhaust the rate limit). So, in order:
+Abuse protection is Firebase App Check with reCAPTCHA Enterprise (ADR 0020) — no secret. The
+key comes from Terraform (`terraform output recaptcha_site_key`) and is set as
+`NEXT_PUBLIC_RECAPTCHA_SITE_KEY` in `frontend/apphosting*.yaml`. In production the contact
+service **drops every submission** without a valid App Check token (it fails closed — an
+unprotected form lets anyone exhaust the rate limit).
 
-1. Create a Turnstile widget for `nikunjramani.in`; add a Resend API key with a verified
-   sending domain.
-2. `gcloud secrets versions add` for `TURNSTILE_SECRET_KEY`, `RESEND_API_KEY` and (if not
-   already) `CONTACT_EMAIL_TO`.
-3. Set `NEXT_PUBLIC_TURNSTILE_SITE_KEY` in `frontend/apphosting.yaml` and deploy App Hosting.
-4. Deploy functions; submit the live form and confirm the email arrives.
+Email is the one part that needs secrets: `on_contact_created` binds `CONTACT_EMAIL_TO` and
+`RESEND_API_KEY`, and `firebase deploy` rejects a function whose bound secret has no version. So:
+
+1. Add a Resend API key with a verified sending domain.
+2. `gcloud secrets versions add` for `RESEND_API_KEY` and (if not already) `CONTACT_EMAIL_TO`.
+3. Deploy functions; submit the live form and confirm the email arrives.
 
 ### Removing REVALIDATE_TOKEN (one-time, ADR 0015)
 
@@ -347,7 +348,7 @@ it is not part of an ordinary code rollback.
 | API 404s but the function deployed fine | Missing rewrite in `next.config.ts` |
 | Deploy fails on a secret | Secret read at import time instead of runtime |
 | `uv` builds against Python 3.9 | System Python picked up; `make PYTHON=$(uv python find 3.13)` |
-| Contact form says "Thanks" but nothing arrives | Turnstile or Resend key missing — function logs show `TURNSTILE_SECRET_KEY not set in production` or `RESEND_API_KEY not set` |
+| Contact form says "Thanks" but nothing arrives | App Check rejected the submission (logs: `App Check verification failed`) — check the site key matches the project and the domain is in the reCAPTCHA key's allowed domains — or Resend isn't set up (`RESEND_API_KEY not set`) |
 | Firestore query fails in prod only | Missing composite index |
 | `Could not detect runtime` / `Missing virtual environment at venv directory` | Run `make setup-backend` — Firebase needs `requirements.txt` and its own `venv/`, not `.venv/` |
 | A function request hangs forever, no response, no error | Something constructed `a2wsgi.ASGIMiddleware` directly instead of using `shared/wsgi_bridge.py` — see ADR 0003's implementation note |

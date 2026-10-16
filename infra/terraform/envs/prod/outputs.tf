@@ -17,3 +17,5 @@ output "configured_function_domains" { value = module.functions.configured_domai
 
 output "apphosting_uri" { value = module.app-hosting.uri }
 output "domain_status" { value = module.app-hosting.domain_status }
+
+output "recaptcha_site_key" { value = module.app-check.site_key }

@@ -19,10 +19,10 @@ from datetime import UTC, datetime, timedelta
 from kernel.errors import RateLimitedError
 from kernel.timestamps import now_iso
 from shared.generated import ContactMessage
+from src.inbox.contact.app_check import verify_app_check
 from src.inbox.contact.rate_limit import RateLimiter
 from src.inbox.contact.repository import NewMessageRepository
 from src.inbox.contact.spam import score_spam
-from src.inbox.contact.turnstile import verify_turnstile
 
 _RETENTION = timedelta(days=730)  # 2 years — matches the schema's TTL field and the ADR
 
@@ -46,15 +46,15 @@ class ContactService:
         user_agent: str,
         subject: str | None = None,
         honeypot: str = "",
-        turnstile_token: str = "",
+        app_check_token: str = "",
     ) -> None:
         if honeypot:
             return  # a real visitor never fills this field; a bot's form-filler always does
 
-        # Turnstile before the rate limiter: counting unverified requests would let anyone
+        # App Check before the rate limiter: counting unverified requests would let anyone
         # exhaust the global window with a loop of curl calls and silently block every
         # real visitor for the rest of the hour.
-        if not verify_turnstile(turnstile_token, remote_ip=ip):
+        if not verify_app_check(app_check_token):
             return
 
         try:

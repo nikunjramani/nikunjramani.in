@@ -1,7 +1,7 @@
 """Unit tests for ContactService, with the repository and rate limiter faked.
 
 The point of these is the *disguise* behaviour — a honeypot trip, a rate limit, and a
-failed Turnstile check must all look identical to success from the caller's side. If any
+failed App Check verification must all look identical to success from the caller's side. If any
 of them raised or the repository still got a create() call, that would be the actual
 security property breaking silently. See src/contact/service.py.
 """
@@ -50,16 +50,16 @@ def test_rate_limited_is_silently_discarded(
 ) -> None:
     svc, repo, limiter = service_with_fakes
     limiter.check.side_effect = RateLimitedError("too many")
-    with patch("src.inbox.contact.service.verify_turnstile", return_value=True):
+    with patch("src.inbox.contact.service.verify_app_check", return_value=True):
         _submit(svc)
     repo.create.assert_not_called()
 
 
-def test_failed_turnstile_is_silently_discarded(
+def test_failed_app_check_is_silently_discarded(
     service_with_fakes: tuple[ContactService, MagicMock, MagicMock],
 ) -> None:
     svc, repo, limiter = service_with_fakes
-    with patch("src.inbox.contact.service.verify_turnstile", return_value=False):
+    with patch("src.inbox.contact.service.verify_app_check", return_value=False):
         _submit(svc)
     repo.create.assert_not_called()
     # Unverified requests must not consume the rate-limit windows, or a bot could exhaust
@@ -71,7 +71,7 @@ def test_legitimate_submission_is_persisted(
     service_with_fakes: tuple[ContactService, MagicMock, MagicMock],
 ) -> None:
     svc, repo, _limiter = service_with_fakes
-    with patch("src.inbox.contact.service.verify_turnstile", return_value=True):
+    with patch("src.inbox.contact.service.verify_app_check", return_value=True):
         _submit(svc, message="A perfectly normal message.")
     repo.create.assert_called_once()
     entry = repo.create.call_args.args[0]
@@ -84,7 +84,7 @@ def test_spammy_message_is_persisted_but_flagged_not_blocked(
 ) -> None:
     svc, repo, _limiter = service_with_fakes
     spammy = "https://a.com https://b.com https://c.com BUY NOW BUY NOW BUY NOW"
-    with patch("src.inbox.contact.service.verify_turnstile", return_value=True):
+    with patch("src.inbox.contact.service.verify_app_check", return_value=True):
         _submit(svc, message=spammy)
     repo.create.assert_called_once()
     entry = repo.create.call_args.args[0]

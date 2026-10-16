@@ -51,7 +51,7 @@ _Who changed what, when. Written by the API on every admin mutation. Never clien
 
 ## ContactMessage
 
-_Never client-readable or client-writable. Created only by the API after Turnstile, honeypot and rate-limit checks pass. Server-set fields are marked below._
+_Never client-readable or client-writable. Created only by the API after App Check, honeypot and rate-limit checks pass. Server-set fields are marked below._
 
 | Field | Type | Required |
 |---|---|---|

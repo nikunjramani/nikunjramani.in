@@ -75,7 +75,6 @@ def test_production_manifest_has_identity_secrets_and_limits() -> None:
     code = """
 import main
 expected_secrets = {
-    'api_inbox_contact': {'TURNSTILE_SECRET_KEY'},
     'on_contact_created': {'CONTACT_EMAIL_TO', 'RESEND_API_KEY'},
 }
 two_instances = {'api_media_upload', 'api_media_library', 'on_media_uploaded'}

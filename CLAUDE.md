@@ -155,9 +155,10 @@ take it piped or as an env var instead.
   `http_functions` in `infra/terraform/modules/functions`. Each failure is silent in production;
   `tests/test_domain_registry.py` fails `make test` instead.
 - **A secret bound in a decorator must have a version before deploy.** `secrets=[...]` on
-  `make_function` / a trigger makes `firebase deploy` reject the function otherwise. The contact
-  domain binds `TURNSTILE_SECRET_KEY`, `CONTACT_EMAIL_TO` and `RESEND_API_KEY`, and fails closed
-  in production without Turnstile — see docs/RUNBOOK.md (Contact form keys).
+  `make_function` / a trigger makes `firebase deploy` reject the function otherwise. Only
+  `on_contact_created` binds secrets (`CONTACT_EMAIL_TO`, `RESEND_API_KEY`); the contact form's
+  abuse check is Firebase App Check, which needs none and fails closed in production without a
+  valid token (ADR 0020) — see docs/RUNBOOK.md (Contact form keys).
 - **Never construct `a2wsgi.ASGIMiddleware` directly.** It starts a persistent background thread
   at construction time, and Werkzeug's dev-server reloader (which `functions-framework` uses
   locally) forks — the child inherits a dead copy of that thread, and every request hangs forever.

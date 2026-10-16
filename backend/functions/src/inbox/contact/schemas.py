@@ -23,10 +23,9 @@ class ContactRequest(BaseModel):
     subject: Annotated[str, Field(max_length=200)] | None = None
     message: Annotated[str, Field(min_length=1, max_length=5000)]
 
-    # Anti-abuse fields, not content. See src/contact/service.py for why failures here
-    # are invisible to the response.
+    # Anti-abuse field, not content. See service.py for why a trip here is invisible to the
+    # response. (The App Check token travels in the X-Firebase-AppCheck header, not the body.)
     honeypot: str = ""
-    turnstile_token: Annotated[str, Field(alias="turnstileToken")] = ""
 
 
 class ContactResponse(BaseModel):

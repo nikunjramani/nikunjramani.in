@@ -8,3 +8,5 @@ output "wif_provider" { value = module.iam.wif_provider }
 output "media_bucket" { value = module.storage.media_bucket }
 output "web_app_id" { value = module.app-hosting.web_app_id }
 output "apphosting_uri" { value = module.app-hosting.uri }
+
+output "recaptcha_site_key" { value = module.app-check.site_key }
