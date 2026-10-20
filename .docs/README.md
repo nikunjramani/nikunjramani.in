@@ -8,6 +8,7 @@ Everything about how nikunjramani.in is built, why, and how to run it. Start wit
 | [CODE_FLOW.md](./CODE_FLOW.md) | follow any request, edit, upload, schema change or deploy through the code, file by file |
 | [decisions/](./decisions/README.md) | find out **why** a piece of code is written the way it is — per area, with what it cost |
 | [adr/](./adr/README.md) | read the architectural decisions (framework, topology, security posture) and what they superseded |
+| [DESIGN.md](./DESIGN.md) | the public site's design system: tokens, type, structure, motion |
 | [RUNBOOK.md](./RUNBOOK.md) | operate it: local dev, CI/CD and staging, deploy, rollback, secrets, admin access, backups |
 | [plan/](./plan/README.md) | see the original build plan, the phase checklists and their status |
 

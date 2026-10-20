@@ -1,5 +1,6 @@
 import type { Skill } from "@/generated/types";
 import type { WithId } from "@/lib/data/convert";
+import { cn } from "@/lib/utils";
 
 const CATEGORY_LABEL: Record<string, string> = {
   backend: "Backend",
@@ -10,6 +11,7 @@ const CATEGORY_LABEL: Record<string, string> = {
   tools: "Tools",
 };
 
+/** Skills grouped by category, each read like a gauge: five segments, filled to the level. */
 export function SkillMatrix({ skills }: { skills: WithId<Skill>[] }) {
   const byCategory = new Map<string, WithId<Skill>[]>();
   for (const skill of skills) {
@@ -17,28 +19,35 @@ export function SkillMatrix({ skills }: { skills: WithId<Skill>[] }) {
   }
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="grid gap-10 md:grid-cols-2 md:gap-x-12">
       {[...byCategory.entries()].map(([category, categorySkills]) => (
         <div key={category}>
-          <h3 className="mb-3 text-xs font-medium text-muted-foreground uppercase tracking-wide">
-            {CATEGORY_LABEL[category] ?? category}
-          </h3>
-          <ul className="flex flex-col gap-2">
+          <h3 className="mb-2 font-semibold font-stretch-112%">{CATEGORY_LABEL[category] ?? category}</h3>
+          <ul className="border-t border-border">
             {categorySkills.map((skill) => (
-              <li key={skill.id} className="flex items-center gap-3" title={skill.blurb}>
-                <span className="w-32 shrink-0 text-sm">{skill.name}</span>
-                <span className="flex gap-1" aria-label={`Proficiency ${skill.level} of 5`}>
+              <li
+                key={skill.id}
+                className="grid grid-cols-[1fr_auto_2.5rem] items-center gap-4 border-b border-border py-2.5"
+                title={skill.blurb}
+              >
+                <span className="min-w-0 text-sm">{skill.name}</span>
+                <span className="flex gap-0.5" role="img" aria-label={`Level ${skill.level} of 5`}>
                   {Array.from({ length: 5 }, (_, i) => (
                     <span
                       key={i}
-                      aria-hidden="true"
-                      className={`h-1.5 w-4 rounded-full ${i < skill.level ? "bg-accent" : "bg-muted"}`}
+                      className={cn("h-2.5 w-3", i < skill.level ? "bg-accent" : "bg-muted")}
                     />
                   ))}
                 </span>
-                {skill.yearsOfExperience ? (
-                  <span className="text-xs text-muted-foreground">{skill.yearsOfExperience}y</span>
-                ) : null}
+                <span className="text-right font-mono text-xs text-muted-foreground">
+                  {skill.yearsOfExperience ? (
+                    <>
+                      {skill.yearsOfExperience}
+                      <span className="sr-only"> years</span>
+                      <span aria-hidden="true">y</span>
+                    </>
+                  ) : null}
+                </span>
               </li>
             ))}
           </ul>

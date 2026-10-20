@@ -1,6 +1,6 @@
 "use client";
 
-import { apiFetch } from "@/admin/api/client";
+import { apiFetch } from "@/admin/api-client/client";
 import type { ContentApiDomain } from "@/generated/api-routes";
 
 export interface RecordOut<T> {

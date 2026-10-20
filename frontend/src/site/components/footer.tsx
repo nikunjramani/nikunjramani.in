@@ -11,6 +11,7 @@ import {
   XIcon,
   YoutubeIcon,
 } from "@/site/components/brand-icons";
+import { Container } from "@/site/components/spec";
 import type { SocialPlatform } from "@/generated/types";
 import { getProfile } from "@/lib/data/profile";
 import { SITE_NAME } from "@/lib/site";
@@ -31,37 +32,38 @@ export async function Footer() {
   const year = new Date().getFullYear();
 
   return (
-    <footer className="border-t border-border">
-      <div className="mx-auto flex max-w-4xl flex-col items-center gap-4 px-6 py-10 text-sm text-muted-foreground sm:flex-row sm:justify-between">
-        <p>
+    <footer className="mt-24 border-t border-border">
+      <Container className="flex flex-col gap-6 py-10 sm:flex-row sm:items-center sm:justify-between">
+        <p className="font-mono text-xs text-muted-foreground">
           © {year} {profile?.name ?? SITE_NAME}
         </p>
 
         {profile?.socials?.length ? (
-          <div className="flex items-center gap-3">
+          <ul className="flex flex-wrap items-center gap-1">
             {profile.socials.map((social) => {
               // "other" (or anything unmapped) gets a neutral link icon, not a brand.
               const Icon = ICONS[social.platform] ?? Link2;
               return (
-                <Link
-                  key={social.url}
-                  href={social.url}
-                  target="_blank"
-                  rel="noreferrer noopener"
-                  aria-label={social.label ?? social.platform}
-                  className="rounded-full p-2 transition-colors hover:text-foreground"
-                >
-                  <Icon className="h-4 w-4" />
-                </Link>
+                <li key={social.url}>
+                  <Link
+                    href={social.url}
+                    target="_blank"
+                    rel="noreferrer noopener"
+                    aria-label={social.label ?? social.platform}
+                    className="inline-flex h-9 w-9 items-center justify-center rounded-(--radius) text-muted-foreground transition-colors hover:text-foreground"
+                  >
+                    <Icon className="h-4 w-4" aria-hidden="true" />
+                  </Link>
+                </li>
               );
             })}
-          </div>
+          </ul>
         ) : null}
 
-        <Link href="#top" className="hover:text-foreground">
+        <Link href="#top" className="font-mono text-xs text-muted-foreground hover:text-foreground">
           Back to top
         </Link>
-      </div>
+      </Container>
     </footer>
   );
 }

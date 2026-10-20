@@ -7,8 +7,8 @@ import { AuditTrail } from "@/admin/components/audit-trail";
 import { SchemaForm } from "@/admin/components/schema-form/schema-form";
 import { useFeedback } from "@/admin/components/ui-feedback";
 import type { AdminSchemaEntry } from "@/generated/admin-schemas";
-import { ApiError } from "@/admin/api/client";
-import { getSingleton, patchSingleton, putSingleton } from "@/admin/api/content";
+import { ApiError } from "@/admin/api-client/client";
+import { getSingleton, patchSingleton, putSingleton } from "@/admin/api-client/content";
 import { toMergePatch } from "@/admin/lib/merge-patch";
 
 /** profile and site-config: one fixed document, no list/create/delete/reorder — just the

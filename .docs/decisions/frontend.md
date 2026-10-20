@@ -16,7 +16,7 @@ backfilled on 2026-10-16 from the code and its history.
 
 ### FE-02 · `import "server-only"` on every Admin-SDK file
 
-- **Where:** `lib/firebase/admin.ts`, `lib/data/*`, `admin/auth/session.ts`, the `api/admin/*` route handlers
+- **Where:** `lib/firebase/admin.ts`, `lib/data/*`, `admin/auth/server.ts`, the `api/admin/*` route handlers
 - **Why:** without it, an accidental import from a Client Component ships credentials to the browser
   and nothing fails; with it, that mistake is a build error.
 
@@ -60,7 +60,7 @@ backfilled on 2026-10-16 from the code and its history.
 
 ### FE-08 · Two admin gates: a cheap presence check, then real verification
 
-- **Where:** [src/proxy.ts](../../frontend/src/proxy.ts); [(protected)/layout.tsx](../../frontend/src/app/%28admin%29/admin/%28protected%29/layout.tsx); [admin/auth/session.ts](../../frontend/src/admin/auth/session.ts)
+- **Where:** [src/proxy.ts](../../frontend/src/proxy.ts); [(protected)/layout.tsx](../../frontend/src/app/%28admin%29/admin/%28protected%29/layout.tsx); [admin/auth/server.ts](../../frontend/src/admin/auth/server.ts)
 - **Decision:** the proxy only checks a `session` cookie exists; the protected layout verifies it
   (`verifySessionCookie(..., checkRevoked=true)`) and the `admin` claim.
 - **Why:** logged-out visitors bounce without crypto; Next's own guidance is not to rely on the
@@ -68,7 +68,7 @@ backfilled on 2026-10-16 from the code and its history.
 
 ### FE-09 · A session cookie for navigation; a fresh ID token for every API call
 
-- **Where:** [app/api/admin/session/route.ts](../../frontend/src/app/api/admin/session/route.ts); [admin/api/client.ts](../../frontend/src/admin/api/client.ts)
+- **Where:** [app/(admin)/api/admin/session/route.ts](../../frontend/src/app/%28admin%29/api/admin/session/route.ts); [admin/api-client/client.ts](../../frontend/src/admin/api-client/client.ts)
 - **Decision:** after Google sign-in the ID token is exchanged for a 5-day httpOnly cookie; API calls
   attach `getIdToken()` after `authStateReady()`.
 - **Why:** ID tokens last an hour and are awkward across page loads — cookies suit navigation. The
@@ -77,7 +77,7 @@ backfilled on 2026-10-16 from the code and its history.
 
 ### FE-10 · A 401 from the API is a hard navigation to login
 
-- **Where:** `rawFetch` in admin/api/client.ts
+- **Where:** `rawFetch` in admin/api-client/client.ts
 - **Why:** helpers have no router; a full reload also clears whatever stale state caused the 401.
 
 ### FE-11 · Admin saves send a real merge patch
@@ -107,7 +107,7 @@ backfilled on 2026-10-16 from the code and its history.
 
 ### FE-15 · The CSV export downloads through `fetch` + a Blob URL
 
-- **Where:** `apiFetchBlob` in admin/api/client.ts
+- **Where:** `apiFetchBlob` in admin/api-client/client.ts
 - **Why:** a plain `<a href>` can't carry the `Authorization` header the API requires.
 
 ## Public site
@@ -138,7 +138,7 @@ backfilled on 2026-10-16 from the code and its history.
 
 ### FE-20 · Fonts are self-hosted at build time; dark theme by default
 
-- **Where:** [shared/fonts.ts](../../frontend/src/shared/fonts.ts) (`next/font/google` Geist); each root layout (`next-themes` with `defaultTheme="dark"`)
+- **Where:** [site/fonts.ts](../../frontend/src/site/fonts.ts) and [admin/fonts.ts](../../frontend/src/admin/fonts.ts) (`next/font/google`); each root layout (`next-themes` with `defaultTheme="dark"`)
 - **Why:** `next/font` downloads at build — no runtime request to Google, no flash of unstyled text.
 
 ## Surfaces
@@ -175,3 +175,52 @@ backfilled on 2026-10-16 from the code and its history.
   structure, not in colour and type.
 - **Related:** ADR 0021 · supersedes FE-19
 - **Since:** 2026-10-16
+
+### FE-23 · The site has its own typefaces and tokens; the admin keeps Geist
+
+- **Where:** [site/fonts.ts](../../frontend/src/site/fonts.ts) (Archivo with its width axis, IBM Plex Mono 400/500), [site/site.css](../../frontend/src/site/site.css) tokens; [admin/fonts.ts](../../frontend/src/admin/fonts.ts)
+- **Decision:** fonts are per surface, not shared. The site's tokens override `base.css` in
+  `site.css` only. Archivo is loaded with `axes: ["wdth"]` so headings can stretch
+  (`font-stretch-112%`/`125%`) without a second display family.
+- **Why:** the Technical redesign (.docs/DESIGN.md) changes type and colour for visitors only;
+  putting the faces in `shared/` would have made the admin download them too.
+- **Outcome:** each surface's CSS declares only its own families. Cost: the width axis makes the
+  Archivo file larger than a weight-only cut. Hex tokens in `site.css` are deliberate (the palette
+  was specified in hex and contrast-checked as such); components still use token names only.
+- **Related:** ADR 0021 · FE-20 · FE-21
+- **Since:** 2026-10-16
+
+### FE-24 · Site structure comes from `SpecTable` and `SpecSection`, not cards
+
+- **Where:** [site/components/spec.tsx](../../frontend/src/site/components/spec.tsx), [site/components/styles.ts](../../frontend/src/site/components/styles.ts)
+- **Decision:** every section is a `SpecSection` (label column + content) and every set of facts
+  is a `SpecTable` (ruled key/value rows that drop empty values). Button and chip classes are
+  string constants, not components.
+- **Why:** the design is a spec sheet (DESIGN.md); two components make that structure the easy
+  path on every page. `SpecTable` dropping falsy rows means a page can pass
+  `profile?.location && {…}` and never render an empty key (ADR 0008). Constants rather than
+  `<Button>` because links, anchors and submit buttons all need the same look and a component
+  would have to polymorph over all three.
+- **Outcome:** pages read as data → layout with no per-page spacing decisions. It also surfaced
+  `role`, `team` and `metrics` on projects, which the old detail view never rendered. Cost: the
+  admin preview uses these with admin tokens, so it doesn't match the page's colours (FE-22).
+- **Related:** ADR 0008 · .docs/DESIGN.md
+- **Since:** 2026-10-16
+
+### FE-25 · Admin route handlers live in `(admin)`; "API" means one thing per folder
+
+- **Where:** [app/(admin)/api/admin/](../../frontend/src/app/%28admin%29/api/admin/), [admin/api-client/](../../frontend/src/admin/api-client/), [admin/auth/](../../frontend/src/admin/auth/), [admin/data/media-usage.ts](../../frontend/src/admin/data/media-usage.ts)
+- **Decision:** the two Next.js route handlers moved from `app/api/admin/` into the `(admin)` route
+  group (URLs unchanged: `/api/admin/session`, `/api/admin/media/[id]/usage`). The browser-side
+  Python API client is `admin/api-client/`, not `admin/api/`. Auth is one folder: `cookie.ts`
+  (name and lifetime, no imports — safe for `proxy.ts`), `server.ts` (verify), `client.ts`
+  (sign-in exchange). The admin-only media-usage read moved from `lib/data/` to `admin/data/`.
+- **Why:** route handlers must sit under `app/` to be served, but at `app/api/` they belonged to
+  neither surface; and two folders both named `api` — one Next server endpoints, one a client for
+  Python — read as the same thing. The cookie name was a string literal in three files.
+- **Outcome:** every file's owner is visible from its path, and `lib/` holds only what both
+  surfaces use. Cost: the URLs keep `/api/admin/…` rather than moving under `/admin`, because the
+  proxy's matcher redirects cookieless `/admin/*` requests — the sign-in exchange has no cookie yet.
+- **Related:** ADR 0021 · FE-08 · FE-09 · FE-22
+- **Since:** 2026-10-16
+

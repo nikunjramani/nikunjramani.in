@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
+import { SESSION_COOKIE } from "@/admin/auth/cookie";
+
 /**
  * Presence check only, even though Proxy defaults to the Node.js runtime as of Next 16 and
  * could run the real Firebase session-cookie verification here. Keeping this as a cheap
@@ -13,7 +15,7 @@ import type { NextRequest } from "next/server";
  * authorization inside each Server Function rather than relying on Proxy alone."
  */
 export function proxy(request: NextRequest): NextResponse {
-  const hasSession = request.cookies.has("session");
+  const hasSession = request.cookies.has(SESSION_COOKIE);
   if (!hasSession) {
     const loginUrl = new URL("/admin/login", request.url);
     return NextResponse.redirect(loginUrl);

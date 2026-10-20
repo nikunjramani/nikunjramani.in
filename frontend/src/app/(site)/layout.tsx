@@ -8,7 +8,7 @@ import { getProfile } from "@/lib/data/profile";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
 import { SkipLink } from "@/shared/components/skip-link";
 import { ThemeProvider } from "@/shared/components/theme-provider";
-import { fontVariables } from "@/shared/fonts";
+import { fontVariables } from "@/site/fonts";
 import { Footer } from "@/site/components/footer";
 import { JsonLd } from "@/site/components/json-ld";
 import { Nav } from "@/site/components/nav";

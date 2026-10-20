@@ -4,8 +4,8 @@ import { Loader2, ShieldCheck, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
 import { useFeedback } from "@/admin/components/ui-feedback";
-import { ApiError } from "@/admin/api/client";
-import { grantAdmin, listAdmins, revokeAdmin, type Admin } from "@/admin/api/identity";
+import { ApiError } from "@/admin/api-client/client";
+import { grantAdmin, listAdmins, revokeAdmin, type Admin } from "@/admin/api-client/identity";
 
 export default function AdminAccessPage() {
   const [admins, setAdmins] = useState<Admin[] | null>(null);

@@ -217,7 +217,7 @@ Enforced in review and by an import-linter rule in `make lint`.
 
 ```
 page (server)  →  lib/data/*  →  Firebase Admin SDK      ← reads
-page (client)  →  admin/api/*   →  Python API              ← writes
+page (client)  →  admin/api-client/*   →  Python API              ← writes
 ```
 
 - Server Components fetch data. Client Components handle interaction only. Push `"use client"` as

@@ -8,9 +8,9 @@ import { useFeedback } from "@/admin/components/ui-feedback";
 import { useRecordList } from "@/admin/components/use-record-list";
 import { ADMIN_SCHEMAS } from "@/generated/admin-schemas";
 import type { Project } from "@/generated/types";
-import { ApiError } from "@/admin/api/client";
-import type { RecordOut } from "@/admin/api/content";
-import { duplicateProject } from "@/admin/api/projects";
+import { ApiError } from "@/admin/api-client/client";
+import type { RecordOut } from "@/admin/api-client/content";
+import { duplicateProject } from "@/admin/api-client/projects";
 
 const entry = ADMIN_SCHEMAS.Project;
 const KIND_OPTIONS = (entry.properties.kind.enum ?? []) as string[];

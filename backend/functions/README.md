@@ -111,7 +111,7 @@ What looks like sharing but isn't:
   reads. The schema is the contract.
 - **Reading another domain's data** is a read, so it belongs in Next.js — e.g. the media
   library's "where is this image used?" check is
-  `frontend/src/app/api/admin/media/[id]/usage/route.ts`.
+  `frontend/src/app/(admin)/api/admin/media/[id]/usage/route.ts`.
 - **`ops/backup` reading every collection.** Exporting is its whole job; it treats documents
   as opaque JSON and imports no other domain's code.
 

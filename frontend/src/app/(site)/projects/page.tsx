@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 
 import { ProjectFilters } from "@/site/components/project-filters";
 import { ProjectCard } from "@/site/components/project-card";
+import { Container, PageHeader } from "@/site/components/spec";
 import { getAllProjects } from "@/lib/data/projects";
 
 export const metadata: Metadata = {
@@ -27,32 +28,40 @@ export default async function ProjectsPage({ searchParams }: { searchParams: Sea
     if (params.tech && !project.stack?.some((t) => t.name === params.tech)) return false;
     return true;
   });
+  const filteredBy = Boolean(params.kind || params.status || params.tech);
 
   return (
-    <div className="mx-auto max-w-4xl px-6 py-16">
-      <h1 className="mb-2 text-2xl font-semibold tracking-tight">Projects</h1>
-      <p className="mb-8 text-muted-foreground">
-        {projects.length} project{projects.length === 1 ? "" : "s"}, filterable by kind, tech and status.
+    <Container>
+      <PageHeader title="Projects" lede="Things I've built, from first commit to production." />
+
+      {projects.length > 1 ? (
+        <ProjectFilters
+          kinds={kinds}
+          statuses={statuses}
+          techs={techs}
+          active={{ kind: params.kind, status: params.status, tech: params.tech }}
+        />
+      ) : null}
+
+      <p className="mt-6 font-mono text-xs text-muted-foreground" aria-live="polite">
+        {filteredBy
+          ? `Showing ${filtered.length} of ${projects.length}`
+          : `${projects.length} project${projects.length === 1 ? "" : "s"}`}
       </p>
 
-      <ProjectFilters
-        kinds={kinds}
-        statuses={statuses}
-        techs={techs}
-        active={{ kind: params.kind, status: params.status, tech: params.tech }}
-      />
-
       {filtered.length ? (
-        <div className="mt-8 grid gap-6 sm:grid-cols-2">
+        <div className="mt-6 grid gap-x-10 gap-y-14 sm:grid-cols-2">
           {filtered.map((project) => (
             <ProjectCard key={project.id} project={project} />
           ))}
         </div>
       ) : (
-        <p className="mt-16 text-center text-muted-foreground">
-          {projects.length ? "No projects match these filters." : "No projects published yet."}
+        <p className="mt-12 text-muted-foreground">
+          {projects.length
+            ? "Nothing matches these filters. Clear one to see more."
+            : "No projects are published yet."}
         </p>
       )}
-    </div>
+    </Container>
   );
 }

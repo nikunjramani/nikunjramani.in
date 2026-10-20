@@ -4,6 +4,8 @@ import { Download } from "lucide-react";
 
 import { Markdown } from "@/site/components/markdown";
 import { SkillMatrix } from "@/site/components/skill-matrix";
+import { Container, SpecSection, SpecTable } from "@/site/components/spec";
+import { buttonSecondary } from "@/site/components/styles";
 import { blurhashToDataURL } from "@/lib/blurhash";
 import { getProfile } from "@/lib/data/profile";
 import { getSkills } from "@/lib/data/skills";
@@ -16,6 +18,12 @@ export const metadata: Metadata = {
   alternates: { canonical: "/about" },
 };
 
+function years(start?: number, end?: number | null) {
+  if (!start) return null;
+  if (end) return `${start}–${end}`;
+  return end === null ? `${start}–present` : `${start}`;
+}
+
 export default async function AboutPage() {
   const [profile, skills, educations, certifications] = await Promise.all([
     getProfile(),
@@ -25,117 +33,127 @@ export default async function AboutPage() {
   ]);
 
   return (
-    <div className="mx-auto max-w-4xl px-6 py-16">
-      <header className="mb-12 flex flex-col items-start gap-6 sm:flex-row sm:items-center">
-        {profile?.avatar ? (
-          <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-full bg-muted">
-            <Image
-              src={profile.avatar.url}
-              alt={profile.avatar.alt}
-              fill
-              sizes="96px"
-              className="object-cover"
-              placeholder={profile.avatar.blurhash ? "blur" : "empty"}
-              blurDataURL={profile.avatar.blurhash ? blurhashToDataURL(profile.avatar.blurhash) : undefined}
-            />
+    <Container>
+      <header className="grid gap-10 pt-16 pb-12 sm:pt-20 lg:grid-cols-[1fr_20rem] lg:items-end lg:gap-16">
+        <div className="flex flex-col gap-6 sm:flex-row sm:items-end">
+          {profile?.avatar ? (
+            <div className="relative h-28 w-28 shrink-0 overflow-hidden rounded-(--radius) border border-border bg-muted">
+              <Image
+                src={profile.avatar.url}
+                alt={profile.avatar.alt}
+                fill
+                sizes="112px"
+                className="object-cover"
+                placeholder={profile.avatar.blurhash ? "blur" : "empty"}
+                blurDataURL={profile.avatar.blurhash ? blurhashToDataURL(profile.avatar.blurhash) : undefined}
+              />
+            </div>
+          ) : null}
+          <div>
+            <h1 className="text-3xl font-semibold tracking-tight font-stretch-125% text-balance sm:text-[2.75rem] sm:leading-[1.05]">
+              {profile?.name ?? "About"}
+            </h1>
+            {profile?.headline ? (
+              <p className="mt-3 text-lg text-muted-foreground text-balance">{profile.headline}</p>
+            ) : null}
           </div>
-        ) : null}
-        <div>
-          <h1 className="text-3xl font-semibold tracking-tight">{profile?.name ?? "About"}</h1>
-          {profile?.headline ? <p className="mt-1 text-lg text-muted-foreground">{profile.headline}</p> : null}
-          {profile?.location ? <p className="mt-1 text-sm text-muted-foreground">{profile.location}</p> : null}
         </div>
+
+        <SpecTable
+          rows={[
+            profile?.location && { key: "Based in", value: profile.location },
+            profile?.availableForWork && { key: "Status", value: "Available for work" },
+            skills.length > 0 && { key: "Skills", value: `${skills.length} across ${new Set(skills.map((s) => s.category)).size} areas` },
+          ]}
+        />
       </header>
 
-      {profile?.bio ? (
-        <section className="mb-14 max-w-2xl">
-          <Markdown>{profile.bio}</Markdown>
-        </section>
-      ) : null}
-
-      {profile?.resumeUrl ? (
-        <section className="mb-14">
-          <a
-            href={profile.resumeUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 rounded-md border border-border px-4 py-2 text-sm transition-colors hover:bg-muted"
-          >
-            <Download className="h-4 w-4" /> Download résumé
-          </a>
-        </section>
+      {profile?.bio || profile?.resumeUrl ? (
+        <SpecSection title="Profile">
+          {profile?.bio ? (
+            <div className="max-w-[68ch] text-lg">
+              <Markdown>{profile.bio}</Markdown>
+            </div>
+          ) : null}
+          {profile?.resumeUrl ? (
+            <a
+              href={profile.resumeUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={`${buttonSecondary} mt-8`}
+            >
+              <Download className="h-4 w-4" aria-hidden="true" /> Download résumé
+            </a>
+          ) : null}
+        </SpecSection>
       ) : null}
 
       {skills.length ? (
-        <section className="mb-14 border-t border-border pt-10">
-          <h2 className="mb-6 text-sm font-medium text-muted-foreground uppercase tracking-wide">Skills</h2>
+        <SpecSection title="Skills">
           <SkillMatrix skills={skills} />
-        </section>
+        </SpecSection>
       ) : null}
 
       {educations.length ? (
-        <section className="mb-14 border-t border-border pt-10">
-          <h2 className="mb-6 text-sm font-medium text-muted-foreground uppercase tracking-wide">Education</h2>
-          <ul className="flex flex-col gap-6">
+        <SpecSection title="Education">
+          <ul className="border-t border-border">
             {educations.map((edu) => (
-              <li key={edu.id}>
-                <p className="font-medium">{edu.institution}</p>
-                <p className="text-sm text-muted-foreground">
-                  {edu.qualification}
-                  {edu.field ? ` in ${edu.field}` : ""}
-                </p>
-                {edu.startYear ? (
-                  <p className="mt-0.5 text-xs text-muted-foreground">
-                    {edu.startYear}
-                    {edu.endYear ? `–${edu.endYear}` : edu.endYear === null ? " – present" : ""}
+              <li key={edu.id} className="grid gap-2 border-b border-border py-5 sm:grid-cols-[1fr_8rem] sm:gap-8">
+                <div>
+                  <p className="font-semibold font-stretch-112%">{edu.institution}</p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    {edu.qualification}
+                    {edu.field ? ` in ${edu.field}` : ""}
                   </p>
-                ) : null}
-                {edu.highlights?.length ? (
-                  <ul className="mt-2 flex flex-col gap-1">
-                    {edu.highlights.map((h) => (
-                      <li key={h} className="text-sm text-muted-foreground">
-                        · {h}
-                      </li>
-                    ))}
-                  </ul>
+                  {edu.highlights?.length ? (
+                    <ul className="mt-3 flex list-[square] flex-col gap-1 pl-5 text-sm marker:text-accent">
+                      {edu.highlights.map((h) => (
+                        <li key={h}>{h}</li>
+                      ))}
+                    </ul>
+                  ) : null}
+                </div>
+                {years(edu.startYear, edu.endYear) ? (
+                  <p className="font-mono text-xs text-muted-foreground sm:pt-1 sm:text-right">
+                    {years(edu.startYear, edu.endYear)}
+                  </p>
                 ) : null}
               </li>
             ))}
           </ul>
-        </section>
+        </SpecSection>
       ) : null}
 
       {certifications.length ? (
-        <section className="border-t border-border pt-10">
-          <h2 className="mb-6 text-sm font-medium text-muted-foreground uppercase tracking-wide">
-            Certifications
-          </h2>
-          <ul className="grid gap-4 sm:grid-cols-2">
+        <SpecSection title="Certifications">
+          <ul className="border-t border-border">
             {certifications.map((cert) => (
-              <li key={cert.id} className="rounded-lg border border-border bg-surface p-4">
-                {cert.credentialUrl ? (
-                  <a
-                    href={cert.credentialUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="font-medium hover:text-accent"
-                  >
-                    {cert.title}
-                  </a>
-                ) : (
-                  <p className="font-medium">{cert.title}</p>
-                )}
-                <p className="mt-1 text-sm text-muted-foreground">{cert.issuer}</p>
+              <li key={cert.id} className="grid gap-2 border-b border-border py-4 sm:grid-cols-[1fr_8rem] sm:gap-8">
+                <div>
+                  {cert.credentialUrl ? (
+                    <a
+                      href={cert.credentialUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-medium underline decoration-border underline-offset-4 hover:decoration-accent"
+                    >
+                      {cert.title}
+                    </a>
+                  ) : (
+                    <p className="font-medium">{cert.title}</p>
+                  )}
+                  <p className="mt-1 text-sm text-muted-foreground">{cert.issuer}</p>
+                </div>
                 {cert.issuedOn ? (
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Issued {new Date(cert.issuedOn).getFullYear()}
+                  <p className="font-mono text-xs text-muted-foreground sm:pt-1 sm:text-right">
+                    {new Date(cert.issuedOn).getFullYear()}
                   </p>
                 ) : null}
               </li>
             ))}
           </ul>
-        </section>
+        </SpecSection>
       ) : null}
-    </div>
+    </Container>
   );
 }

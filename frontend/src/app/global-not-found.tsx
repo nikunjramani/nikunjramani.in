@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 
 import { SITE_NAME } from "@/lib/site";
 import { ThemeProvider } from "@/shared/components/theme-provider";
-import { fontVariables } from "@/shared/fonts";
+import { fontVariables } from "@/site/fonts";
 import { NotFoundMessage } from "@/site/components/not-found-message";
 
 import "@/site/site.css";

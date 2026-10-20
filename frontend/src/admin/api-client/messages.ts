@@ -1,7 +1,7 @@
 "use client";
 
-import { apiFetch, apiFetchBlob } from "@/admin/api/client";
-import type { RecordOut } from "@/admin/api/content";
+import { apiFetch, apiFetchBlob } from "@/admin/api-client/client";
+import type { RecordOut } from "@/admin/api-client/content";
 import type { ContactMessage } from "@/generated/types";
 import { API_ROUTES } from "@/generated/api-routes";
 

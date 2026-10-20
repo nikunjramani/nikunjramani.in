@@ -9,7 +9,12 @@ import { z } from "zod";
 import { ContactMessageSchema } from "@/generated/schemas.zod";
 import { submitContact } from "@/site/lib/contact";
 import { getAppCheckToken, initAppCheck } from "@/site/lib/app-check";
+import { buttonPrimary } from "@/site/components/styles";
 import { cn } from "@/lib/utils";
+
+const label = "font-mono text-xs text-muted-foreground";
+const field =
+  "w-full rounded-(--radius) border border-border bg-surface px-3 py-2.5 text-base transition-colors hover:border-muted-foreground focus-visible:border-accent focus-visible:outline-2 focus-visible:outline-accent aria-invalid:border-danger";
 
 // ContactMessageSchema is `.strict()` (ADR: server-set fields can never be client-supplied),
 // and `.pick()` carries that strictness into the picked schema too — so the honeypot field,
@@ -62,14 +67,15 @@ export function ContactForm() {
 
   if (status === "success") {
     return (
-      <div className="rounded-lg border border-border bg-surface p-6 text-center">
-        <p className="font-medium">Thanks — I&apos;ll get back to you soon.</p>
+      <div className="border-l-2 border-accent bg-surface p-6" role="status">
+        <p className="font-semibold font-stretch-112%">Message sent.</p>
+        <p className="mt-1 text-sm text-muted-foreground">Thanks for writing. I&apos;ll reply by email.</p>
       </div>
     );
   }
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-5" noValidate>
+    <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-6" noValidate>
       {/* Honeypot: invisible to real visitors, irresistible to naive bots that fill every field. */}
       <input
         type="text"
@@ -81,54 +87,63 @@ export function ContactForm() {
       />
 
       <div className="flex flex-col gap-1.5">
-        <label htmlFor="name" className="text-sm font-medium">
+        <label htmlFor="name" className={label}>
           Name
         </label>
         <input
           id="name"
           type="text"
-          className="rounded-md border border-border bg-background px-3 py-2 text-sm focus-visible:outline-2 focus-visible:outline-accent"
+          autoComplete="name"
+          aria-invalid={errors.name ? true : undefined}
+          aria-describedby={errors.name ? "name-error" : undefined}
+          className={field}
           {...register("name")}
         />
-        {errors.name ? <p className="text-xs text-red-500">{errors.name.message}</p> : null}
+        {errors.name ? <p id="name-error" className="text-xs text-danger">{errors.name.message}</p> : null}
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <label htmlFor="email" className="text-sm font-medium">
+        <label htmlFor="email" className={label}>
           Email
         </label>
         <input
           id="email"
           type="email"
-          className="rounded-md border border-border bg-background px-3 py-2 text-sm focus-visible:outline-2 focus-visible:outline-accent"
+          autoComplete="email"
+          spellCheck={false}
+          aria-invalid={errors.email ? true : undefined}
+          aria-describedby={errors.email ? "email-error" : undefined}
+          className={field}
           {...register("email")}
         />
-        {errors.email ? <p className="text-xs text-red-500">{errors.email.message}</p> : null}
+        {errors.email ? <p id="email-error" className="text-xs text-danger">{errors.email.message}</p> : null}
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <label htmlFor="subject" className="text-sm font-medium">
+        <label htmlFor="subject" className={label}>
           Subject <span className="text-muted-foreground">(optional)</span>
         </label>
         <input
           id="subject"
           type="text"
-          className="rounded-md border border-border bg-background px-3 py-2 text-sm focus-visible:outline-2 focus-visible:outline-accent"
+          className={field}
           {...register("subject")}
         />
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <label htmlFor="message" className="text-sm font-medium">
+        <label htmlFor="message" className={label}>
           Message
         </label>
         <textarea
           id="message"
-          rows={6}
-          className="rounded-md border border-border bg-background px-3 py-2 text-sm focus-visible:outline-2 focus-visible:outline-accent"
+          rows={7}
+          aria-invalid={errors.message ? true : undefined}
+          aria-describedby={errors.message ? "message-error" : undefined}
+          className={field}
           {...register("message")}
         />
-        {errors.message ? <p className="text-xs text-red-500">{errors.message.message}</p> : null}
+        {errors.message ? <p id="message-error" className="text-xs text-danger">{errors.message.message}</p> : null}
       </div>
 
       {/* Safety net: a resolver error that isn't on name/email/message (a root-level Zod
@@ -138,25 +153,22 @@ export function ContactForm() {
       {Object.entries(errors)
         .filter(([key]) => !["name", "email", "message", "subject", "honeypot"].includes(key))
         .map(([key, err]) => (
-          <p key={key} className="text-sm text-red-500">
+          <p key={key} className="text-sm text-danger">
             {err?.message?.toString() ?? "Please check the form and try again."}
           </p>
         ))}
 
       {status === "error" ? (
-        <p className="text-sm text-red-500">Something went wrong — please try again in a moment.</p>
+        <p className="text-sm text-danger" role="alert">The message didn&apos;t send. Check your connection and try again.</p>
       ) : null}
 
       <button
         type="submit"
         disabled={status === "submitting"}
-        className={cn(
-          "inline-flex w-fit items-center gap-1.5 rounded-md bg-accent px-4 py-2 text-sm text-accent-foreground transition-opacity hover:opacity-90",
-          status === "submitting" && "opacity-70",
-        )}
+        className={cn(buttonPrimary, "w-fit", status === "submitting" && "opacity-70")}
       >
-        {status === "submitting" ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-        Send message
+        {status === "submitting" ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : null}
+        {status === "submitting" ? "Sending…" : "Send message"}
       </button>
     </form>
   );

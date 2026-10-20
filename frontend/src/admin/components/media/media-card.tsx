@@ -5,8 +5,8 @@ import Image from "next/image";
 import { useState } from "react";
 
 import { useFeedback } from "@/admin/components/ui-feedback";
-import { ApiError } from "@/admin/api/client";
-import { deleteMedia, getMediaUsage, updateMediaMetadata, type MediaRecordOut } from "@/admin/api/media";
+import { ApiError } from "@/admin/api-client/client";
+import { deleteMedia, getMediaUsage, updateMediaMetadata, type MediaRecordOut } from "@/admin/api-client/media";
 import { cn } from "@/lib/utils";
 
 export function MediaCard({
