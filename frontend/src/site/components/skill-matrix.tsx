@@ -1,5 +1,5 @@
 import type { Skill } from "@/generated/types";
-import type { WithId } from "@/lib/data/convert";
+import type { WithId } from "@/lib/data/api";
 import { cn } from "@/lib/utils";
 
 const CATEGORY_LABEL: Record<string, string> = {

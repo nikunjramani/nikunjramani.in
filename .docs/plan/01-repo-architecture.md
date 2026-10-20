@@ -77,8 +77,8 @@ frontend/
 │   │   │   ├── projects/[id]/page.tsx
 │   │   │   └── skills/ experience/ media/ messages/ settings/
 │   │   ├── api/admin/session/route.ts     # session cookie exchange
-│   │   ├── sitemap.ts  robots.ts  opengraph-image.tsx  # sitemap reads Firestore
-│   │   │                                                # directly — ADR 0005
+│   │   ├── sitemap.ts  robots.ts  opengraph-image.tsx  # sitemap reads via lib/data
+│   │   │                                                # → the API's /public — ADR 0022
 │   │   └── layout.tsx  not-found.tsx
 │   ├── components/
 │   │   ├── ui/                            # shadcn primitives
@@ -141,8 +141,8 @@ backend/functions/
     ├── messages/
     ├── settings/
     └── system/                    # health · audit-log · nightly_backup
-                                    # NOT sitemap — that's a pure content read, owned by
-                                    # Next.js's app/sitemap.ts per ADR 0005
+                                    # NOT sitemap — Next.js's app/sitemap.ts renders it from
+                                    # the content functions' /public reads (ADR 0022)
 ```
 
 Every domain has the identical shape, so adding one is copy, rename, register.
@@ -216,13 +216,13 @@ Enforced in review and by an import-linter rule in `make lint`.
 ### Frontend
 
 ```
-page (server)  →  lib/data/*  →  Firebase Admin SDK      ← reads
-page (client)  →  admin/api-client/*   →  Python API              ← writes
+page (server)  →  lib/data/*           →  Python API  GET …/public   ← site reads
+page (client)  →  admin/api-client/*   →  Python API                 ← admin reads + writes
 ```
 
 - Server Components fetch data. Client Components handle interaction only. Push `"use client"` as
   deep into the tree as possible — the further down it goes, the less JS ships.
-- `lib/data/` is the **only** place Firestore is queried. Components never import the SDK.
+- Only the Python API queries Firestore; the frontend has no Firestore SDK (ADR 0022).
 - Nothing in `(site)/` may import from `(admin)/`. Enforced by an ESLint boundary rule, because
   this is the kind of thing that silently regresses.
 

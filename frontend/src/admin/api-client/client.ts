@@ -10,6 +10,7 @@
  * Requests go to /api/v1/<domain>/<subdomain>/..., which next.config.ts rewrites to that
  * subdomain's Python function — the browser only ever talks to one origin. See ADR 0017.
  */
+import { API_PREFIX } from "@/lib/backend";
 import { auth } from "@/lib/firebase/client";
 
 export class ApiError extends Error {
@@ -63,7 +64,7 @@ async function rawFetch(path: string, init?: RequestInit): Promise<Response> {
     headers.set("Content-Type", "application/json");
   }
 
-  const res = await fetch(`/api/v1${path}`, { ...init, headers });
+  const res = await fetch(`${API_PREFIX}${path}`, { ...init, headers });
 
   if (res.status === 401) {
     // The session cookie gating page navigation and the Bearer token gating this call are

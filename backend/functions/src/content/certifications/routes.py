@@ -1,7 +1,8 @@
-"""content/certifications — admin HTTP routes for the `certifications` collection.
+"""content/certifications — HTTP routes for the `certifications` collection: admin
+CRUD plus the public site's read.
 
-HTTP only: authorise, delegate to the service, serialise. /reorder is declared before
-/{doc_id} so it isn't captured as an id."""
+HTTP only: authorise, delegate to the service, serialise. /public and /reorder are
+declared before /{doc_id} so neither is captured as an id."""
 
 from __future__ import annotations
 
@@ -22,6 +23,12 @@ def get_certifications_service() -> CertificationService:
 
 
 Service = Annotated[CertificationService, Depends(get_certifications_service)]
+
+
+@router.get("/public", response_model=list[CertificationOut], response_model_exclude_none=True)
+def list_public_certifications(service: Service) -> list[CertificationOut]:
+    """The public site's read — no auth: `public` documents only, in order (ADR 0022)."""
+    return [CertificationOut.of(r) for r in service.list_public()]
 
 
 @router.get("/", response_model=list[CertificationOut])

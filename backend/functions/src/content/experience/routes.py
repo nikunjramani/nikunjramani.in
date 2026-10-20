@@ -1,7 +1,8 @@
-"""content/experience — admin HTTP routes for the `experience` collection.
+"""content/experience — HTTP routes for the `experience` collection: admin
+CRUD plus the public site's read.
 
-HTTP only: authorise, delegate to the service, serialise. /reorder is declared before
-/{doc_id} so it isn't captured as an id."""
+HTTP only: authorise, delegate to the service, serialise. /public and /reorder are
+declared before /{doc_id} so neither is captured as an id."""
 
 from __future__ import annotations
 
@@ -22,6 +23,12 @@ def get_experience_service() -> ExperienceService:
 
 
 Service = Annotated[ExperienceService, Depends(get_experience_service)]
+
+
+@router.get("/public", response_model=list[ExperienceOut], response_model_exclude_none=True)
+def list_public_experience(service: Service) -> list[ExperienceOut]:
+    """The public site's read — no auth: `public` documents only, in order (ADR 0022)."""
+    return [ExperienceOut.of(r) for r in service.list_public()]
 
 
 @router.get("/", response_model=list[ExperienceOut])

@@ -23,6 +23,9 @@ class ProfileService(CrudService[Profile]):
         """404 until it's saved once — nothing creates the document automatically."""
         return self.get(DOC_ID)
 
+    def read_public(self) -> Record[Profile]:
+        return self.get_public(DOC_ID)
+
     def replace(self, payload: Profile, claims: dict[str, object]) -> Record[Profile]:
         return self.upsert(DOC_ID, payload, claims)
 

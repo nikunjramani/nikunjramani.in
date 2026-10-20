@@ -17,6 +17,7 @@ Loaded every session.
   the API's auth — not in hiding these.
 - **CI authenticates keylessly** (Workload Identity Federation). Never create or commit a service
   account JSON key; `.gitignore` blocks `service-account*.json` anyway.
-- **Clients never write Firestore, and the Admin SDK is server-only** — see CLAUDE.md rules 3–4.
+- **Only the Python API touches Firestore, and the Admin SDK is server-only** — see CLAUDE.md
+  rules 2–4. The App Hosting identity has no Firestore role; keep it that way.
 - **GitHub secrets** hold only `TF_VAR_BILLING_ACCOUNT` and `TF_VAR_ALERT_EMAIL`; everything else CI
   needs is a non-secret repository or environment variable.

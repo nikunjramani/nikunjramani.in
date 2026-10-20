@@ -2,11 +2,11 @@ import "server-only";
 
 import { cache } from "react";
 
+import { API_ROUTES } from "@/generated/api-routes";
 import type { Experience } from "@/generated/types";
 
-import type { WithId } from "./convert";
-import { listPublished } from "./shared";
+import { listPublic, type WithId } from "./api";
 
 export const getExperience = cache(
-  (): Promise<WithId<Experience>[]> => listPublished<Experience>("experience"),
+  (): Promise<WithId<Experience>[]> => listPublic<Experience>(API_ROUTES.content.experience),
 );

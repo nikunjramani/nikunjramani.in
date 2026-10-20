@@ -264,7 +264,7 @@ Entries BE-01…BE-38 were backfilled on 2026-10-16 from the code and its histor
 - **Where:** `LibraryService.delete`
 - **Why:** an orphaned blob costs a few KB; a document pointing at nothing breaks pages.
 
-### BE-30 · "Where is this image used?" is answered by Next.js, not Python
+### ~~BE-30~~ Superseded by [BE-39](#be-39--the-media-library-answers-where-is-this-image-used-and-delete-enforces-it) · "Where is this image used?" is answered by Next.js, not Python
 
 - **Where:** `frontend/src/app/(admin)/api/admin/media/[id]/usage/route.ts`
 - **Why:** it reads other domains' collections; reads belong in Next.js (ADR 0005) and the media
@@ -326,3 +326,38 @@ Entries BE-01…BE-38 were backfilled on 2026-10-16 from the code and its histor
 - **Where:** [kernel/logging.py](../../backend/functions/kernel/logging.py)
 - **Why:** Cloud Logging parses JSON lines into queryable fields (`severity`, extra fields); the
   monitoring module's error metric relies on it.
+
+## Data access (ADR 0022)
+
+### BE-39 · The media library answers "where is this image used?", and delete enforces it
+
+- **Where:** `find_references` in [media/library/repository.py](../../backend/functions/src/media/library/repository.py), `LibraryService.usage` / `.delete`
+- **Decision:** `GET /{id}/usage` lists `collection/id` of every content document — drafts
+  included — that mentions the asset's URL or thumbnail URL. `DELETE` raises 409 while that list
+  is non-empty, unless `?force=true` (sent only after the admin has seen the list and confirmed).
+  The content collections are scanned by name (`CONTENT_COLLECTIONS`), not by importing the
+  content domain; a registry test keeps that list equal to the schemas' `publicRead` collections.
+- **Why:** the check used to live in a Next.js route, so the API's delete didn't enforce it — any
+  caller but the admin UI could delete an image a live page still showed. And ADR 0022 moves every
+  read into the API.
+- **Outcome:** the rule holds for every caller. Cost: a full scan of the content collections per
+  check — fine at tens of documents.
+- **Related:** ADR 0022 · ADR 0017 · supersedes BE-30
+- **Since:** 2026-10-20
+
+### BE-40 · Public reads live in `CrudService`, beside the admin routes
+
+- **Where:** `list_public`, `get_public`, `to_public`, `reachable_by_url` in [kernel/crud/service.py](../../backend/functions/kernel/crud/service.py); `GET /public` in each content subdomain's `routes.py`; `ProjectService`
+- **Decision:** each content subdomain serves an unauthenticated `GET /public` (projects also
+  `GET /public/{slug}`) from the same function as its admin routes. `list_public` returns only
+  `public` documents in `order`; `get_public` 404s unless the visibility is in
+  `reachable_by_url` (projects add `unlisted`). `to_public` drops `audit` (it names the admin's
+  uid), and `ProjectService.to_public` strips a confidential client's name and logo. Responses
+  omit nulls. Projects reserve the slugs `public` and `reorder` so a project can't shadow a route.
+- **Why:** the visibility and confidentiality rules must apply to every public read, so they sit
+  in the one service every read passes through — not in each route, and not in the frontend.
+  Serving them from the existing functions adds no deploys and no extra cold starts.
+- **Outcome:** the frontend gets exactly what a visitor may see. Cost: the routes are public; they
+  serve only what the pages already show, and `max_instances` caps abuse.
+- **Related:** ADR 0022 · FE-26
+- **Since:** 2026-10-20

@@ -1,4 +1,5 @@
-"""content/profile — admin HTTP routes. One fixed document, so no id in any path and no
+"""content/profile — HTTP routes: admin read/write plus the public site's read.
+One fixed document, so no id in any path and no
 list/create/delete/reorder. HTTP only: authorise, delegate, serialise."""
 
 from __future__ import annotations
@@ -20,6 +21,12 @@ def get_profile_service() -> ProfileService:
 
 
 Service = Annotated[ProfileService, Depends(get_profile_service)]
+
+
+@router.get("/public", response_model=ProfileOut, response_model_exclude_none=True)
+def read_public_profile(service: Service) -> ProfileOut:
+    """The public site's read — no auth. 404 unless the document is `public` (ADR 0022)."""
+    return ProfileOut.of(service.read_public())
 
 
 @router.get("/", response_model=ProfileOut)

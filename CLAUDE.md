@@ -78,16 +78,17 @@ Load-bearing. Each has an ADR behind it — read it before proposing a change.
 `backend/functions/shared/generated/` come from `architecture/`. Edit the schema, run `make gen`.
 CI fails on drift. → [ADR 0006](./.docs/adr/0006-json-schema-source-of-truth.md)
 
-**2 · Reads never touch Python.** Next.js Server Components read Firestore directly via the Admin
-SDK; Python handles writes only. Never route page data through the API.
-→ [ADR 0005](./.docs/adr/0005-reads-bypass-python.md)
+**2 · Only the Python API touches the database.** Reads and writes alike: pages read through
+`lib/data/*`, which calls each content function's public `GET /public` route. The frontend has no
+Firestore SDK (ESLint) and no Firestore role (IAM). → [ADR 0022](./.docs/adr/0022-backend-owns-all-data-access.md)
 
 **3 · Clients never write to Firestore.** Rules deny all client writes, including admin. Every
 mutation goes through the Python API so validation, rate limiting and audit logging can't be
 bypassed. → [ADR 0007](./.docs/adr/0007-deny-all-client-writes.md)
 
-**4 · The Admin SDK is server-only.** Every file touching it starts with `import "server-only"`.
-Without that guard the failure mode is a leaked credential, not a build error.
+**4 · The Admin SDK is server-only.** In the frontend it's used for Firebase Auth only (the admin
+session cookie). Every file touching it starts with `import "server-only"`. Without that guard the
+failure mode is a leaked credential, not a build error.
 
 **5 · `"use client"` goes as deep in the tree as possible.** A client `<ThemeToggle>` inside a
 server `<Nav>`, never a client `<Nav>`.
@@ -110,7 +111,7 @@ stranger would ask "why is it like this?" about. ADRs are immutable — supersed
 
 - **Optional fields render conditionally** — no empty headings, no placeholders, in the public
   page and the admin form alike. → [ADR 0008](./.docs/adr/0008-projects-drop-start-end-dates.md)
-- **Confidential data is stripped server-side** in `lib/data/`, never in a component.
+- **Confidential data is stripped by the API** (`ProjectService.to_public`), never in a component.
 - **Every content collection has `visibility` and `order`.** Public queries filter
   `visibility == "public"` and sort by `order`; `unlisted` is served at its URL with `noindex` but
   never listed.

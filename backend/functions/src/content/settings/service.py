@@ -23,6 +23,9 @@ class SiteConfigService(CrudService[SiteConfig]):
         """404 until it's saved once — nothing creates the document automatically."""
         return self.get(DOC_ID)
 
+    def read_public(self) -> Record[SiteConfig]:
+        return self.get_public(DOC_ID)
+
     def replace(self, payload: SiteConfig, claims: dict[str, object]) -> Record[SiteConfig]:
         return self.upsert(DOC_ID, payload, claims)
 

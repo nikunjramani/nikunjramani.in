@@ -62,6 +62,9 @@ audit entry through `kernel.audit.AuditWriter` (`CrudService` already does).
 **4 · Schemas + routes** — request/response models in `schemas.py` (wrap a record as
 `RecordOut[Model]` from `kernel.crud.schemas`); routes in `routes.py`. Every admin route takes
 `claims: AdminClaims` (`kernel.security`) — it verifies the token **and** the `admin` claim.
+The one exception is a content subdomain's public read: `GET /public` (and `/public/{id}`), no
+auth, returning `service.list_public()` / `get_public()` with `response_model_exclude_none=True`
+— never a raw admin read (ADR 0022). Declare it before `/{doc_id}`.
 
 **5 · Entry point** — `main.py`:
 

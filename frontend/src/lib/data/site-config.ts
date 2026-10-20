@@ -2,10 +2,10 @@ import "server-only";
 
 import { cache } from "react";
 
-import { db } from "@/lib/firebase/admin";
+import { API_ROUTES } from "@/generated/api-routes";
 import type { SiteConfig } from "@/generated/types";
 
-import { fromSnapshot, type WithId } from "./convert";
+import { getPublic, type WithId } from "./api";
 
 const DEFAULTS: WithId<SiteConfig> = {
   id: "main",
@@ -16,9 +16,6 @@ const DEFAULTS: WithId<SiteConfig> = {
 };
 
 export const getSiteConfig = cache(
-  async (): Promise<WithId<SiteConfig>> => {
-    const snap = await db().collection("site_config").doc("main").get();
-    const config = fromSnapshot<SiteConfig>(snap);
-    return config?.visibility === "public" ? config : DEFAULTS;
-  },
+  async (): Promise<WithId<SiteConfig>> =>
+    (await getPublic<SiteConfig>(API_ROUTES.content.settings)) ?? DEFAULTS,
 );

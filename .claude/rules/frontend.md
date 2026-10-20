@@ -12,15 +12,17 @@ async `params`/`searchParams`/`cookies()`).
 
 ## Load-bearing
 
-- **Reads never touch Python** (ADR 0005). Server Components read Firestore through `lib/data/*`
-  with the Admin SDK. Never route page data through the API.
-- **Clients never write Firestore** (ADR 0007). Admin writes go through `admin/api-client/*` → the Python
-  API. There is no Firestore client SDK in the browser at all.
-- **`import "server-only"`** at the top of every file touching the Admin SDK — without it the
-  failure mode is a leaked credential, not a build error.
+- **The frontend never touches Firestore** (ADR 0022). Server Components read through
+  `lib/data/*`, which calls the Python API's public `GET /public` routes (`lib/data/api.ts`).
+  Admin reads and writes go through `admin/api-client/*`. ESLint forbids importing any Firestore
+  SDK; the App Hosting identity has no Firestore role. A new page needing new data needs a new
+  `/public` route in the backend first.
+- **`import "server-only"`** at the top of every file touching the Admin SDK (Auth only, for the
+  session cookie) or calling the API from the server (`lib/data/*`) — without it the failure
+  mode is a leaked credential, not a build error.
 - **`"use client"` as deep as possible** — a client `<ThemeToggle>` inside a server `<Nav>`.
-- **Confidential data is stripped in `lib/data/`**, never in a component (the RSC payload would
-  still carry it).
+- **Confidential data is stripped by the API** (`ProjectService.to_public`), never in a component
+  (the RSC payload would still carry it).
 - **Fresh reads**: the site renders per request (`revalidate = 0`, ADR 0014). No
   `unstable_cache` / `"use cache"` for content — nothing invalidates it (ADR 0015).
   `React.cache` for per-request dedupe is fine.
@@ -30,8 +32,8 @@ async `params`/`searchParams`/`cookies()`).
 ## Conventions
 
 - Optional fields render conditionally — no empty headings, no placeholders (ADR 0008).
-- Public queries filter `visibility == "public"` and sort by `order`; `unlisted` is reachable by
-  URL (with `noindex`) but never listed or in the sitemap; drafts 404.
+- Public reads return `visibility == "public"` sorted by `order` (the API's `list_public`);
+  `unlisted` is reachable by URL (with `noindex`) but never listed or in the sitemap; drafts 404.
 - Admin saves send a real merge patch built with `admin/lib/merge-patch.ts`'s `toMergePatch`.
 - Admin forms render from the generated schemas (`<SchemaForm>`); a new schema field should need
   no form code.
@@ -45,10 +47,10 @@ The site and the admin are separate surfaces — separate root layouts, styleshe
 | Used by | Goes in |
 |---|---|
 | the public site only | `src/site/` (`components/`, `lib/`), styles in `site/site.css`, fonts in `site/fonts.ts` |
-| the admin only | `src/admin/` (`components/`, `api-client/`, `auth/`, `data/`, `lib/`), styles in `admin/admin.css`, fonts in `admin/fonts.ts` |
+| the admin only | `src/admin/` (`components/`, `api-client/`, `auth/`, `lib/`), styles in `admin/admin.css`, fonts in `admin/fonts.ts` |
 | a URL (page, route handler) | `src/app/` — Next only serves what's there. Under `(site)/` or `(admin)/` by owner; keep files thin and import the logic from the surface folder |
 | both, UI | `src/shared/` (components, `styles/base.css`) |
-| both, non-UI | `src/lib/` (`data/`, `firebase/`, `utils`, `site`) |
+| both, non-UI | `src/lib/` (`data/` page reads via the API, `backend.ts` the API's URL scheme, `firebase/` Auth, `utils`, `site`) |
 
 - Imports point one way: `site`/`admin` → `shared`/`lib`/`generated`; `shared` and `lib` never
   import a surface; the admin may import `site/components` (the editor previews with them). ESLint
@@ -58,16 +60,17 @@ The site and the admin are separate surfaces — separate root layouts, styleshe
 - A token change for one surface goes in that surface's stylesheet; `shared/styles/base.css` is
   for what both genuinely share.
 - Crossing between `/admin` and the site is a full page load — use `<a>`, not `<Link>`.
-- **Two different "APIs":** `app/(admin)/api/` holds Next.js *route handlers* (served by the
-  Next server itself — the session cookie and media-usage check). `admin/api-client/` is the
-  browser-side client for the *Python* API. Never add a Next route handler that writes content;
-  writes go to Python (ADR 0007).
+- **Two different "APIs":** `app/(admin)/api/` holds the one Next.js *route handler* (served by
+  the Next server itself — the session cookie, which only this server can set).
+  `admin/api-client/` is the browser-side client for the *Python* API. Never add a Next route
+  handler that reads or writes data; that's the Python API's job (ADR 0022).
 - `(site)` and `(admin)` are route groups — the parentheses keep the folder name out of the URL.
   That's why the admin is `(admin)/admin/…`: the group owns the layout, the inner `admin`
   folder is the `/admin` URL segment.
 - `next/image` with correct `sizes`; design tokens only, no hard-coded hex.
-- API calls go to `/api/v1/<domain>/<sub>/…` (same origin); `next.config.ts` rewrites them to the
-  function, from the generated `api-routes.ts`.
+- API calls go to `${API_PREFIX}/<domain>/<sub>/…` (same origin); `next.config.ts` rewrites them to
+  the function. Route names come from the generated `api-routes.ts`; the prefix, function naming
+  and base URL from `lib/backend.ts` — never write `/api/v1` or a function URL by hand.
 
 ## Design work
 

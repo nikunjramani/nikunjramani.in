@@ -33,10 +33,10 @@ locals {
     "roles/firebaseauth.admin", # identity/admins grants and revokes the admin custom claim
   ]
 
-  # Firestore stays read-only. App Hosting uses this identity for builds too.
+  # No Firestore role at all: the site reads and writes data only through the Python API
+  # (ADR 0022). App Hosting uses this identity for builds too.
   apphosting_roles = [
     "roles/firebaseapphosting.computeRunner", # required build/artifact/source access
-    "roles/datastore.viewer",
     "roles/secretmanager.secretAccessor",
     "roles/logging.logWriter",
   ]
@@ -96,11 +96,11 @@ resource "google_project_iam_member" "functions" {
   member   = "serviceAccount:${google_service_account.functions.email}"
 }
 
-# ── App Hosting (Next.js SSR) — read-only ───────────────────────────
+# ── App Hosting (Next.js SSR) — no data access ──────────────────────
 resource "google_service_account" "apphosting" {
   project      = var.project_id
   account_id   = "apphosting-runtime"
-  display_name = "App Hosting runtime (read-only)"
+  display_name = "App Hosting runtime (no data access)"
 }
 
 # The App Hosting CLI insists its default compute account exists and creates it on deploy if

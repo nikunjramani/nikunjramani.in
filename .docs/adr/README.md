@@ -16,7 +16,7 @@ reader would reasonably ask "why on earth is it like this?", belongs here.
 | [0002](./0002-firebase-functions-instead-of-cloud-run.md) | Firebase Functions instead of standalone Cloud Run | ✅ Accepted | 2026-09-06 |
 | [0003](./0003-fastapi-in-a-single-function.md) | FastAPI inside a single HTTP function | 🔄 Superseded by 0011 | 2026-09-06 |
 | [0004](./0004-python-313.md) | Python 3.13 as the runtime | ✅ Accepted | 2026-09-06 |
-| [0005](./0005-reads-bypass-python.md) | Reads bypass Python entirely | ✅ Accepted — caching consequence superseded by 0014 | 2026-09-06 |
+| [0005](./0005-reads-bypass-python.md) | Reads bypass Python entirely | 🔄 Superseded by 0022 (caching consequence by 0014) | 2026-09-06 |
 | [0006](./0006-json-schema-source-of-truth.md) | JSON Schema as the single source of truth | ✅ Accepted | 2026-09-06 |
 | [0007](./0007-deny-all-client-writes.md) | All client writes denied, including admin | ✅ Accepted | 2026-09-06 |
 | [0008](./0008-projects-drop-start-end-dates.md) | Projects drop start/end dates | ✅ Accepted | 2026-09-06 |
@@ -33,6 +33,7 @@ reader would reasonably ask "why on earth is it like this?", belongs here.
 | [0019](./0019-ci-identities-gated-by-github-environment.md) | CI identities are gated by GitHub environment, and CI applies Terraform | ✅ Accepted | 2026-10-15 |
 | [0020](./0020-app-check-replaces-turnstile.md) | Firebase App Check replaces Cloudflare Turnstile on the contact form | ✅ Accepted | 2026-10-16 |
 | [0021](./0021-site-and-admin-are-separate-surfaces.md) | The public site and the admin are separate surfaces with their own root layouts | ✅ Accepted | 2026-10-16 |
+| [0022](./0022-backend-owns-all-data-access.md) | The Python API owns every read and write; the frontend never touches Firestore | ✅ Accepted | 2026-10-20 |
 
 **Status:** 🟡 Proposed · ✅ Accepted · ⛔ Rejected · 🔄 Superseded · ⚠️ Deprecated
 

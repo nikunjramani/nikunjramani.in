@@ -8,7 +8,7 @@
  * authorise anything. The security is in the Firestore rules, not in hiding this config.
  *
  * Note there is no Firestore client here on purpose: clients never read or write Firestore
- * directly. Reads happen server-side (ADR 0005), writes go through the API (ADR 0007).
+ * directly. Every read and write goes through the Python API (ADR 0022).
  */
 import { getApp, getApps, initializeApp, type FirebaseApp } from "firebase/app";
 import { connectAuthEmulator, getAuth, type Auth } from "firebase/auth";

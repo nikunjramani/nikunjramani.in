@@ -2,7 +2,7 @@
 
 /** The backend's media domain: `upload` issues signed URLs, `library` lists, edits and
  * deletes assets (which the processing trigger creates — never a POST body). */
-import { ApiError, apiFetch } from "@/admin/api-client/client";
+import { apiFetch } from "@/admin/api-client/client";
 import type { RecordOut } from "@/admin/api-client/content";
 import type { MediaAsset } from "@/generated/types";
 import { API_ROUTES } from "@/generated/api-routes";
@@ -40,18 +40,19 @@ export function updateMediaMetadata(
   });
 }
 
-/** `collection/id` of every content document still pointing at this asset. A read across
- * the content collections, so Next.js answers it, not the media domain (ADR 0017) — a
- * same-origin route authorised by the admin session cookie, not the Python API. */
+/** `collection/id` of every content document still pointing at this asset. */
 export async function getMediaUsage(id: string): Promise<string[]> {
-  const res = await fetch(`/api/admin/media/${encodeURIComponent(id)}/usage`);
-  if (!res.ok) throw new ApiError(res.status, "Couldn't check where this image is used.");
-  const { references } = (await res.json()) as { references: string[] };
+  const { references } = await apiFetch<{ references: string[] }>(
+    `${LIBRARY}/${encodeURIComponent(id)}/usage`,
+  );
   return references;
 }
 
-export function deleteMedia(id: string): Promise<void> {
-  return apiFetch(`${LIBRARY}/${encodeURIComponent(id)}`, { method: "DELETE" });
+/** The API refuses (409) to delete an asset that content still uses unless `force` — set
+ * it only after the admin has seen getMediaUsage's list and confirmed. */
+export function deleteMedia(id: string, { force = false } = {}): Promise<void> {
+  const query = force ? "?force=true" : "";
+  return apiFetch(`${LIBRARY}/${encodeURIComponent(id)}${query}`, { method: "DELETE" });
 }
 
 /** The signed URL itself is a plain Storage PUT, not a Python API call — no Bearer token,

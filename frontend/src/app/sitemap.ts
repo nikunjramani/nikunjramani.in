@@ -6,8 +6,8 @@ import type { MetadataRoute } from "next";
 import { getAllProjects } from "@/lib/data/projects";
 import { SITE_URL } from "@/lib/site";
 
-// Reads Firestore directly, same as every other page — sitemap generation is a read, and
-// reads never go through Python. See ADR 0005.
+// Built from the same public project list as every other page (lib/data → the API's
+// /public read, ADR 0022), so unlisted and draft projects never appear.
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const projects = await getAllProjects();
 

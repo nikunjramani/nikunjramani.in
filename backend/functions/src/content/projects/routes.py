@@ -1,7 +1,8 @@
-"""content/projects — admin HTTP routes for the `projects` collection.
+"""content/projects — HTTP routes for the `projects` collection: admin
+CRUD plus the public site's read.
 
-HTTP only: authorise, delegate to the service, serialise. /reorder is declared before
-/{doc_id} so it isn't captured as an id."""
+HTTP only: authorise, delegate to the service, serialise. /public and /reorder are
+declared before /{doc_id} so neither is captured as an id."""
 
 from __future__ import annotations
 
@@ -22,6 +23,19 @@ def get_projects_service() -> ProjectService:
 
 
 Service = Annotated[ProjectService, Depends(get_projects_service)]
+
+
+@router.get("/public", response_model=list[ProjectOut], response_model_exclude_none=True)
+def list_public_projects(service: Service) -> list[ProjectOut]:
+    """The public site's read — no auth: `public` documents only, in order (ADR 0022)."""
+    return [ProjectOut.of(r) for r in service.list_public()]
+
+
+@router.get("/public/{doc_id}", response_model=ProjectOut, response_model_exclude_none=True)
+def read_public_projects(doc_id: str, service: Service) -> ProjectOut:
+    """A project page — no auth. `unlisted` is served here but never listed; anything else
+    is a 404, same as an id that doesn't exist."""
+    return ProjectOut.of(service.get_public(doc_id))
 
 
 @router.get("/", response_model=list[ProjectOut])

@@ -1,4 +1,4 @@
-"""content/settings — entry point: deploys api_content_settings (admin)."""
+"""content/settings — entry point: deploys api_content_settings (admin + public reads)."""
 
 from kernel.http import make_function
 from src.content.settings.routes import router
