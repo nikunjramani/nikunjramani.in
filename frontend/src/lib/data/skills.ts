@@ -2,17 +2,16 @@ import "server-only";
 
 import { cache } from "react";
 
+import { API_ROUTES } from "@/generated/api-routes";
 import type { Skill } from "@/generated/types";
 
-import { listPublished } from "./shared";
-import type { WithId } from "./convert";
+import { listPublic, type WithId } from "./api";
 
 export const getSkills = cache(
-  (): Promise<WithId<Skill>[]> => listPublished<Skill>("skills"),
+  (): Promise<WithId<Skill>[]> => listPublic<Skill>(API_ROUTES.content.skills),
 );
 
-/** Skills are a small, admin-panel-loads-it-whole collection (BaseRepository's own
- * description of list_all) — filtering in memory rather than a second Firestore query. */
+/** Skills are a small collection — filtered here rather than a second API call. */
 export async function getFeaturedSkills(): Promise<WithId<Skill>[]> {
   const skills = await getSkills();
   return skills.filter((skill) => skill.featured);

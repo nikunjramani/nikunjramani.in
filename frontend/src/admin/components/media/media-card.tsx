@@ -65,7 +65,7 @@ export function MediaCard({
     const ok = await confirm(message);
     if (!ok) return;
     try {
-      await deleteMedia(record.id);
+      await deleteMedia(record.id, { force: references.length > 0 });
       onDelete();
       toast("Image deleted.");
     } catch (err) {

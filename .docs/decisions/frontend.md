@@ -6,7 +6,7 @@ backfilled on 2026-10-16 from the code and its history.
 
 ## Reading content
 
-### FE-01 · Pages read Firestore directly with the Admin SDK
+### ~~FE-01~~ Superseded by [FE-26](#fe-26--pages-read-through-the-python-apis-public-routes) · Pages read Firestore directly with the Admin SDK
 
 - **Where:** [src/lib/data/](../../frontend/src/lib/data/), [src/lib/firebase/admin.ts](../../frontend/src/lib/firebase/admin.ts)
 - **Decision:** Server Components call `lib/data/*`, which query Firestore with the Admin SDK under
@@ -16,11 +16,13 @@ backfilled on 2026-10-16 from the code and its history.
 
 ### FE-02 · `import "server-only"` on every Admin-SDK file
 
-- **Where:** `lib/firebase/admin.ts`, `lib/data/*`, `admin/auth/server.ts`, the `api/admin/*` route handlers
+- **Where:** `lib/firebase/admin.ts`, `admin/auth/server.ts`, the `api/admin/session` route handler
+  (since FE-26 the Admin SDK is used for Firebase Auth only; `lib/data/*` keeps the guard because
+  it holds the server-side API calls)
 - **Why:** without it, an accidental import from a Client Component ships credentials to the browser
   and nothing fails; with it, that mistake is a build error.
 
-### FE-03 · Confidential client details are stripped in `lib/data`, never in a component
+### ~~FE-03~~ Superseded by [FE-26](#fe-26--pages-read-through-the-python-apis-public-routes) · Confidential client details are stripped in `lib/data`, never in a component
 
 - **Where:** `stripConfidentialClient` in [lib/data/projects.ts](../../frontend/src/lib/data/projects.ts)
 - **Why:** React serialises props into the RSC payload whether or not a component renders them; the
@@ -38,11 +40,11 @@ backfilled on 2026-10-16 from the code and its history.
 
 ### FE-05 · Drafts 404 by URL; `unlisted` is reachable but never listed
 
-- **Where:** `getProjectBySlug` (`REACHABLE_BY_URL`), `getAllProjects`
+- **Where:** `reachable_by_url` in [ProjectService](../../backend/functions/src/content/projects/service.py) and `CrudService.list_public` (moved from `lib/data` by FE-26)
 - **Why:** guessing a draft's slug must not preview it; an unlisted project is shareable by link
   without appearing in lists or the sitemap.
 
-### FE-06 · Timestamps convert in one place; the id rides beside the data
+### ~~FE-06~~ Superseded by [FE-26](#fe-26--pages-read-through-the-python-apis-public-routes) · Timestamps convert in one place; the id rides beside the data
 
 - **Where:** [lib/data/convert.ts](../../frontend/src/lib/data/convert.ts) — `fromSnapshot`, `WithId<T>`
 - **Why:** mirrors the backend (BE-12, BE-13): generated types expect ISO strings and have no `id`.
@@ -209,7 +211,7 @@ backfilled on 2026-10-16 from the code and its history.
 
 ### FE-25 · Admin route handlers live in `(admin)`; "API" means one thing per folder
 
-- **Where:** [app/(admin)/api/admin/](../../frontend/src/app/%28admin%29/api/admin/), [admin/api-client/](../../frontend/src/admin/api-client/), [admin/auth/](../../frontend/src/admin/auth/), [admin/data/media-usage.ts](../../frontend/src/admin/data/media-usage.ts)
+- **Where:** [app/(admin)/api/admin/](../../frontend/src/app/%28admin%29/api/admin/), [admin/api-client/](../../frontend/src/admin/api-client/), [admin/auth/](../../frontend/src/admin/auth/) (the media-usage route and `admin/data/` were removed by FE-26)
 - **Decision:** the two Next.js route handlers moved from `app/api/admin/` into the `(admin)` route
   group (URLs unchanged: `/api/admin/session`, `/api/admin/media/[id]/usage`). The browser-side
   Python API client is `admin/api-client/`, not `admin/api/`. Auth is one folder: `cookie.ts`
@@ -224,3 +226,33 @@ backfilled on 2026-10-16 from the code and its history.
 - **Related:** ADR 0021 · FE-08 · FE-09 · FE-22
 - **Since:** 2026-10-16
 
+
+### FE-26 · Pages read through the Python API's `/public` routes
+
+- **Where:** [lib/data/api.ts](../../frontend/src/lib/data/api.ts) (`listPublic`, `getPublic`, `WithId`), [lib/data/](../../frontend/src/lib/data/)
+- **Decision:** Server Components still call `lib/data/*` with the same function names, but each
+  one now calls a content function's unauthenticated `GET /public` route, server-to-server and
+  straight to the function URL, `cache: "no-store"`. The frontend has no Firestore SDK: ESLint
+  forbids importing one, and the App Hosting identity has no Firestore role. Visibility,
+  confidential-client stripping and timestamp conversion all happen in the API (BE-40). The media
+  usage check moved to the API too (BE-39), so `app/(admin)/api/admin/media/` and `admin/data/`
+  are gone; the session route is the only Next.js route handler left.
+- **Why:** the owner wants one place that knows the database, so changing it touches only the
+  backend; and rules that protect data must hold for every caller, not just the UI.
+- **Outcome:** pages and components didn't change — only what `lib/data` does underneath. Cost: a
+  page view after an idle period waits for the content functions' cold start.
+- **Related:** ADR 0022 · supersedes FE-01, FE-03, FE-06 · BE-39 · BE-40
+- **Since:** 2026-10-20
+
+### FE-27 · The API's URL scheme is written once, in `lib/backend.ts`
+
+- **Where:** [lib/backend.ts](../../frontend/src/lib/backend.ts) — `API_PREFIX`, `functionName`, `functionUrl`
+- **Decision:** the `/api/v1` prefix, the `api_<domain>_<sub>` naming and the functions base URL
+  live in one module, used by `next.config.ts` (rewrites), `admin/api-client/client.ts`,
+  `site/lib/contact.ts` and `lib/data/api.ts`. Route names still come from
+  `architecture/api-routes.json`.
+- **Why:** the prefix and the function-name rule were each repeated in three files, so changing
+  the URL scheme meant hunting for every copy.
+- **Outcome:** a URL-scheme change is one edit. No imports, so `next.config.ts` can load it.
+- **Related:** FE-07
+- **Since:** 2026-10-20

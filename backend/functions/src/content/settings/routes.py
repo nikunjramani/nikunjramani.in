@@ -1,4 +1,5 @@
-"""content/settings — admin HTTP routes. One fixed document, so no id in any path and no
+"""content/settings — HTTP routes: admin read/write plus the public site's read.
+One fixed document, so no id in any path and no
 list/create/delete/reorder. HTTP only: authorise, delegate, serialise."""
 
 from __future__ import annotations
@@ -20,6 +21,12 @@ def get_settings_service() -> SiteConfigService:
 
 
 Service = Annotated[SiteConfigService, Depends(get_settings_service)]
+
+
+@router.get("/public", response_model=SiteConfigOut, response_model_exclude_none=True)
+def read_public_settings(service: Service) -> SiteConfigOut:
+    """The public site's read — no auth. 404 unless the document is `public` (ADR 0022)."""
+    return SiteConfigOut.of(service.read_public())
 
 
 @router.get("/", response_model=SiteConfigOut)

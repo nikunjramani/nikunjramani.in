@@ -3,7 +3,7 @@ import Link from "next/link";
 
 import { chipPrimary } from "@/site/components/styles";
 import type { Project } from "@/generated/types";
-import type { WithId } from "@/lib/data/convert";
+import type { WithId } from "@/lib/data/api";
 import { blurhashToDataURL } from "@/lib/blurhash";
 
 /** A project on the index: a cover plate, then the title and its key facts. */

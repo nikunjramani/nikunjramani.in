@@ -1,4 +1,4 @@
-"""content/skills — entry point: deploys api_content_skills (admin)."""
+"""content/skills — entry point: deploys api_content_skills (admin + public reads)."""
 
 from kernel.http import make_function
 from src.content.skills.routes import router

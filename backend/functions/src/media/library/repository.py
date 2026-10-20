@@ -1,5 +1,6 @@
-"""media_assets — what the library needs: list, read, update alt text, delete.
-(media/processing has its own repository for creating new assets.)"""
+"""media_assets — what the library needs: list, read, update alt text, delete — plus the
+one cross-collection read the library owns: which content documents still mention an
+asset. (media/processing has its own repository for creating new assets.)"""
 
 from __future__ import annotations
 
@@ -13,9 +14,24 @@ from shared.generated import MediaAsset
 
 COLLECTION = "media_assets"
 
+# Every content collection an asset's URL can appear in. Scanned by name, not by importing
+# the content domain (ADR 0017); tests/test_domain_registry.py keeps it equal to the
+# schemas' publicRead collections.
+CONTENT_COLLECTIONS: tuple[str, ...] = (
+    "profile",
+    "projects",
+    "skills",
+    "experience",
+    "education",
+    "certifications",
+    "posts",
+    "site_config",
+)
+
 
 class LibraryRepository:
     collection = COLLECTION
+    content_collections = CONTENT_COLLECTIONS
 
     def __init__(self, db: Client | None = None) -> None:
         self._db = db if db is not None else get_db()
@@ -50,6 +66,17 @@ class LibraryRepository:
         self.require(asset_id)
         self._ref.document(asset_id).delete()
 
+    def find_references(self, urls: set[str]) -> list[str]:
+        """`collection/id` of every content document — drafts included — that mentions any
+        of `urls` anywhere in its data. A full scan: fine at tens of documents, and it can't
+        drift the way a maintained reference count would."""
+        return [
+            f"{collection}/{snap.id}"
+            for collection in self.content_collections
+            for snap in self._db.collection(collection).stream()
+            if _mentions(snap.to_dict() or {}, urls)
+        ]
+
     @staticmethod
     def _payload(asset: MediaAsset) -> dict[str, object]:
         return to_firestore(asset.model_dump(mode="json", exclude_none=True))
@@ -57,3 +84,13 @@ class LibraryRepository:
     @staticmethod
     def _record(asset_id: str, raw: dict[str, object]) -> Record[MediaAsset]:
         return Record(id=asset_id, data=MediaAsset.model_validate(from_firestore(raw)))
+
+
+def _mentions(value: object, urls: set[str]) -> bool:
+    if isinstance(value, str):
+        return value in urls
+    if isinstance(value, list):
+        return any(_mentions(v, urls) for v in value)
+    if isinstance(value, dict):
+        return any(_mentions(v, urls) for v in value.values())
+    return False

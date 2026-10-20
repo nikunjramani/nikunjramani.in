@@ -1,8 +1,8 @@
 # Backend — domains, subdomains and the kernel
 
-The Python API behind nikunjramani.in: every **write** the site makes, plus a few triggers
-and jobs. Reads never come here; Next.js reads Firestore directly
-([ADR 0005](../../.docs/adr/0005-reads-bypass-python.md)).
+The Python API behind nikunjramani.in: the only code that reads or writes Firestore — the
+public site's reads (each content subdomain's `GET /public`), every admin read and write, plus
+a few triggers and jobs ([ADR 0022](../../.docs/adr/0022-backend-owns-all-data-access.md)).
 
 The code is organised as **main domains**, each made of **subdomains**. A subdomain does one
 job, owns every file for that job, and deploys as its own Cloud Function. Domains and
@@ -109,9 +109,9 @@ What looks like sharing but isn't:
 
 - **Several domains writing `audit_log`.** They all call `kernel.audit.AuditWriter`; `ops/audit`
   reads. The schema is the contract.
-- **Reading another domain's data** is a read, so it belongs in Next.js — e.g. the media
-  library's "where is this image used?" check is
-  `frontend/src/app/(admin)/api/admin/media/[id]/usage/route.ts`.
+- **Scanning another domain's collections by name.** The media library's "where is this image
+  used?" check reads the content collections as opaque documents (`CONTENT_COLLECTIONS` in
+  `src/media/library/repository.py`) and imports no content code.
 - **`ops/backup` reading every collection.** Exporting is its whole job; it treats documents
   as opaque JSON and imports no other domain's code.
 

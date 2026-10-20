@@ -1,6 +1,6 @@
 # 0005 · Reads bypass Python entirely
 
-**Status:** ✅ Accepted · **Date:** 2026-09-06
+**Status:** 🔄 Superseded by [0022](./0022-backend-owns-all-data-access.md) · **Date:** 2026-09-06
 
 ---
 

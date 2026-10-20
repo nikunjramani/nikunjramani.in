@@ -8,14 +8,16 @@ description: Add or modify a page in the Next.js frontend — public site route,
 ## Data access
 
 ```
-page (server)  →  lib/data/*  →  Firebase Admin SDK      ← reads
-page (client)  →  admin/api-client/*   →  Python API              ← writes
+page (server)  →  lib/data/*           →  Python API  GET …/public   ← site reads
+page (client)  →  admin/api-client/*   →  Python API                 ← admin reads + writes
 ```
 
-Reads never go through the Python API. Writes never go straight to Firestore.
-→ [ADR 0005](../../../.docs/adr/0005-reads-bypass-python.md) · [ADR 0007](../../../.docs/adr/0007-deny-all-client-writes.md)
+Only the Python API touches Firestore. The frontend has no Firestore SDK — ESLint fails the
+import. → [ADR 0022](../../../.docs/adr/0022-backend-owns-all-data-access.md) · [ADR 0007](../../../.docs/adr/0007-deny-all-client-writes.md)
 
-`lib/data/` is the **only** place Firestore is queried. Components never import the SDK.
+A public page needing data no `/public` route serves yet: add the route to the content subdomain
+first (`list_public`/`get_public` from `kernel.crud`; `add-api-endpoint` skill), then a reader in
+`lib/data/` using `listPublic`/`getPublic` from `lib/data/api.ts`.
 
 ## Where the files go
 
@@ -89,9 +91,9 @@ look intentional, not broken.
 
 ## Non-negotiables
 
-- **`import "server-only"`** at the top of any file touching the Admin SDK
-- **Strip confidential data server-side** in `lib/data/`. Filtering in a component still ships the
-  value in the RSC payload
+- **`import "server-only"`** at the top of any file touching the Admin SDK or `lib/data/api.ts`
+- **Confidential data is stripped by the API** (`to_public`). Filtering in a component still ships
+  the value in the RSC payload
 - **`next/image` with correct `sizes`**, always. Dimensions are in the schema to prevent layout shift
 - **Design tokens only** — no hard-coded hex values or arbitrary spacing
 - **Fresh reads** — `(site)/` renders per request (`revalidate = 0`, ADR 0014). Don't add

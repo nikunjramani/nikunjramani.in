@@ -6,6 +6,10 @@ first within each section, with the date.
 
 ## Process
 
+- **2026-10-20 · A data rule enforced only in the UI.** "Don't delete an image a page still uses"
+  lived in a Next.js route the admin UI called first; the API's delete never checked it. →
+  Rules that protect data are enforced in the API service, for every caller; the UI only
+  explains them (ADR 0022).
 - **2026-10-15 · Versions pinned from memory.** CI was written with action and package versions
   recalled rather than looked up; a day later "updates" were needed for versions that were already
   old when pinned. → Look up every version live at the moment of pinning (`workflow.md`). This

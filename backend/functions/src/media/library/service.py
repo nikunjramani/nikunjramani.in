@@ -1,13 +1,15 @@
 """The admin media library. Assets are created by the processing trigger, never here.
 
-"Where is this image used?" is deliberately not answered here: it reads other domains'
-collections, so it is a Next.js read (frontend/src/app/api/admin/media/[id]/usage)."""
+"Where is this image used?" is answered here too, and delete enforces it: an asset still
+referenced by a content document is only deleted with `force` — the admin has seen the
+list and confirmed. The check lives in the API, not just the UI (ADR 0022)."""
 
 from __future__ import annotations
 
 import contextlib
 
 from kernel.audit import Action, AuditWriter
+from kernel.errors import ConflictError
 from kernel.records import Record
 from shared.generated import MediaAsset
 from src.media.library.paths import asset_id_of, processed_path, thumbnail_path
@@ -43,8 +45,14 @@ class LibraryService:
         self._record("update", asset_id, claims, before=existing.data, after=record.data)
         return record
 
-    def delete(self, asset_id: str, claims: dict[str, object]) -> None:
+    def usage(self, asset_id: str) -> list[str]:
+        """`collection/id` of every content document still pointing at this asset."""
+        return self._references(self.repo.require(asset_id))
+
+    def delete(self, asset_id: str, claims: dict[str, object], *, force: bool = False) -> None:
         asset = self.repo.require(asset_id)
+        if not force and (references := self._references(asset)):
+            raise ConflictError(f"Still used by {', '.join(references)}.")
         # Best-effort: an already-missing blob must not leave a document pointing at
         # nothing — an orphaned blob costs a few KB, a dangling entry is worse.
         folder_id = asset_id_of(asset.data.path)
@@ -53,6 +61,10 @@ class LibraryService:
                 self._storage.delete(path)
         self.repo.delete(asset_id)
         self._record("delete", asset_id, claims, before=asset.data, after=None)
+
+    def _references(self, asset: Record[MediaAsset]) -> list[str]:
+        urls = {str(u) for u in (asset.data.url, asset.data.thumbnailUrl) if u is not None}
+        return self.repo.find_references(urls)
 
     def _record(
         self,

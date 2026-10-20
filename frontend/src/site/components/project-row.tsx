@@ -2,7 +2,7 @@ import Link from "next/link";
 
 import { chipPrimary } from "@/site/components/styles";
 import type { Project } from "@/generated/types";
-import type { WithId } from "@/lib/data/convert";
+import type { WithId } from "@/lib/data/api";
 
 /** One project as a ruled row — the home page's index of selected work. */
 export function ProjectRow({ project }: { project: WithId<Project> }) {

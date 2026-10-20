@@ -48,3 +48,26 @@ def test_update_metadata_returns_the_updated_record() -> None:
     fake.update_metadata.assert_called_once_with(
         "some-id", alt="A photo", caption=None, claims=ADMIN
     )
+
+
+def test_usage_requires_admin() -> None:
+    assert _client(MagicMock()).get("/some-id/usage").status_code == 401
+
+
+def test_usage_returns_the_references() -> None:
+    fake = MagicMock()
+    fake.usage.return_value = ["projects/stride"]
+    with patch("kernel.security.auth.verify_id_token", return_value=ADMIN):
+        response = _client(fake).get("/some-id/usage", headers={"Authorization": "Bearer x"})
+    assert response.status_code == 200
+    assert response.json() == {"references": ["projects/stride"]}
+
+
+def test_delete_passes_force_through() -> None:
+    fake = MagicMock()
+    with patch("kernel.security.auth.verify_id_token", return_value=ADMIN):
+        client = _client(fake)
+        assert client.delete("/a1", headers={"Authorization": "Bearer x"}).status_code == 204
+        fake.delete.assert_called_with("a1", ADMIN, force=False)
+        client.delete("/a1?force=true", headers={"Authorization": "Bearer x"})
+        fake.delete.assert_called_with("a1", ADMIN, force=True)

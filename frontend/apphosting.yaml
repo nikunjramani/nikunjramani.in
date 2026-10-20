@@ -39,8 +39,8 @@ env:
     availability: [BUILD, RUNTIME]
 
   # FIREBASE_SERVICE_ACCOUNT is deliberately absent — App Hosting's runtime service
-  # account (apphosting-runtime@..., read-only) provides ambient credentials; see
-  # frontend/src/lib/firebase/admin.ts.
+  # account (apphosting-runtime@..., no Firestore access; ADR 0022) provides ambient
+  # credentials for the admin session cookie; see frontend/src/lib/firebase/admin.ts.
 
   # reCAPTCHA Enterprise key behind App Check on the contact form (ADR 0020) — public by
   # design, restricted to this site's domains. `terraform output recaptcha_site_key`.

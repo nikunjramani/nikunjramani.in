@@ -4,6 +4,9 @@ Model-agnostic: the audit stamps, publish/unpublish transitions, RFC 7386 merge-
 reorder rules are identical for every such collection, so they live once here. A
 subdomain's own service subclasses this and adds only what is specific to it
 (ProjectService.duplicate). Routes stay in each subdomain (ADR 0017).
+
+The public site reads through here too (ADR 0022): list_public/get_public apply the
+visibility rule and drop the server-owned `audit` block before anything leaves the API.
 """
 
 from __future__ import annotations
@@ -15,7 +18,7 @@ from pydantic import ValidationError as PydanticValidationError
 
 from kernel.audit import Action, AuditWriter
 from kernel.crud.repository import BaseRepository
-from kernel.errors import ConflictError, ValidationError
+from kernel.errors import ConflictError, NotFoundError, ValidationError
 from kernel.records import Record
 from kernel.security import actor_of
 from kernel.timestamps import now_iso
@@ -36,6 +39,9 @@ def deep_merge(target: dict[str, Any], patch: dict[str, Any]) -> dict[str, Any]:
 
 
 class CrudService[T: BaseModel]:
+    #: Visibility values get_public serves. A subclass widens it (projects add `unlisted`).
+    reachable_by_url: frozenset[str] = frozenset({"public"})
+
     def __init__(
         self,
         repo: BaseRepository[T],
@@ -53,6 +59,27 @@ class CrudService[T: BaseModel]:
 
     def get(self, doc_id: str) -> Record[T]:
         return self.repo.require(doc_id)
+
+    # ── public reads (the site, no auth) ─────────────────────────────
+
+    def list_public(self) -> list[Record[T]]:
+        """Every `public` document in `order`. `unlisted` and `draft` are never listed."""
+        return [self.to_public(r) for r in self.repo.list_all(visibility="public")]
+
+    def get_public(self, doc_id: str) -> Record[T]:
+        """One document, 404 unless its visibility is reachable by URL — a visitor guessing
+        a draft's id gets the same answer as for an id that doesn't exist."""
+        record = self.repo.get(doc_id)
+        if record is None or _visibility(record) not in self.reachable_by_url:
+            raise NotFoundError(f"{self.repo.model.__name__} '{doc_id}' not found.")
+        return self.to_public(record)
+
+    def to_public(self, record: Record[T]) -> Record[T]:
+        """What a visitor may see of a record. Drops `audit` (it names the admin's uid);
+        a subclass strips more (ProjectService: a confidential client's name and logo)."""
+        if not self._has_audit_field:
+            return record
+        return Record(id=record.id, data=record.data.model_copy(update={"audit": None}))
 
     # ── writes ───────────────────────────────────────────────────────
 
@@ -168,6 +195,10 @@ class CrudService[T: BaseModel]:
             before=before,
             after=after,
         )
+
+
+def _visibility(record: Record[Any]) -> object:
+    return record.data.model_dump(mode="json").get("visibility")
 
 
 def _transition(before_visibility: object, after_visibility: object) -> Action:

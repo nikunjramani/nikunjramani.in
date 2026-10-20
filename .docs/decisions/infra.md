@@ -56,7 +56,7 @@ Flow: [CODE_FLOW §11](../CODE_FLOW.md#11--infrastructure). Entries IN-01…IN-1
 ### IN-07 · Least-privilege identities; CI identities bound to GitHub environments
 
 - **Where:** [modules/iam](../../infra/terraform/modules/iam/main.tf)
-- **Decision:** `functions-runtime` and `apphosting-runtime` (Firestore *viewer*) at runtime; for CI,
+- **Decision:** `functions-runtime` and `apphosting-runtime` (no Firestore role since IN-15) at runtime; for CI,
   `github-plan` (read), `github-deploy` (only jobs in the `staging`/`production` environment) and
   `github-terraform` (only `staging-infra`/`production-infra`), via WIF `attribute.environment`.
 - **Why:** a PR branch can't enter a main-only environment, so it can't get a prod token at all;
@@ -111,3 +111,15 @@ Flow: [CODE_FLOW §11](../CODE_FLOW.md#11--infrastructure). Entries IN-01…IN-1
 
 - **Where:** `google_firestore_field` `contact_ttl`, `rate_limit_ttl` in [modules/firestore](../../infra/terraform/modules/firestore/main.tf)
 - **Why:** both collections grow forever otherwise; nothing depends on the deletion timing for correctness.
+
+### IN-15 · The App Hosting identity has no Firestore role
+
+- **Where:** `apphosting_roles` in [modules/iam](../../infra/terraform/modules/iam/main.tf)
+- **Decision:** `roles/datastore.viewer` removed from `apphosting-runtime`. The Next.js server
+  reaches data only through the Python API (ADR 0022), so it needs none.
+- **Why:** an ESLint rule stops a Firestore import in review; the missing role stops it in
+  production — a frontend bug can't read drafts, messages or the audit log.
+- **Outcome:** deploy order matters once: `deploy.yml` deploys the functions and the frontend
+  before Terraform applies, so the new frontend is live before the role goes.
+- **Related:** ADR 0022 · IN-07 · FE-26
+- **Since:** 2026-10-20

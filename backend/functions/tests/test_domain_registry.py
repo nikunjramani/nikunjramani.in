@@ -14,6 +14,7 @@ import tomllib
 from pathlib import Path
 
 from main import FUNCTIONS
+from src.media.library.repository import CONTENT_COLLECTIONS
 from src.ops.backup.service import BACKED_UP_COLLECTIONS
 
 BACKEND = Path(__file__).resolve().parents[1]
@@ -87,3 +88,13 @@ def test_backup_covers_every_collection_the_schemas_declare() -> None:
         if collection:
             declared.add(collection)
     assert declared <= set(BACKED_UP_COLLECTIONS)
+
+
+def test_media_usage_scans_every_content_collection() -> None:
+    """A content collection missing here would let an image it uses be deleted unwarned."""
+    public = set()
+    for path in (REPO / "architecture" / "schemas").glob("*.schema.json"):
+        meta = json.loads(_read(path)).get("x-firestore", {})
+        if meta.get("publicRead") is True:
+            public.add(meta["collection"])
+    assert public == set(CONTENT_COLLECTIONS)

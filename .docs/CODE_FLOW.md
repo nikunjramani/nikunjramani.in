@@ -25,7 +25,7 @@ that alters a flow (`.claude/rules/workflow.md`).
                          │  (two of them: nikunjramani-in = prod, nikunjramani-in-staging = PR previews)  │
  Browser                 │                                                                                 │
  ───────                 │   App Hosting (asia-southeast1)          Cloud Functions 2nd gen (asia-south1) │
- visitor ──GET page────────▶ Next.js 16 server ──Admin SDK read──▶ Firestore ◀──writes── api_<domain>_<sub>│
+ visitor ──GET page────────▶ Next.js 16 server ──GET …/public──────────▶ api_<domain>_<sub> ──▶ Firestore │
  admin  ──/api/v1/…────────▶   (rewrites /api/v1/<d>/<s>/* ───────────────────────────▶ FastAPI per fn    │
          ◀──Google sign-in──▶ Firebase Auth                                                │   │          │
          ──PUT signed URL────────────────────────────▶ GCS media bucket ──finalize──▶ on_media_uploaded   │
@@ -37,8 +37,9 @@ that alters a flow (`.claude/rules/workflow.md`).
 
 Three rules shape every flow below:
 
-- **Reads never touch Python.** Pages read Firestore directly from the Next.js server
-  ([ADR 0005](./adr/0005-reads-bypass-python.md)).
+- **Only Python touches the database.** Pages read through each content function's public
+  `GET /public` routes; the frontend has no Firestore SDK and no Firestore role
+  ([ADR 0022](./adr/0022-backend-owns-all-data-access.md)).
 - **Clients never write Firestore** — not even the admin. Every write is a Python API call
   ([ADR 0007](./adr/0007-deny-all-client-writes.md)).
 - **One backend subdomain = one deployed function**, isolated from every other
@@ -56,12 +57,13 @@ Three rules shape every flow below:
 | [frontend/src/app/(site)/](../frontend/src/app/%28site%29/) | public pages (Server Components); its `layout.tsx` is the site's **root** layout |
 | [frontend/src/app/(admin)/](../frontend/src/app/%28admin%29/) | admin panel (`admin/login/`, `admin/(protected)/…`); its own root layout ([ADR 0021](./adr/0021-site-and-admin-are-separate-surfaces.md)) |
 | [frontend/src/app/global-not-found.tsx](../frontend/src/app/global-not-found.tsx) | 404 for a URL matching neither surface |
-| [frontend/src/app/(admin)/api/admin/](../frontend/src/app/%28admin%29/api/admin/) | the admin's two **Next.js** route handlers (served at `/api/admin/…`): session cookie, media usage. Not the Python API |
+| [frontend/src/app/(admin)/api/admin/](../frontend/src/app/%28admin%29/api/admin/) | the admin's one **Next.js** route handler (`/api/admin/session`: the session cookie). Not the Python API |
 | [frontend/src/site/](../frontend/src/site/) | public-only code: `components/` (incl. `spec.tsx`, the layout primitives), `lib/` (contact form, App Check), `site.css`, `fonts.ts` — design in [DESIGN.md](./DESIGN.md) |
-| [frontend/src/admin/](../frontend/src/admin/) | admin-only code: `components/`, `api-client/` (every Python API **call**), `auth/` (`cookie.ts` · `server.ts` verify · `client.ts` sign-in exchange), `data/` (admin-only reads), `lib/`, `admin.css`, `fonts.ts` |
+| [frontend/src/admin/](../frontend/src/admin/) | admin-only code: `components/`, `api-client/` (every Python API **call**), `auth/` (`cookie.ts` · `server.ts` verify · `client.ts` sign-in exchange), `lib/`, `admin.css`, `fonts.ts` |
 | [frontend/src/shared/](../frontend/src/shared/) | UI both surfaces use: theme provider, skip link, error view, `styles/base.css` tokens |
-| [frontend/src/lib/data/](../frontend/src/lib/data/) | every Firestore **read** (server-only) |
-| [frontend/src/lib/firebase/](../frontend/src/lib/firebase/) | Admin SDK (server), client SDK (Auth) |
+| [frontend/src/lib/data/](../frontend/src/lib/data/) | every page **read** — calls the Python API's `/public` routes (server-only) |
+| [frontend/src/lib/backend.ts](../frontend/src/lib/backend.ts) | the API's URL scheme: `/api/v1` prefix, function names, base URL |
+| [frontend/src/lib/firebase/](../frontend/src/lib/firebase/) | Admin SDK for Auth only (server), client SDK (Auth, App Check) |
 | [frontend/src/generated/](../frontend/src/generated/) | TS types, Zod, admin form schemas, API routes — generated |
 | [backend/functions/main.py](../backend/functions/main.py) | the one module Firebase loads |
 | [backend/functions/src/\<domain\>/\<sub\>/](../backend/functions/src/) | one job each: `main → routes → schemas → service → repository` |
@@ -89,21 +91,24 @@ frontend/src/app/(site)/projects/[slug]/page.tsx                          │ pe
   ├─ generateMetadata → getProjectBySlug(slug) lib/data/projects.ts      ─┤ called twice
   └─ Page            → getProjectBySlug(slug)                            ─┘
         │
-        ▼ lib/firebase/admin.ts  db()          Admin SDK, ambient credentials (apphosting-runtime SA,
-        │                                      Firestore *viewer* only)
-        ▼ Firestore  projects/acme-rebuild
-        │
-        ▼ lib/data/convert.ts  fromSnapshot()  Timestamp → ISO string; id attached as `id`
-        ▼ lib/data/projects.ts                 visibility must be public|unlisted, else null → 404;
-                                               client.confidential → name + logo deleted HERE
+        ▼ lib/data/api.ts  getPublic()         fetch $FUNCTIONS_BASE_URL/api_content_projects/public/acme-rebuild
+        │                                      (lib/backend.ts functionUrl; cache: no-store; 404 → null → notFound())
+        ▼ api_content_projects  GET /public/{doc_id}           src/content/projects/routes.py (no auth)
+        ▼ ProjectService.get_public()          kernel/crud/service.py: visibility must be public|unlisted,
+        │                                      else 404; to_public() drops `audit`, and
+        │                                      client.confidential → name + logo stripped HERE
+        ▼ ProjectRepository → Firestore  projects/acme-rebuild   Timestamp → ISO string (kernel/timestamps.py)
+        ▼ {id, data} JSON → lib/data/api.ts withId() → the page gets `{...data, id}`
   ▼
 HTML with the real content (SEO: view-source shows it) + JSON-LD (site/components/json-ld.tsx)
 ```
 
-- **Lists** (`/projects`, home) go through `listPublished()` in
-  [lib/data/shared.ts](../frontend/src/lib/data/shared.ts):
-  `where visibility == "public"` (+ optional equality filters) `orderBy order`. Each filter combination
-  needs its composite index, declared in the schema (section 10).
+- **Lists** (`/projects`, home, about) go through `listPublic()` in
+  [lib/data/api.ts](../frontend/src/lib/data/api.ts) → `GET /public` → `CrudService.list_public()`:
+  `where visibility == "public"` `orderBy order`. "Featured" is filtered from that list in
+  `lib/data`, not queried separately.
+- **Cold starts:** a view after an idle period waits for the content functions it calls to start
+  (in parallel). Accepted in ADR 0022; `minInstances` is the lever if it matters.
 - **Filters** on `/projects` live in the URL (`?kind=&tech=&status=`) —
   [site/components/project-filters.tsx](../frontend/src/site/components/project-filters.tsx) is the
   only client piece.
@@ -257,9 +262,10 @@ documents and messages expire through Firestore TTL policies on `expiresAt`.
            its blurhash placeholder (lib/blurhash.ts). public/ is world-readable through a managed
            folder IAM binding; nothing else in the bucket is.
 5 · MANAGE /media/library: list, set alt text/caption (required before an asset can be picked),
-           delete → best-effort delete of all three objects, then the document; audited.
-           "Where is this used?" is a Next.js read, not Python:
-           app/(admin)/api/admin/media/[id]/usage/route.ts → admin/data/media-usage.ts (session-cookie authorised)
+           delete → GET /{id}/usage first (LibraryService.usage scans every content collection,
+           drafts included, for the asset's URLs); the admin confirms; DELETE ?force=true if it
+           was in use — without force the API answers 409. Then best-effort delete of all three
+           objects, then the document; audited.
 ```
 
 `uploadedBy` is read from the object's metadata if present; the admin client doesn't set it today.
@@ -340,8 +346,8 @@ infra/terraform/envs/prod     ─┐  same modules, different tfvars + GitHub en
 infra/terraform/envs/staging  ─┘  state: GCS bucket <project>-tfstate
    modules/project      APIs + monthly billing budget
    modules/iam          runtime SAs (functions-runtime: Firestore user, storage objects, secrets,
-                        Auth admin for the claim, Eventarc receiver; apphosting-runtime: Firestore
-                        viewer, no writes) + CI identities via WIF:
+                        Auth admin for the claim, Eventarc receiver; apphosting-runtime: no
+                        Firestore role at all — ADR 0022) + CI identities via WIF:
                         github-plan (read, PRs) · github-deploy (env: staging|production)
                         · github-terraform (env: staging-infra|production-infra)
    modules/firestore    database + TTL fields (contact_messages, _rate_limits)

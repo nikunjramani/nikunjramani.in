@@ -112,3 +112,36 @@ def test_singleton_get_before_any_write_is_404(db: Client, clean_collection: str
 
     with patch("kernel.security.auth.verify_id_token", return_value=ADMIN):
         assert client.get("/", headers={"Authorization": "Bearer x"}).status_code == 404
+
+
+@pytest.mark.parametrize(
+    ("router", "get_service", "service_cls", "repo_cls", "payload"), SINGLETON_DOMAINS
+)
+def test_singleton_public_read_needs_no_auth_and_hides_drafts(
+    router: APIRouter,
+    get_service: Callable[[], CrudService],  # type: ignore[type-arg]
+    service_cls: type[CrudService],  # type: ignore[type-arg]
+    repo_cls: type[BaseRepository],  # type: ignore[type-arg]
+    payload: dict[str, object],
+    db: Client,
+    clean_collection: str,
+) -> None:
+    class ScratchRepo(repo_cls):  # type: ignore[misc, valid-type]
+        collection = "_test_scratch"
+
+    app = make_app(router, "test")
+    app.dependency_overrides[get_service] = lambda: service_cls(ScratchRepo(db))
+    client = TestClient(app)
+    headers = {"Authorization": "Bearer x"}
+
+    assert client.get("/public").status_code == 404  # nothing saved yet
+
+    with patch("kernel.security.auth.verify_id_token", return_value=ADMIN):
+        assert client.put("/", json=payload, headers=headers).status_code == 200
+    public = client.get("/public")
+    assert public.status_code == 200
+    assert "audit" not in public.json()["data"]
+
+    with patch("kernel.security.auth.verify_id_token", return_value=ADMIN):
+        client.patch("/", json={"visibility": "draft"}, headers=headers)
+    assert client.get("/public").status_code == 404

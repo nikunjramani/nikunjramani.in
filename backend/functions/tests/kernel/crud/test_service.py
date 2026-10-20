@@ -245,3 +245,31 @@ def test_reorder_applies_the_new_order(service: CrudService[Skill]) -> None:
     service.reorder([b.id, a.id], CLAIMS)
     ordered = service.list_records()
     assert [r.data.name for r in ordered] == ["B", "A"]
+
+
+# ── public reads ────────────────────────────────────────────────────
+
+
+def test_list_public_returns_only_public_in_order(service: CrudService[Skill]) -> None:
+    service.create(_skill(name="B", order=1), CLAIMS)
+    service.create(_skill(name="A", order=0), CLAIMS)
+    service.create(_skill(name="Draft", visibility="draft"), CLAIMS)
+    service.create(_skill(name="Hidden", visibility="unlisted"), CLAIMS)
+
+    assert [r.data.name for r in service.list_public()] == ["A", "B"]
+
+
+def test_public_reads_drop_the_audit_block(service: CrudService[Skill]) -> None:
+    created = service.create(_skill(), CLAIMS)
+    assert created.data.audit is not None
+
+    assert all(r.data.audit is None for r in service.list_public())
+    assert service.get_public(created.id).data.audit is None
+
+
+def test_get_public_404s_for_draft_unlisted_and_missing(service: CrudService[Skill]) -> None:
+    draft = service.create(_skill(visibility="draft"), CLAIMS)
+    unlisted = service.create(_skill(visibility="unlisted"), CLAIMS)
+    for doc_id in (draft.id, unlisted.id, "does-not-exist"):
+        with pytest.raises(NotFoundError):
+            service.get_public(doc_id)

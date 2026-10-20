@@ -1,6 +1,7 @@
 "use client";
 
 import { API_ROUTES } from "@/generated/api-routes";
+import { API_PREFIX } from "@/lib/backend";
 
 export interface ContactSubmission {
   name: string;
@@ -19,7 +20,7 @@ export async function submitContact(
   payload: ContactSubmission,
   appCheckToken: string,
 ): Promise<void> {
-  const res = await fetch(`/api/v1/${API_ROUTES.inbox.contact}`, {
+  const res = await fetch(`${API_PREFIX}/${API_ROUTES.inbox.contact}`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

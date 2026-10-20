@@ -858,7 +858,7 @@ export const ADMIN_SCHEMAS = {
       client: {
         type: "object",
         description:
-          "When confidential is true the name and logo are stripped server-side in lib/data/ and never reach the browser. Filtering in a component would still ship them in the RSC payload.",
+          "When confidential is true the name and logo are stripped by the API (ProjectService.to_public) and never reach the site. Filtering in a component would still ship them in the RSC payload.",
         properties: {
           name: { type: "string", maxLength: 100 },
           logoUrl: { type: "string", format: "uri" },

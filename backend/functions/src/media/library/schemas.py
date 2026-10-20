@@ -15,3 +15,9 @@ class MediaAssetOut(RecordOut[MediaAsset]):
 class UpdateMetadataRequest(BaseModel):
     alt: Annotated[str, Field(min_length=1, max_length=200)]
     caption: Annotated[str, Field(max_length=300)] | None = None
+
+
+class UsageOut(BaseModel):
+    """`collection/id` of every content document that still mentions the asset."""
+
+    references: list[str]

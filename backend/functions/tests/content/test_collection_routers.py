@@ -157,3 +157,28 @@ def test_full_crud_round_trip(
         deleted = client.delete(f"/{doc_id}", headers=headers)
         assert deleted.status_code == 204
         assert client.get(f"/{doc_id}", headers=headers).status_code == 404
+
+
+@pytest.mark.parametrize(
+    ("router", "get_service", "service_cls", "repo_cls", "payload"), COLLECTION_DOMAINS
+)
+def test_public_list_needs_no_auth_and_shows_only_public(
+    router: APIRouter,
+    get_service: Callable[[], CrudService],  # type: ignore[type-arg]
+    service_cls: type[CrudService],  # type: ignore[type-arg]
+    repo_cls: type[BaseRepository],  # type: ignore[type-arg]
+    payload: dict[str, object],
+    db: Client,
+    clean_collection: str,
+) -> None:
+    client = _client(router, get_service, service_cls, repo_cls, db)
+    headers = {"Authorization": "Bearer x"}
+
+    with patch("kernel.security.auth.verify_id_token", return_value=ADMIN):
+        client.post("/", json=payload, headers=headers)
+        client.post("/", json={**payload, "visibility": "draft"}, headers=headers)
+
+    listed = client.get("/public")
+    assert listed.status_code == 200
+    assert [r["data"]["visibility"] for r in listed.json()] == ["public"]
+    assert "audit" not in listed.json()[0]["data"]

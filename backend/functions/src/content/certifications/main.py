@@ -1,4 +1,5 @@
-"""content/certifications — entry point: deploys api_content_certifications (admin)."""
+"""content/certifications — entry point: deploys api_content_certifications
+(admin + public reads)."""
 
 from kernel.http import make_function
 from src.content.certifications.routes import router

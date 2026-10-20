@@ -12,8 +12,10 @@ on the site itself, with a Python API owning every write.
 
 Three principles drive every decision below:
 
-1. **Reads never touch Python.** Next.js Server Components read Firestore directly with the Admin
-   SDK and cache at the CDN. A cold-starting function can never slow down a page load.
+1. **Only the Python API touches the database.** Next.js Server Components read through each
+   content function's public `GET /public` route; admin reads and every write go through the same
+   API. One codebase knows the database (ADR 0022, which superseded the original
+   "reads never touch Python" principle, ADR 0005).
 2. **One source of truth for every field.** JSON Schemas in `architecture/` generate the Pydantic
    models, TypeScript types, Zod validators and admin form fields. Nothing is defined twice.
 3. **Content is data, not code.** Adding a project is a form submission, never a deploy.
