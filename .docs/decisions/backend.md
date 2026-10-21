@@ -393,7 +393,9 @@ Entries BE-01…BE-38 were backfilled on 2026-10-16 from the code and its histor
   unsigned call through for local replays; a token that is sent is always verified.
 - **Why:** the service is public at the Cloud Run layer (admin routes authenticate in-process), so
   Cloud Run IAM can't protect a path. `SERVICE_URL` is a list because Cloud Run serves one
-  service at more than one URL and Eventarc's audience choice isn't documented.
+  service at more than one URL: Cloud Scheduler signs for the deterministic URL we give it, and
+  Eventarc — observed on staging, 2026-10-21 — signs for the service's `status.url`, the older
+  hashed `*-el.a.run.app` one.
 - **Outcome:** the backup job and the event handlers can't be called by anyone else. Cost: the
   protection is our code — tested once like `require_admin` (`tests/kernel/test_events.py`).
 - **Related:** ADR 0023 · BE-16

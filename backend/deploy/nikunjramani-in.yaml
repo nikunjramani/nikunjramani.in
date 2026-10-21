@@ -3,9 +3,10 @@
 # CONTACT_EMAIL_TO) come from Secret Manager, bound by the same target.
 GOOGLE_CLOUD_PROJECT: nikunjramani-in
 ENVIRONMENT: production
-# The service's own URL: the audience of the tokens Eventarc and Cloud Scheduler send to
-# /internal/* (kernel/events.py). Comma-separated if Eventarc signs for another of its URLs.
-SERVICE_URL: https://api-555631156536.asia-south1.run.app
+# The service's own URLs: the audiences of the tokens sent to /internal/* (kernel/events.py).
+# Cloud Scheduler signs for the deterministic URL (modules/api); Eventarc signs for the
+# service's status.url, the older hashed one (`gcloud run services describe api`).
+SERVICE_URL: https://api-555631156536.asia-south1.run.app,https://api-qayio7jyua-el.a.run.app
 ALLOWED_ORIGINS: https://nikunjramani.in,https://www.nikunjramani.in
 SITE_URL: https://nikunjramani.in
 STORAGE_BUCKET: nikunjramani-in-media

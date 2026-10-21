@@ -2,7 +2,8 @@
 # Staging behaves like production on purpose: /docs off, /internal/* requires signed calls.
 GOOGLE_CLOUD_PROJECT: nikunjramani-in-staging
 ENVIRONMENT: production
-SERVICE_URL: https://api-659120187836.asia-south1.run.app
+# Deterministic URL (Cloud Scheduler) + status.url (Eventarc) — see nikunjramani-in.yaml.
+SERVICE_URL: https://api-659120187836.asia-south1.run.app,https://api-snx77qxl4a-el.a.run.app
 ALLOWED_ORIGINS: https://nikunjramani-in--nikunjramani-in-staging.asia-southeast1.hosted.app
 SITE_URL: https://nikunjramani-in--nikunjramani-in-staging.asia-southeast1.hosted.app
 STORAGE_BUCKET: nikunjramani-in-staging-media
