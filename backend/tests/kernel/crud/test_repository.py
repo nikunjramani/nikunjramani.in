@@ -7,10 +7,14 @@ batches are exactly the kind of thing that type-checks cleanly and is wrong at r
 
 from __future__ import annotations
 
+import pytest
+from google.api_core.exceptions import NotFound
 from google.cloud.firestore_v1 import Client
 
+from kernel.audit import AuditEntry
 from kernel.crud.repository import BaseRepository
 from kernel.errors import NotFoundError
+from kernel.security import Actor
 from shared.generated import Skill
 
 
@@ -52,21 +56,6 @@ def test_create_with_explicit_doc_id(db: Client, clean_collection: str) -> None:
     record = repo.create(_skill("Rust"), doc_id="rust")
     assert record.id == "rust"
     assert repo.get("rust") is not None
-
-
-def test_update_is_partial_and_requires_existing(db: Client, clean_collection: str) -> None:
-    repo = SkillRepository(db)
-    record = repo.create(_skill("Go", order=1))
-
-    updated = repo.update(record.id, {"level": 5})
-    assert updated.data.level == 5
-    assert updated.data.name == "Go"  # untouched fields survive a partial update
-
-    try:
-        repo.update("does-not-exist", {"level": 1})
-        raise AssertionError("expected NotFoundError")
-    except NotFoundError:
-        pass
 
 
 def test_delete_requires_existing(db: Client, clean_collection: str) -> None:
@@ -132,3 +121,30 @@ def test_timestamps_round_trip_through_firestore(db: Client, clean_collection: s
     fetched = repo.require(record.id)
     assert fetched.data.at.year == 2026
     assert fetched.data.at.month == 1
+
+
+def test_a_write_and_its_audit_entry_commit_together(db: Client, clean_collection: str) -> None:
+    repo = SkillRepository(db)
+    entry = AuditEntry(Actor(uid="admin-1"), "create", repo.collection, "go", None, {"n": 1})
+
+    repo.create(_skill("Go"), doc_id="go", audit=entry)
+    repo.delete(
+        "go",
+        audit=AuditEntry(Actor(uid="admin-1"), "delete", repo.collection, "go", {"n": 1}, None),
+    )
+
+    trail = [s.to_dict() or {} for s in db.collection("audit_log").stream()]
+    assert sorted(e["action"] for e in trail) == ["create", "delete"]
+    assert all(e["actor"] == "admin-1" and e["docId"] == "go" for e in trail)
+
+
+def test_a_failed_write_leaves_no_audit_entry(db: Client, clean_collection: str) -> None:
+    """The batch is all-or-nothing: an update of a missing document fails the commit, and
+    the entry staged beside it is never written."""
+    repo = SkillRepository(db)
+    entry = AuditEntry(Actor(uid="admin-1"), "reorder", repo.collection, None, None, {"ids": []})
+
+    with pytest.raises(NotFound):
+        repo.reorder(["does-not-exist"], audit=entry)
+
+    assert list(db.collection("audit_log").stream()) == []

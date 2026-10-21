@@ -5,6 +5,7 @@ from unittest.mock import MagicMock, patch
 from fastapi.testclient import TestClient
 
 from kernel.app import make_app
+from kernel.security import Actor
 from src.identity.admins.repository import AuthUser
 from src.identity.admins.routes import get_admin_access_service, router
 
@@ -44,4 +45,4 @@ def test_revoke_passes_the_caller_through() -> None:
     with patch("kernel.security.auth.verify_id_token", return_value=ADMIN):
         response = _client(fake).delete("/u1", headers=HEADERS)
     assert response.status_code == 204
-    fake.revoke.assert_called_once_with("u1", ADMIN)
+    fake.revoke.assert_called_once_with("u1", Actor(uid="me", email="me@example.com"))

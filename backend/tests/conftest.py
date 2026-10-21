@@ -46,7 +46,8 @@ def _emulator_reachable() -> bool:
 @pytest.fixture
 def db() -> Iterator[Client]:
     if not _emulator_reachable():
-        # CI sets this, so a broken emulator start fails the run instead of skipping 61 tests.
+        # CI sets this, so a broken emulator start fails the run instead of skipping every
+        # emulator test.
         if os.environ.get("REQUIRE_FIRESTORE_EMULATOR"):
             pytest.fail("Firestore emulator not reachable on FIRESTORE_EMULATOR_HOST")
         pytest.skip("Firestore emulator not reachable on FIRESTORE_EMULATOR_HOST")

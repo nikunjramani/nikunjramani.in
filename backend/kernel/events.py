@@ -51,11 +51,14 @@ def verify_internal_caller(authorization: str | None, path: str) -> None:
         raise PermissionDeniedError("Not an internal caller.")
 
 
-async def require_internal_caller(
+def require_internal_caller(
     request: Request,
     authorization: Annotated[str | None, Header()] = None,
 ) -> None:
-    """`dependencies=[InternalCaller]` on every /internal/* router, no exceptions."""
+    """`dependencies=[InternalCaller]` on every /internal/* router, no exceptions.
+
+    A plain `def`, so FastAPI runs it in the threadpool: verification fetches Google's
+    signing keys over the network, which must not stall the event loop."""
     verify_internal_caller(authorization, request.url.path)
 
 

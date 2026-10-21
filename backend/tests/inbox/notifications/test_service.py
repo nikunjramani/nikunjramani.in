@@ -49,7 +49,7 @@ def test_notify_owner_skips_without_a_recipient() -> None:
         ),
         patch.object(service, "send_email") as send,
     ):
-        service.notify_owner({"name": "A", "message": "m"})
+        service.notify_owner("m1", {"name": "A", "message": "m"})
     send.assert_not_called()
 
 
@@ -67,9 +67,11 @@ def test_notify_owner_sends_the_rendered_email() -> None:
         ),
         patch.object(service, "send_email") as send,
     ):
-        service.notify_owner({"name": "A", "message": "hello"})
+        service.notify_owner("m1", {"name": "A", "message": "hello"})
     assert send.call_args.kwargs["to"] == "me@x.dev"
     assert "hello" in send.call_args.kwargs["html"]
+    # The message id: Eventarc redelivering the event must not email twice.
+    assert send.call_args.kwargs["idempotency_key"] == "contact-message/m1"
 
 
 def test_whitespace_placeholder_key_skips_the_send(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -85,12 +87,12 @@ def test_whitespace_placeholder_key_skips_the_send(monkeypatch: pytest.MonkeyPat
         patch.object(email, "get_notification_settings", return_value=NotificationSettings()),
         patch.object(httpx, "post") as post,
     ):
-        email.send_email(to="me@x.dev", subject="s", html="h")
+        email.send_email(to="me@x.dev", subject="s", html="h", idempotency_key="k")
     post.assert_not_called()
 
 
 @pytest.mark.parametrize(
-    ("status", "retried"), [(401, False), (422, False), (429, True), (503, True)]
+    ("status", "retried"), [(401, False), (422, False), (409, True), (429, True), (503, True)]
 )
 def test_only_failures_a_retry_could_fix_raise(
     monkeypatch: pytest.MonkeyPatch, status: int, retried: bool
@@ -114,8 +116,25 @@ def test_only_failures_a_retry_could_fix_raise(
     ):
         if retried:
             with pytest.raises(email.EmailDeliveryError):
-                email.send_email(to="me@x.dev", subject="s", html="h")
-            assert post.call_count == 3  # the in-process retries first
+                email.send_email(to="me@x.dev", subject="s", html="h", idempotency_key="k")
         else:
-            email.send_email(to="me@x.dev", subject="s", html="h")
-            assert post.call_count == 1
+            email.send_email(to="me@x.dev", subject="s", html="h", idempotency_key="k")
+    post.assert_called_once()  # no in-process retries: redelivery is Eventarc's job
+    assert post.call_args.kwargs["headers"]["Idempotency-Key"] == "k"
+
+
+def test_a_network_error_raises_for_redelivery(monkeypatch: pytest.MonkeyPatch) -> None:
+    from unittest.mock import patch
+
+    import httpx
+
+    from src.inbox.notifications import email
+    from src.inbox.notifications.settings import NotificationSettings
+
+    monkeypatch.setenv("RESEND_API_KEY", "re_test")
+    with (
+        patch.object(email, "get_notification_settings", return_value=NotificationSettings()),
+        patch.object(httpx, "post", side_effect=httpx.ConnectError("down")),
+        pytest.raises(email.EmailDeliveryError),
+    ):
+        email.send_email(to="me@x.dev", subject="s", html="h", idempotency_key="k")

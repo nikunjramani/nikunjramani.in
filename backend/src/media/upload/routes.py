@@ -4,7 +4,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends
 
-from kernel.security import AdminClaims
+from kernel.security import Admin
 from src.media.upload.schemas import UploadRequest, UploadResponse
 from src.media.upload.service import UploadService
 
@@ -18,7 +18,7 @@ def get_upload_service() -> UploadService:
 @router.post("/", response_model=UploadResponse)
 def request_upload_url(
     payload: UploadRequest,
-    claims: AdminClaims,
+    admin: Admin,
     service: Annotated[UploadService, Depends(get_upload_service)],
 ) -> UploadResponse:
     result = service.request_upload(

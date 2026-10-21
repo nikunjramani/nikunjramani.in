@@ -9,14 +9,14 @@ from fastapi import APIRouter
 from fastapi.testclient import TestClient
 
 from kernel.app import make_app
-from kernel.security import AdminClaims, require_admin
+from kernel.security import Actor, Admin, require_admin
 
 router = APIRouter()
 
 
 @router.get("/protected")
-async def protected(claims: AdminClaims) -> dict[str, object]:
-    return {"uid": claims["uid"]}
+def protected(admin: Admin) -> dict[str, object]:
+    return {"uid": admin.uid}
 
 
 def _client() -> TestClient:
@@ -90,10 +90,17 @@ def test_verify_token_ensures_a_firebase_app_exists_before_verifying() -> None:
     assert call_order == ["ensure_app", "verify_id_token"]
 
 
-async def test_require_admin_returns_full_claims_for_the_audit_trail() -> None:
+def test_require_admin_returns_the_actor_for_the_audit_trail() -> None:
     with patch(
         "kernel.security.auth.verify_id_token",
         return_value={"uid": "admin-1", "admin": True, "email": "admin@example.com"},
     ):
-        claims = await require_admin("Bearer valid")
-    assert claims["email"] == "admin@example.com"
+        actor = require_admin("Bearer valid")
+    assert actor == Actor(uid="admin-1", email="admin@example.com")
+
+
+def test_an_actor_without_an_email_claim_has_none() -> None:
+    with patch(
+        "kernel.security.auth.verify_id_token", return_value={"uid": "admin-1", "admin": True}
+    ):
+        assert require_admin("Bearer valid") == Actor(uid="admin-1", email=None)

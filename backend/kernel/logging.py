@@ -1,9 +1,19 @@
-"""Structured JSON logging, which is what Cloud Logging parses into queryable fields."""
+"""Structured JSON logging, which is what Cloud Logging parses into queryable fields.
+
+Each line carries the request's trace (from Cloud Run's X-Cloud-Trace-Context header, set by
+kernel/app.py's TraceContext middleware), so Cloud Logging groups a request's lines under its
+request log entry."""
 
 import json
 import logging
 import sys
+from contextvars import ContextVar
 from typing import Any
+
+from kernel.config import get_settings
+
+#: The current request's trace id; empty outside a request.
+trace_id: ContextVar[str] = ContextVar("trace_id", default="")
 
 
 class JsonFormatter(logging.Formatter):
@@ -13,6 +23,9 @@ class JsonFormatter(logging.Formatter):
             "message": record.getMessage(),
             "logger": record.name,
         }
+        if trace := trace_id.get():
+            project = get_settings().firebase_project_id
+            payload["logging.googleapis.com/trace"] = f"projects/{project}/traces/{trace}"
         if record.exc_info:
             payload["exception"] = self.formatException(record.exc_info)
         extra = getattr(record, "extra_fields", None)

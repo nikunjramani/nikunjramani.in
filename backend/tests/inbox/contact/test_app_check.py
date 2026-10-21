@@ -7,7 +7,7 @@ import pytest
 from kernel.config import Settings
 from src.inbox.contact.app_check import verify_app_check
 
-PROD = Settings(environment="production")
+PROD = Settings(environment="production", service_url="https://api-1.asia-south1.run.app")
 DEV = Settings(environment="development")
 
 

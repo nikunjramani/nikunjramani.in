@@ -13,19 +13,20 @@ map and the rules. → [ADR 0017](../../../.docs/adr/0017-bounded-context-domain
 
 ```
 src/<domain>/<subdomain>/      one job, served at /api/v1/<domain>/<subdomain>
-├── routes.py       HTTP only: parse, authorise (AdminClaims), delegate, serialise
+├── routes.py       HTTP only: parse, authorise (admin: Admin), delegate, serialise
 ├── events.py       only if an event or schedule starts the work — HTTP only, InternalCaller
 ├── schemas.py      request / response models
 ├── service.py      the rules — no HTTP, raises kernel.errors
 ├── repository.py   its collection — the only Firestore SDK user
-└── settings.py · storage.py · paths.py · …   anything else only this job needs
+└── settings.py · storage.py · …   anything else only this job needs
 ```
 
 - A new route on an existing job → add it to that subdomain.
 - A new job → a new subdomain. Don't stretch one subdomain over two jobs.
 - **No `common/` folder, no sibling imports, no cross-domain imports.** If two subdomains need
-  the same convention, each owns the slice it uses (see `src/media/*/paths.py` and
-  `tests/media/test_layout.py`).
+  the same convention, each owns the slice it uses — unless it's a contract every subdomain of
+  the domain must agree on, which may live in one domain-root module with no logic in it
+  (`src/media/bucket.py`, ADR 0024).
 - **No `__init__.py`** — packages are implicit. **No tests under `src/`.**
 
 ## Is it a visibility/order content collection?
@@ -43,7 +44,7 @@ layers contract and `tests/test_import_rules.py`.
 
 | Layer | Does | Must never |
 |---|---|---|
-| **routes** | Parse, `AdminClaims`, delegate, serialise | Contain rules or touch Firestore |
+| **routes** | Parse, `admin: Admin`, delegate, serialise | Contain rules or touch Firestore |
 | **events** | `InternalCaller`, read the event (`kernel.events`), delegate | Contain rules or touch Firestore |
 | **service** | Rules, orchestration | Know HTTP — no `Request`, no status codes |
 | **repository** | Every Firestore SDK call for its collection | Contain rules |
@@ -58,12 +59,16 @@ Use the `add-schema-field` skill. Never hand-write a model.
 
 **2 · Repository** — `repository.py`, only the operations this job needs on its collection.
 
-**3 · Service** — `service.py`. Raise `kernel.errors` exceptions. Every admin mutation writes an
-audit entry through `kernel.audit.AuditWriter` (`CrudService` already does).
+**3 · Service** — `service.py`. Raise `kernel.errors` exceptions. Services take an
+`actor: Actor`, never token claims. Every admin mutation builds a `kernel.audit.AuditEntry` and
+passes it to the repository write (`audit=`), which commits both in one batch (`CrudService`
+already does). Settings subclass `kernel.config.ServiceSettings`; list any value production
+must set in `required_in_production` and add the getter to `SETTINGS` in `apps/api.py`.
 
 **4 · Schemas + routes** — request/response models in `schemas.py` (wrap a record as
 `RecordOut[Model]` from `kernel.crud.schemas`); routes in `routes.py`. Every admin route takes
-`claims: AdminClaims` (`kernel.security`) — it verifies the token **and** the `admin` claim.
+`admin: Admin` (`kernel.security`) — it verifies the token **and** the `admin` claim — and
+passes `admin` (an `Actor`) to the service. A route doing blocking work is a plain `def`.
 The one exception is a content subdomain's public read: `GET /public` (and `/public/{id}`), no
 auth, returning `service.list_public()` / `get_public()` with `response_model_exclude_none=True`
 — never a raw admin read (ADR 0022). Declare it before `/{doc_id}`.

@@ -1,10 +1,14 @@
-"""Resend wrapper, with a retry. See .docs/plan/03-security.md.
+"""Resend wrapper. See .docs/plan/03-security.md.
 
-Failures split by whether trying again could help. A network error, a 5xx or a 429 raises
-EmailDeliveryError: the event handler answers 5xx and Eventarc redelivers later. Any other
-4xx — a bad key, an unverified sender, a rejected payload — is logged and dropped: it would
-fail the same way on every one of a day's redeliveries, and the message itself is already
-stored and visible in the admin inbox."""
+One attempt per delivery: retrying is Eventarc's job (it redelivers a failed event with
+backoff, for up to a day), and the idempotency key keeps a redelivery from sending twice —
+Resend remembers a key for 24 hours, the same window Eventarc retries in.
+
+Failures split by whether trying again could help. A network error, a 5xx, a 429 or a 409
+(Resend still processing the same key) raises EmailDeliveryError: the event handler answers
+5xx and Eventarc redelivers later. Any other 4xx — a bad key, an unverified sender, a
+rejected payload — is logged and dropped: it would fail the same way on every redelivery,
+and the message itself is already stored and visible in the admin inbox."""
 
 from __future__ import annotations
 
@@ -24,7 +28,7 @@ class EmailDeliveryError(DomainError):
     code = "email_delivery_failed"
 
 
-def send_email(*, to: str, subject: str, html: str, retries: int = 2) -> None:
+def send_email(*, to: str, subject: str, html: str, idempotency_key: str) -> None:
     settings = get_notification_settings()
 
     if not settings.resend_api_key:
@@ -37,31 +41,27 @@ def send_email(*, to: str, subject: str, html: str, retries: int = 2) -> None:
         )
         return
 
-    headers = {"Authorization": f"Bearer {settings.resend_api_key}"}
+    headers = {
+        "Authorization": f"Bearer {settings.resend_api_key}",
+        "Idempotency-Key": idempotency_key,
+    }
     payload = {"from": settings.mail_from, "to": [to], "subject": subject, "html": html}
 
-    last_error: Exception | None = None
-    for attempt in range(retries + 1):
-        try:
-            response = httpx.post(_RESEND_API, headers=headers, json=payload, timeout=10.0)
-            if _rejected_for_good(response.status_code):
-                log.error(
-                    "email rejected by Resend — not retrying",
-                    extra={"extra_fields": {"status": response.status_code}},
-                )
-                return
-            response.raise_for_status()
-            return
-        except httpx.HTTPError as exc:
-            last_error = exc
-            log.warning(
-                "email send attempt failed",
-                extra={"extra_fields": {"attempt": attempt, "error": str(exc)}},
-            )
-
-    raise EmailDeliveryError("Failed to send email after retries.") from last_error
+    try:
+        response = httpx.post(_RESEND_API, headers=headers, json=payload, timeout=10.0)
+    except httpx.HTTPError as exc:
+        raise EmailDeliveryError("Could not reach Resend.") from exc
+    if _rejected_for_good(response.status_code):
+        log.error(
+            "email rejected by Resend — not retrying",
+            extra={"extra_fields": {"status": response.status_code}},
+        )
+        return
+    if response.is_error:
+        raise EmailDeliveryError(f"Resend answered {response.status_code}.")
 
 
 def _rejected_for_good(status: int) -> bool:
-    """A 4xx other than 429 (rate limited) won't change on a retry."""
-    return 400 <= status < 500 and status != 429
+    """A 4xx won't change on a retry — except 429 (rate limited) and 409 (Resend is still
+    handling an earlier request with the same idempotency key)."""
+    return 400 <= status < 500 and status not in (409, 429)

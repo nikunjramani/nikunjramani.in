@@ -1,7 +1,7 @@
 # Phase 9 · Backend on Cloud Run
 
-**One PR** · Status: 🟡 Built in one PR; the cutover runs on merge, then the old functions are
-deleted ([ADR 0023](../../adr/0023-backend-as-one-cloud-run-service.md))
+**One PR** · Status: ✅ Done 2026-10-21 — live in both projects, old functions deleted
+([ADR 0023](../../adr/0023-backend-as-one-cloud-run-service.md))
 
 > **Goal:** the FastAPI backend runs as **one Cloud Run service** built from one image, with the
 > domain/subdomain structure unchanged, Firestore unchanged, and no downtime on the way.
@@ -101,28 +101,33 @@ Deleted: `main.py`, every `src/*/main.py` and `src/*/*/main.py`, `kernel/http.py
       `apphosting*.yaml` (deterministic service URLs); `BACKEND_ROUTES` dropped from codegen
 
 ### Verify — in the PR
-- [ ] CI green: backend (ruff, mypy, import-linter, full pytest on the emulator), frontend,
+- [x] CI green: backend (ruff, mypy, import-linter, full pytest on the emulator), frontend,
       schemas, both Terraform plans
-- [ ] Staging preview: the image builds, `api` deploys, smoke test passes; every site page and the
+- [x] Staging preview: the image builds, `api` deploys, smoke test passes; every site page and the
       admin work through it; `/internal/jobs/backup` is 401 unsigned
 
 ### Cutover — on merge (in this order, automatically)
-- [ ] `deploy.yml`: `api` to prod → rules → App Hosting (now calling `api`) → smoke tests
-- [ ] Terraform staging, then prod (approval): triggers + scheduler created, old invoker bindings
+- [x] `deploy.yml`: `api` to prod → rules → App Hosting (now calling `api`) → smoke tests
+- [x] Terraform staging, then prod (approval): triggers + scheduler created, old invoker bindings
       and Functions-only roles removed
-- [ ] Verify on staging, then prod: upload an image → thumbnail + blurhash appear; submit the
+- [x] Verify on staging, then prod: upload an image → thumbnail + blurhash appear; submit the
       contact form → stored, email sent or the logged skip; run `nightly-backup` once → files in
       the backups bucket; Eventarc calls reach `/internal/*` (no 401/403 in the logs — if Eventarc
-      signs for another URL, add it to `SERVICE_URL`)
+      signs for another URL, add it to `SERVICE_URL`).
+      *Done:* all of it on staging. Eventarc signs for the hashed `status.url` **plus the
+      destination path**, so both URLs are in `SERVICE_URL` and the path is accepted (#21). On
+      prod: the site, the API and `nightly-backup` (204). Prod's two triggers are the same
+      Terraform as staging's; the next real upload and contact message exercise them.
 
 ### After the cutover
-- [ ] Delete the 18 old functions in both projects (owner, or the agent with approval):
+- [x] Delete the 18 old functions in both projects (owner, or the agent with approval):
       `gcloud functions list --project <p>` → `gcloud functions delete <name> --region asia-south1 --project <p> --quiet`.
       Between the Terraform apply and this step both old and new triggers fire: processing is
       idempotent and the backup is a full export; a contact message in that window could email twice
-- [ ] Delete Firebase's leftover scheduler job `firebase-schedule-nightly_backup-asia-south1` if
+- [x] Delete Firebase's leftover scheduler job `firebase-schedule-nightly_backup-asia-south1` if
       the function deletion didn't
-- [ ] Phase status → ✅
+- [x] Phase status → ✅ (2026-10-21: no functions, and only `nightly-backup`,
+      `media-uploaded` and `contact-created` remain in either project)
 
 ## Risks
 

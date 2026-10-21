@@ -1,23 +1,22 @@
 from __future__ import annotations
 
-from unittest.mock import MagicMock
-
 from google.cloud.firestore_v1 import Client
 
 from kernel.records import Record
+from kernel.security import Actor
 from kernel.timestamps import now_iso, to_firestore
 from shared.generated import ContactMessage
 from src.inbox.messages.repository import MessageRepository
 from src.inbox.messages.service import MessageService, csv_safe
 
-CLAIMS = {"uid": "admin-1", "email": "admin@example.com", "admin": True}
+ACTOR = Actor(uid="admin-1", email="admin@example.com")
 
 
 def _service(db: Client, collection_name: str) -> MessageService:
     class ScratchRepo(MessageRepository):
         collection = collection_name
 
-    return MessageService(repo=ScratchRepo(db), audit=MagicMock())
+    return MessageService(repo=ScratchRepo(db))
 
 
 def _message(name: str, **overrides: object) -> ContactMessage:
@@ -61,10 +60,10 @@ def test_mark_read_and_replied(db: Client, clean_collection: str) -> None:
     record = _seed(svc, _message("A"))
     assert record.data.read is False
 
-    read = svc.mark_read(record.id, CLAIMS)
+    read = svc.mark_read(record.id, ACTOR)
     assert read.data.read is True
 
-    replied = svc.mark_replied(record.id, CLAIMS)
+    replied = svc.mark_replied(record.id, ACTOR)
     assert replied.data.replied is True
     assert replied.data.read is True  # the earlier update wasn't clobbered
 
@@ -83,7 +82,7 @@ def test_export_csv_includes_a_header_and_every_message(db: Client, clean_collec
 def test_delete_removes_the_message(db: Client, clean_collection: str) -> None:
     svc = _service(db, clean_collection)
     record = _seed(svc, _message("A"))
-    svc.delete(record.id, CLAIMS)
+    svc.delete(record.id, ACTOR)
     assert svc.repo.get(record.id) is None
 
 

@@ -2,7 +2,7 @@
 
 No key file: the runtime signs through IAM signBlob as its own service account
 (google.auth.default() + refresh(), then service_account_email/access_token into
-generate_signed_url). That only works for a deployed function's service account, so it is
+generate_signed_url). That only works for the deployed service's account, so it is
 unit-tested with signing mocked and was verified live in Phase 6.
 """
 
@@ -15,12 +15,12 @@ import google.auth
 from google.auth.transport import requests as google_requests
 from google.cloud.storage import Client as StorageClient
 
-from src.media.upload.settings import get_media_settings
+from src.media.bucket import media_bucket
 
 
 class UploadStorage:
     def __init__(self, client: StorageClient | None = None) -> None:
-        self._client = client if client is not None else StorageClient()
+        self._client = client
 
     def create_signed_upload_url(self, *, path: str, content_type: str) -> str:
         credentials, _project = google.auth.default()
@@ -35,7 +35,7 @@ class UploadStorage:
             }
 
         return str(
-            self._client.bucket(get_media_settings().storage_bucket)
+            media_bucket(self._client)
             .blob(path)
             .generate_signed_url(
                 version="v4",

@@ -174,9 +174,10 @@ CLOUD RUN  api (allUsers invoker — auth is in-process) · uvicorn · apps/api.
          kernel/app.py: a path with no trailing slash that only matches as "…/" is served as
          "…/" in place — never redirected (a redirect would point at the Cloud Run host)
 PYTHON   router mounted at /api/v1/content/skills (apps/api.py ROUTES)
-         src/content/skills/routes.py   update_skills(doc_id, patch, claims: AdminClaims, service)
-            AdminClaims = kernel/security.py require_admin:
+         src/content/skills/routes.py   update_skills(doc_id, patch, admin: Admin, service)
+            Admin = kernel/security.py require_admin (plain def → threadpool):
                verify_id_token (401 if missing/invalid) → claims["admin"] is True (403 otherwise)
+               → Actor(uid, email), the only identity services see
          src/content/skills/service.py  SkillService(CrudService[Skill]).patch
             kernel/crud/service.py:
               - drop client-sent `audit`; refuse a slug change (slug = doc id = URL)
@@ -184,10 +185,11 @@ PYTHON   router mounted at /api/v1/content/skills (apps/api.py ROUTES)
               - visibility change → action publish | unpublish | update; stamp audit.updatedAt
                 (+ publishedAt on first publish)
               - validate against the generated Skill model → 422 on failure
-         src/content/skills/repository.py  SkillRepository(BaseRepository[Skill]).save
+              - build the AuditEntry {actor, action, collection, docId, before, after}
+         src/content/skills/repository.py  SkillRepository(BaseRepository[Skill]).save(…, audit=entry)
               kernel/timestamps.py to_firestore()   ISO strings → datetimes
-              Firestore skills/<id>.set(...)
-         kernel/audit.py AuditWriter.record → audit_log/<auto>  {actor, action, collection, docId, before, after, at}
+              one Firestore batch: skills/<id>.set(...) + audit_log/<auto> (kernel/audit.py stage)
+         any error on the way → kernel/app.py → {"error": {code, message}} with its status
         ▼
          RecordOut {id, data} → JSON → browser updates the list
 NEXT VISIT to the public page reads Firestore fresh (section 3) — no cache to invalidate.

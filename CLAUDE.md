@@ -14,7 +14,7 @@ say so. (`.claude/rules/security.md`)
 
 **Status:** Phases 0, 1, 3, 4 and 5 are implemented; Phase 6 is live at `https://nikunjramani.in`
 with a few launch checks open; Phase 7 CI/CD is live — PR checks, staging previews, and prod
-deploys on merge (since 2026-10-16). Phase 2: the Technical design is built (`.docs/DESIGN.md`). Backend: 172 tests (61
+deploys on merge (since 2026-10-16). Phase 9: the backend runs as one Cloud Run service (2026-10-21). Phase 2: the Technical design is built (`.docs/DESIGN.md`). Backend: 241 tests (76
 need the Firestore emulator). Full plan: [`.docs/plan/`](./.docs/plan/README.md).
 
 ## Where things are

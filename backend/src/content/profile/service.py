@@ -9,6 +9,7 @@ from typing import Any
 
 from kernel.crud.service import CrudService
 from kernel.records import Record
+from kernel.security import Actor
 from shared.generated import Profile
 from src.content.profile.repository import ProfileRepository
 
@@ -26,8 +27,8 @@ class ProfileService(CrudService[Profile]):
     def read_public(self) -> Record[Profile]:
         return self.get_public(DOC_ID)
 
-    def replace(self, payload: Profile, claims: dict[str, object]) -> Record[Profile]:
-        return self.upsert(DOC_ID, payload, claims)
+    def replace(self, payload: Profile, actor: Actor) -> Record[Profile]:
+        return self.upsert(DOC_ID, payload, actor)
 
-    def update(self, patch: dict[str, Any], claims: dict[str, object]) -> Record[Profile]:
-        return self.patch(DOC_ID, patch, claims)
+    def update(self, patch: dict[str, Any], actor: Actor) -> Record[Profile]:
+        return self.patch(DOC_ID, patch, actor)

@@ -8,7 +8,7 @@ from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends
 
-from kernel.security import AdminClaims
+from kernel.security import Admin
 from shared.generated import Profile
 from src.content.profile.schemas import ProfileOut
 from src.content.profile.service import ProfileService
@@ -30,16 +30,16 @@ def read_public_profile(service: Service) -> ProfileOut:
 
 
 @router.get("/", response_model=ProfileOut)
-def read_profile(claims: AdminClaims, service: Service) -> ProfileOut:
+def read_profile(admin: Admin, service: Service) -> ProfileOut:
     return ProfileOut.of(service.read())
 
 
 @router.put("/", response_model=ProfileOut)
-def replace_profile(payload: Profile, claims: AdminClaims, service: Service) -> ProfileOut:
-    return ProfileOut.of(service.replace(payload, claims))
+def replace_profile(payload: Profile, admin: Admin, service: Service) -> ProfileOut:
+    return ProfileOut.of(service.replace(payload, admin))
 
 
 @router.patch("/", response_model=ProfileOut)
-def update_profile(patch: dict[str, Any], claims: AdminClaims, service: Service) -> ProfileOut:
+def update_profile(patch: dict[str, Any], admin: Admin, service: Service) -> ProfileOut:
     """RFC 7386 merge patch: `null` removes a field."""
-    return ProfileOut.of(service.update(patch, claims))
+    return ProfileOut.of(service.update(patch, admin))

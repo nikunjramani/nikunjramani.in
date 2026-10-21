@@ -10,7 +10,7 @@ from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, Query, Response
 
-from kernel.security import AdminClaims
+from kernel.security import Admin
 from shared.generated import Experience
 from src.content.experience.schemas import ExperienceOut, ReorderIn
 from src.content.experience.service import ExperienceService
@@ -33,7 +33,7 @@ def list_public_experience(service: Service) -> list[ExperienceOut]:
 
 @router.get("/", response_model=list[ExperienceOut])
 def list_experience(
-    claims: AdminClaims,
+    admin: Admin,
     service: Service,
     visibility: Annotated[str | None, Query()] = None,
 ) -> list[ExperienceOut]:
@@ -41,30 +41,30 @@ def list_experience(
 
 
 @router.post("/", response_model=ExperienceOut, status_code=201)
-def create_experience(payload: Experience, claims: AdminClaims, service: Service) -> ExperienceOut:
-    return ExperienceOut.of(service.create(payload, claims, doc_id=None))
+def create_experience(payload: Experience, admin: Admin, service: Service) -> ExperienceOut:
+    return ExperienceOut.of(service.create(payload, admin, doc_id=None))
 
 
 @router.post("/reorder", status_code=204)
-def reorder_experience(body: ReorderIn, claims: AdminClaims, service: Service) -> Response:
-    service.reorder(body.ids, claims)
+def reorder_experience(body: ReorderIn, admin: Admin, service: Service) -> Response:
+    service.reorder(body.ids, admin)
     return Response(status_code=204)
 
 
 @router.get("/{doc_id}", response_model=ExperienceOut)
-def read_experience(doc_id: str, claims: AdminClaims, service: Service) -> ExperienceOut:
+def read_experience(doc_id: str, admin: Admin, service: Service) -> ExperienceOut:
     return ExperienceOut.of(service.get(doc_id))
 
 
 @router.patch("/{doc_id}", response_model=ExperienceOut)
 def update_experience(
-    doc_id: str, patch: dict[str, Any], claims: AdminClaims, service: Service
+    doc_id: str, patch: dict[str, Any], admin: Admin, service: Service
 ) -> ExperienceOut:
     """RFC 7386 merge patch: `null` removes a field."""
-    return ExperienceOut.of(service.patch(doc_id, patch, claims))
+    return ExperienceOut.of(service.patch(doc_id, patch, admin))
 
 
 @router.delete("/{doc_id}", status_code=204)
-def delete_experience(doc_id: str, claims: AdminClaims, service: Service) -> Response:
-    service.delete(doc_id, claims)
+def delete_experience(doc_id: str, admin: Admin, service: Service) -> Response:
+    service.delete(doc_id, admin)
     return Response(status_code=204)

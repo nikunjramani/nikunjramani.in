@@ -8,10 +8,11 @@ from unittest.mock import MagicMock
 import pytest
 
 from kernel.errors import ConflictError, NotFoundError, ValidationError
+from kernel.security import Actor
 from src.identity.admins.repository import AuthUser
 from src.identity.admins.service import AdminAccessService
 
-ME = {"uid": "me", "email": "me@example.com", "admin": True}
+ME = Actor(uid="me", email="me@example.com")
 
 
 class FakeUsers:
@@ -58,7 +59,9 @@ def test_grant_sets_the_claim_and_keeps_other_claims() -> None:
     granted = svc.grant("ana@example.com", ME)
     assert granted.is_admin
     assert users.users["ana"].claims == {"beta": True, "admin": True}
-    assert audit.record.call_args.kwargs["after"] == {"email": "ana@example.com", "admin": True}
+    [entry] = audit.record.call_args.args
+    assert entry.actor == ME
+    assert entry.after == {"email": "ana@example.com", "admin": True}
 
 
 def test_granting_an_existing_admin_is_a_no_op() -> None:

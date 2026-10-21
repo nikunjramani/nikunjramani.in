@@ -6,6 +6,7 @@ from fastapi.testclient import TestClient
 
 from kernel.app import make_app
 from kernel.records import Record
+from kernel.security import Actor
 from shared.generated import MediaAsset
 from src.media.library.routes import get_library_service, router
 
@@ -46,7 +47,7 @@ def test_update_metadata_returns_the_updated_record() -> None:
     assert response.status_code == 200
     assert response.json()["data"]["alt"] == "A photo"
     fake.update_metadata.assert_called_once_with(
-        "some-id", alt="A photo", caption=None, claims=ADMIN
+        "some-id", alt="A photo", caption=None, actor=Actor(uid="admin-1")
     )
 
 
@@ -68,6 +69,6 @@ def test_delete_passes_force_through() -> None:
     with patch("kernel.security.auth.verify_id_token", return_value=ADMIN):
         client = _client(fake)
         assert client.delete("/a1", headers={"Authorization": "Bearer x"}).status_code == 204
-        fake.delete.assert_called_with("a1", ADMIN, force=False)
+        fake.delete.assert_called_with("a1", Actor(uid="admin-1"), force=False)
         client.delete("/a1?force=true", headers={"Authorization": "Bearer x"})
-        fake.delete.assert_called_with("a1", ADMIN, force=True)
+        fake.delete.assert_called_with("a1", Actor(uid="admin-1"), force=True)

@@ -9,6 +9,7 @@ from typing import Any
 
 from kernel.crud.service import CrudService
 from kernel.records import Record
+from kernel.security import Actor
 from shared.generated import SiteConfig
 from src.content.settings.repository import SiteConfigRepository
 
@@ -26,8 +27,8 @@ class SiteConfigService(CrudService[SiteConfig]):
     def read_public(self) -> Record[SiteConfig]:
         return self.get_public(DOC_ID)
 
-    def replace(self, payload: SiteConfig, claims: dict[str, object]) -> Record[SiteConfig]:
-        return self.upsert(DOC_ID, payload, claims)
+    def replace(self, payload: SiteConfig, actor: Actor) -> Record[SiteConfig]:
+        return self.upsert(DOC_ID, payload, actor)
 
-    def update(self, patch: dict[str, Any], claims: dict[str, object]) -> Record[SiteConfig]:
-        return self.patch(DOC_ID, patch, claims)
+    def update(self, patch: dict[str, Any], actor: Actor) -> Record[SiteConfig]:
+        return self.patch(DOC_ID, patch, actor)

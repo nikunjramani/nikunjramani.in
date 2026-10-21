@@ -8,8 +8,9 @@ import io
 from datetime import UTC, datetime
 from typing import Any
 
-from kernel.audit import Action, AuditWriter
+from kernel.audit import Action, AuditEntry
 from kernel.records import Record
+from kernel.security import Actor
 from shared.generated import ContactMessage
 from src.inbox.messages.repository import MessageRepository
 
@@ -25,13 +26,8 @@ def csv_safe(value: object) -> object:
 
 
 class MessageService:
-    def __init__(
-        self,
-        repo: MessageRepository | None = None,
-        audit: AuditWriter | None = None,
-    ) -> None:
+    def __init__(self, repo: MessageRepository | None = None) -> None:
         self.repo = repo if repo is not None else MessageRepository()
-        self._audit = audit if audit is not None else AuditWriter(self.repo.db)
 
     def list_all(self, *, unread_only: bool = False) -> list[Record[ContactMessage]]:
         # Sorted here, null-safely: a server-side order_by would drop any message missing
@@ -52,20 +48,17 @@ class MessageService:
     def get(self, doc_id: str) -> Record[ContactMessage]:
         return self.repo.require(doc_id)
 
-    def mark_read(
-        self, doc_id: str, claims: dict[str, object], *, read: bool = True
-    ) -> Record[ContactMessage]:
-        return self._update(doc_id, {"read": read}, claims)
+    def mark_read(self, doc_id: str, actor: Actor, *, read: bool = True) -> Record[ContactMessage]:
+        return self._update(doc_id, {"read": read}, actor)
 
     def mark_replied(
-        self, doc_id: str, claims: dict[str, object], *, replied: bool = True
+        self, doc_id: str, actor: Actor, *, replied: bool = True
     ) -> Record[ContactMessage]:
-        return self._update(doc_id, {"replied": replied}, claims)
+        return self._update(doc_id, {"replied": replied}, actor)
 
-    def delete(self, doc_id: str, claims: dict[str, object]) -> None:
+    def delete(self, doc_id: str, actor: Actor) -> None:
         before = self.repo.require(doc_id)
-        self.repo.delete(doc_id)
-        self._record("delete", doc_id, claims, before=_dump(before), after=None)
+        self.repo.delete(doc_id, audit=self._entry("delete", doc_id, actor, before, None))
 
     def export_csv(self) -> str:
         buffer = io.StringIO()
@@ -80,30 +73,24 @@ class MessageService:
         return buffer.getvalue()
 
     def _update(
-        self, doc_id: str, fields: dict[str, object], claims: dict[str, object]
+        self, doc_id: str, fields: dict[str, object], actor: Actor
     ) -> Record[ContactMessage]:
         before = self.repo.require(doc_id)
-        record = self.repo.update(doc_id, fields)
-        self._record("update", doc_id, claims, before=_dump(before), after=_dump(record))
-        return record
+        after = before.data.model_copy(update=fields)
+        return self.repo.update(
+            doc_id, fields, audit=self._entry("update", doc_id, actor, before, after)
+        )
 
-    def _record(
+    def _entry(
         self,
         action: Action,
         doc_id: str,
-        claims: dict[str, object],
-        *,
-        before: dict[str, Any] | None,
-        after: dict[str, Any] | None,
-    ) -> None:
-        self._audit.record(
-            claims=claims,
-            action=action,
-            collection=self.repo.collection,
-            doc_id=doc_id,
-            before=before,
-            after=after,
-        )
+        actor: Actor,
+        before: Record[ContactMessage],
+        after: ContactMessage | None,
+    ) -> AuditEntry:
+        dumped = after.model_dump(mode="json", exclude_none=True) if after is not None else None
+        return AuditEntry(actor, action, self.repo.collection, doc_id, _dump(before), dumped)
 
 
 def _dump(record: Record[ContactMessage]) -> dict[str, Any]:

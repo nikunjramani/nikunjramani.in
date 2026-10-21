@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock
 
+import pytest
 from fastapi.testclient import TestClient
 
 from kernel.app import make_app
@@ -85,20 +86,14 @@ def test_client_ip_prefers_x_forwarded_for() -> None:
     assert fake.submit.call_args.kwargs["ip"] == "9.9.9.9"
 
 
-def test_docs_disabled_in_production() -> None:
-    import os
-
+def test_docs_disabled_in_production(monkeypatch: pytest.MonkeyPatch) -> None:
     from kernel import config
 
-    old = os.environ.get("ENVIRONMENT")
-    os.environ["ENVIRONMENT"] = "production"
+    monkeypatch.setenv("ENVIRONMENT", "production")
+    monkeypatch.setenv("SERVICE_URL", "https://api-123.asia-south1.run.app")
     config.get_settings.cache_clear()
     try:
         client = TestClient(make_app(router, "contact"))
         assert client.get("/docs").status_code == 404
     finally:
-        if old is None:
-            os.environ.pop("ENVIRONMENT", None)
-        else:
-            os.environ["ENVIRONMENT"] = old
         config.get_settings.cache_clear()

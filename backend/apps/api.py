@@ -11,9 +11,13 @@ tests/test_domain_registry.py fails if the two disagree or a subdomain is missin
 
 from __future__ import annotations
 
+from collections.abc import AsyncIterator, Callable
+from contextlib import asynccontextmanager
+
 from fastapi import APIRouter, FastAPI
 
 from kernel.app import make_app
+from kernel.config import ServiceSettings, get_settings
 from src.content.certifications.routes import router as content_certifications
 from src.content.education.routes import router as content_education
 from src.content.experience.routes import router as content_experience
@@ -26,11 +30,14 @@ from src.identity.admins.routes import router as identity_admins
 from src.inbox.contact.routes import router as inbox_contact
 from src.inbox.messages.routes import router as inbox_messages
 from src.inbox.notifications.events import router as inbox_notifications_events
+from src.inbox.notifications.settings import get_notification_settings
+from src.media.bucket import get_media_settings
 from src.media.library.routes import router as media_library
 from src.media.processing.events import router as media_processing_events
 from src.media.upload.routes import router as media_upload
 from src.ops.audit.routes import router as ops_audit
 from src.ops.backup.events import router as ops_backup_events
+from src.ops.backup.settings import get_backup_settings
 from src.ops.health.routes import router as ops_health
 
 API_PREFIX = "/api/v1"
@@ -63,13 +70,31 @@ INTERNAL: dict[str, tuple[str, APIRouter]] = {
 }
 
 
+#: Every settings class, built at startup: in production a value missing from
+#: deploy/<project>.yaml fails the new revision before it takes traffic, rather than the
+#: first request that needs it (kernel/config.py).
+SETTINGS: tuple[Callable[[], ServiceSettings], ...] = (
+    get_settings,
+    get_media_settings,
+    get_notification_settings,
+    get_backup_settings,
+)
+
+
+@asynccontextmanager
+async def _check_settings(_: FastAPI) -> AsyncIterator[None]:
+    for load in SETTINGS:
+        load()
+    yield
+
+
 def create_app() -> FastAPI:
     root = APIRouter()
     for route, router in ROUTES.items():
         root.include_router(router, prefix=f"{API_PREFIX}/{route}")
     for prefix, router in INTERNAL.values():
         root.include_router(router, prefix=prefix)
-    return make_app(root, "api")
+    return make_app(root, "api", lifespan=_check_settings)
 
 
 app = create_app()

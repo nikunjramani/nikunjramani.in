@@ -1,8 +1,7 @@
 """Rules import-linter can't express precisely, checked from the source.
 
 Only repositories talk to Firestore: a routes.py or service.py importing the SDK is the
-layering bug ADR 0017 exists to prevent. (A subdomain's main.py may import Firestore *types*
-for a trigger's event signature — that is the Firebase entry point, not business logic.)
+layering bug ADR 0017 exists to prevent.
 """
 
 from __future__ import annotations
