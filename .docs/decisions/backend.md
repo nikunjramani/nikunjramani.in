@@ -387,13 +387,18 @@ Entries BE-01…BE-38 were backfilled on 2026-10-16 from the code and its histor
 - **Where:** [kernel/events.py](../../backend/kernel/events.py) — `InternalCaller`, `verify_internal_caller`
 - **Decision:** every `events.py` router has `dependencies=[InternalCaller]`. It requires a Google ID
   token (`google.oauth2.id_token.verify_oauth2_token`: signature, expiry, issuer) whose audience
-  is one of `SERVICE_URL`'s comma-separated URLs and whose verified email is the runtime account
+  is one of `SERVICE_URL`'s comma-separated URLs (bare, or with this request's path) and whose
+  verified email is the runtime account
   `functions-runtime@` — the identity the Eventarc triggers and the scheduler job sign as. No
   `SERVICE_URL` → 403 rather than skipping the audience. `ENVIRONMENT=development` lets an
   unsigned call through for local replays; a token that is sent is always verified.
 - **Why:** the service is public at the Cloud Run layer (admin routes authenticate in-process), so
   Cloud Run IAM can't protect a path. `SERVICE_URL` is a list because Cloud Run serves one
-  service at more than one URL and Eventarc's audience choice isn't documented.
+  service at more than one URL: Cloud Scheduler signs for the deterministic URL we give it, and
+  Eventarc — observed on staging, 2026-10-21, in its push subscription's OIDC config — signs
+  for the service's `status.url` (the hashed `*-el.a.run.app` one) **plus the destination
+  path**. So each configured URL is accepted bare and with the path the request arrived on;
+  a token minted for another route still fails.
 - **Outcome:** the backup job and the event handlers can't be called by anyone else. Cost: the
   protection is our code — tested once like `require_admin` (`tests/kernel/test_events.py`).
 - **Related:** ADR 0023 · BE-16
@@ -445,4 +450,19 @@ Entries BE-01…BE-38 were backfilled on 2026-10-16 from the code and its histor
 - **Outcome:** one place to change sizing or config. The runtime account keeps its old id because
   service accounts can't be renamed.
 - **Related:** ADR 0023 · supersedes BE-35, BE-36, BE-37 · IN-16 · CI-16
+- **Since:** 2026-10-21
+
+### BE-46 · Owner email: retry what a retry can fix, drop what it can't
+
+- **Where:** `send_email` / `_rejected_for_good` in [inbox/notifications/email.py](../../backend/src/inbox/notifications/email.py)
+- **Decision:** a network error, a 5xx or a 429 from Resend raises `EmailDeliveryError` (the
+  event answers 502 and Eventarc redelivers); any other 4xx is logged as an error and dropped.
+- **Why:** under Firebase the trigger never retried; under Eventarc any non-2xx is redelivered
+  for up to a day. Staging's placeholder key showed it: every contact message became a day of
+  401s from Resend. A bad key or a rejected payload fails identically each time, and the
+  message is already stored in `contact_messages` and visible in the admin inbox.
+- **Outcome:** outages and rate limits still self-heal; configuration mistakes are one error
+  line, not a retry storm. Cost: a dropped email isn't resent once the key is fixed — check the
+  admin inbox after fixing it.
+- **Related:** BE-24, BE-25, BE-44 · ADR 0023
 - **Since:** 2026-10-21

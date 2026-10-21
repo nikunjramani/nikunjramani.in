@@ -68,9 +68,10 @@ The site and the admin are separate surfaces — separate root layouts, styleshe
   That's why the admin is `(admin)/admin/…`: the group owns the layout, the inner `admin`
   folder is the `/admin` URL segment.
 - `next/image` with correct `sizes`; design tokens only, no hard-coded hex.
-- API calls go to `${API_PREFIX}/<domain>/<sub>/…` (same origin); `next.config.ts` rewrites them to
-  the function. Route names come from the generated `api-routes.ts`; the prefix, function naming
-  and base URL from `lib/backend.ts` — never write `/api/v1` or a function URL by hand.
+- API calls go to `${API_PREFIX}/<domain>/<sub>/…` (same origin); `next.config.ts` rewrites
+  `${API_PREFIX}/*` to the `api` Cloud Run service. Route names come from the generated
+  `api-routes.ts`; the prefix and base URL from `lib/backend.ts` — never write `/api/v1` or the
+  service URL by hand.
 
 ## Design work
 

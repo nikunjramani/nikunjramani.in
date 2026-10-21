@@ -87,3 +87,35 @@ def test_whitespace_placeholder_key_skips_the_send(monkeypatch: pytest.MonkeyPat
     ):
         email.send_email(to="me@x.dev", subject="s", html="h")
     post.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    ("status", "retried"), [(401, False), (422, False), (429, True), (503, True)]
+)
+def test_only_failures_a_retry_could_fix_raise(
+    monkeypatch: pytest.MonkeyPatch, status: int, retried: bool
+) -> None:
+    """Raising makes the event handler answer 5xx, so Eventarc redelivers for up to a day —
+    worth it for an outage or a rate limit, pointless for a bad key or a rejected payload."""
+    from unittest.mock import patch
+
+    import httpx
+
+    from src.inbox.notifications import email
+    from src.inbox.notifications.settings import NotificationSettings
+
+    monkeypatch.setenv("RESEND_API_KEY", "re_test")
+    response = httpx.Response(
+        status, request=httpx.Request("POST", "https://api.resend.com/emails")
+    )
+    with (
+        patch.object(email, "get_notification_settings", return_value=NotificationSettings()),
+        patch.object(httpx, "post", return_value=response) as post,
+    ):
+        if retried:
+            with pytest.raises(email.EmailDeliveryError):
+                email.send_email(to="me@x.dev", subject="s", html="h")
+            assert post.call_count == 3  # the in-process retries first
+        else:
+            email.send_email(to="me@x.dev", subject="s", html="h")
+            assert post.call_count == 1

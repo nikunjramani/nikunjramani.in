@@ -27,7 +27,10 @@ from kernel.errors import PermissionDeniedError, ValidationError
 from kernel.security import AuthError
 
 
-def verify_internal_caller(authorization: str | None) -> None:
+def verify_internal_caller(authorization: str | None, path: str) -> None:
+    """`path` is the route the request arrived on. Cloud Scheduler signs for a service URL
+    as given (modules/api); Eventarc signs for the service's `status.url` plus the trigger's
+    destination path — so each configured URL is accepted bare and with this request's path."""
     settings = get_settings()
     if authorization is None and not settings.is_production:
         return  # local replay — see the module docstring
@@ -40,7 +43,7 @@ def verify_internal_caller(authorization: str | None) -> None:
         claims = id_token.verify_oauth2_token(  # type: ignore[no-untyped-call]
             authorization.removeprefix("Bearer ").strip(),
             google_requests.Request(),
-            audience=settings.service_audiences,
+            audience=[a for url in settings.service_audiences for a in (url, f"{url}{path}")],
         )
     except Exception as exc:  # signature, expiry, issuer or audience — all a 401
         raise AuthError("Invalid or expired token.") from exc
@@ -49,10 +52,11 @@ def verify_internal_caller(authorization: str | None) -> None:
 
 
 async def require_internal_caller(
+    request: Request,
     authorization: Annotated[str | None, Header()] = None,
 ) -> None:
     """`dependencies=[InternalCaller]` on every /internal/* router, no exceptions."""
-    verify_internal_caller(authorization)
+    verify_internal_caller(authorization, request.url.path)
 
 
 InternalCaller = Depends(require_internal_caller)

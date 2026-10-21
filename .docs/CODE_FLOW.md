@@ -303,7 +303,7 @@ apps/api.py create_app(): every subdomain router → /api/v1/<domain>/<sub>   (R
                           every events router    → /internal/events | /internal/jobs   (INTERNAL)
 kernel/app.py make_app(): FastAPI (/docs off in prod), CORS allowlist, DomainError → JSON,
                           redirect_slashes=False + TrailingSlashFallback
-kernel/events.py          InternalCaller (Google ID token: audience ∈ SERVICE_URL, email = runtime SA,
+kernel/events.py          InternalCaller (Google ID token: audience = a SERVICE_URL, bare or + this path; email = runtime SA,
                           verified email; unsigned allowed only in development) · storage_object() ·
                           firestore_document() (protobuf → plain values, timestamps as ISO)
 ```
