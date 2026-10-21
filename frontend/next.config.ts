@@ -1,25 +1,19 @@
 import type { NextConfig } from "next";
 
-import { BACKEND_ROUTES } from "./src/generated/api-routes";
-import { API_PREFIX, functionUrl } from "./src/lib/backend";
+import { API_PREFIX, apiBaseUrl } from "./src/lib/backend";
 
 /**
  * API routing.
  *
- * The plan originally assumed Firebase Hosting rewrites would unify the per-domain
- * function URLs (ADR 0011). They will not: App Hosting is a separate product from classic
- * Firebase Hosting and has no `rewrites` support — it serves the Next.js backend through a
- * load balancer, and any routing to Functions has to happen in the app itself.
+ * App Hosting has no `rewrites` of its own (unlike classic Firebase Hosting), so the app does
+ * it: the browser only ever talks to this origin, which means no CORS preflight on any API
+ * call and cookies work without special handling. The cost is one extra hop through the
+ * (already warm) Next server. Server Components skip the hop and call the API directly
+ * (lib/data/api.ts).
  *
- * So Next.js rewrites do the job instead. This is arguably better: the browser only ever
- * talks to one origin, which means no CORS preflight on any API call and cookies work
- * without special handling. The cost is one extra hop through the (already warm) Next
- * server. Server Components skip the hop and call the function directly (lib/data/api.ts).
- *
- * Each backend subdomain is its own function: /api/v1/<domain>/<sub>/... is rewritten to
- * api_<domain>_<sub> (ADR 0017). Routes are generated from architecture/api-routes.json;
- * backend/functions/tests/test_domain_registry.py keeps that manifest aligned with deploys.
- * The URL scheme itself lives in src/lib/backend.ts.
+ * The API is one Cloud Run service serving every /api/v1/<domain>/<sub>/… route (ADR 0023),
+ * so one rewrite covers it. The URL scheme lives in src/lib/backend.ts; API_BASE_URL must be
+ * set at BUILD time, because Next.js serialises rewrites into the build.
  */
 
 const nextConfig: NextConfig = {
@@ -37,10 +31,7 @@ const nextConfig: NextConfig = {
   },
 
   async rewrites() {
-    return BACKEND_ROUTES.map((route) => ({
-      source: `${API_PREFIX}/${route}/:path*`,
-      destination: `${functionUrl(route)}/:path*`,
-    }));
+    return [{ source: `${API_PREFIX}/:path*`, destination: `${apiBaseUrl()}${API_PREFIX}/:path*` }];
   },
 
   async headers() {

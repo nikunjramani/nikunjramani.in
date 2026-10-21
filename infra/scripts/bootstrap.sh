@@ -31,10 +31,10 @@ if [ "$BILLING" != "True" ]; then
   cat <<'MSG'
 ✗ Billing is not enabled.
 
-  Storage, Cloud Functions and App Hosting cannot be created without it — this is a
+  Storage, Cloud Run and App Hosting cannot be created without it — this is a
   platform requirement, not a choice in the plan. The expected bill is still zero:
   everything sits inside the free tier, and Terraform adds a budget alert plus
-  per-function instance caps.
+  instance caps.
 
   Enable Blaze:  https://console.firebase.google.com/project/PROJECT/usage/details
 

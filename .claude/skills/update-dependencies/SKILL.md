@@ -19,12 +19,12 @@ description: Update npm, Python, GitHub Action, firebase-tools or Terraform prov
 | Frontend npm | `frontend/package.json` | `npm view <pkg> version` / `npm outdated` in `frontend/` |
 | Codegen npm | `architecture/codegen/package.json` | same, in that folder |
 | Rules tests npm | `infra/rules/tests/package.json` | same |
-| Python | `backend/functions/pyproject.toml` + `uv.lock` | `uv lock --upgrade`, then read the lock diff |
+| Python | `backend/pyproject.toml` + `uv.lock` | `uv lock --upgrade`, then read the lock diff |
 | GitHub Actions | `.github/workflows/*.yml`, `.github/actions/*/action.yml` | `gh api repos/<owner>/<repo>/releases/latest --jq .tag_name` |
 | firebase-tools | `.github/actions/*/action.yml` (`npm install -g firebase-tools@x`) | `npm view firebase-tools version` |
 | Terraform providers | `infra/terraform/envs/*/backend.tf` | registry.terraform.io (hashicorp/google, google-beta) |
 | Node | `.nvmrc`, `frontend/package.json` `engines` | the App Hosting docs' supported Node versions, then nodejs.org |
-| Python | `.python-version`, `firebase.json` `runtime` | Cloud Functions' supported runtimes |
+| Python | `.python-version`, `backend/Dockerfile` (`python:` image, `uv` image) | python.org + Docker Hub `library/python` tags; `gh api repos/astral-sh/uv/releases/latest` |
 
 ## Steps
 

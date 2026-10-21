@@ -6,7 +6,7 @@ Context for working on this repository. Start here; the detail loads from `.clau
 
 The personal website at **nikunjramani.in** — portfolio, projects, writing. A server-rendered
 Next.js site whose content lives in Firestore, edited through an admin panel on the site itself,
-with a Python API owning every write.
+with a Python API (one FastAPI service on Cloud Run) owning every read and write.
 
 **This repository is public.** Never commit secrets, credentials, personal contact details,
 employer names, client names, or anything from a private engagement. Reach for a placeholder and
@@ -36,7 +36,7 @@ need the Firestore emulator). Full plan: [`.docs/plan/`](./.docs/plan/README.md)
 | | |
 |---|---|
 | Frontend | Next.js 16 App Router · TypeScript strict · Tailwind v4 · shadcn/ui |
-| Backend | Python 3.13 · FastAPI on Cloud Functions for Firebase (2nd gen) |
+| Backend | Python 3.13 · FastAPI, one service on Cloud Run (ADR 0023) |
 | Data | Cloud Firestore · Cloud Storage · Firebase Auth · App Check |
 | Hosting | Firebase App Hosting |
 | Infra | Terraform (`google` + `google-beta`) — prod `nikunjramani-in`, staging `nikunjramani-in-staging` |
@@ -46,7 +46,7 @@ need the Firestore emulator). Full plan: [`.docs/plan/`](./.docs/plan/README.md)
 ```
 architecture/   JSON Schemas + api-routes.json — the single source of truth for every model
 frontend/       Next.js app: site/ · admin/ · shared/ — two surfaces, two root layouts (ADR 0021)
-backend/        Python Firebase Functions — src/<domain>/<subdomain>, kernel/, shared/generated
+backend/        the API: apps/api.py · src/<domain>/<subdomain> · kernel/ · shared/generated
 infra/          Terraform envs + modules · Firestore rules
 .github/        pr.yml · deploy.yml · composite actions
 .docs/          code flow · code decisions · ADRs · runbook · build plan
@@ -57,7 +57,7 @@ infra/          Terraform envs + modules · Firestore rules
 
 ```bash
 make setup    # install both sides
-make dev      # Next.js dev server + Firebase emulators
+make dev      # Firebase emulators + the API on :8000 (reloading) + Next.js
 make gen      # regenerate models from architecture/  ← after ANY schema or api-routes edit
 make validate # validate schemas + example fixtures
 make lint     # eslint + tsc + ruff + mypy --strict + import-linter + terraform fmt
@@ -75,11 +75,11 @@ merging to `main` deploys them to **prod** (`deploy.yml`, switch: repo variable
 Load-bearing. Each has an ADR behind it — read it before proposing a change.
 
 **1 · Never hand-edit generated code.** `frontend/src/generated/` and
-`backend/functions/shared/generated/` come from `architecture/`. Edit the schema, run `make gen`.
+`backend/shared/generated/` come from `architecture/`. Edit the schema, run `make gen`.
 CI fails on drift. → [ADR 0006](./.docs/adr/0006-json-schema-source-of-truth.md)
 
 **2 · Only the Python API touches the database.** Reads and writes alike: pages read through
-`lib/data/*`, which calls each content function's public `GET /public` route. The frontend has no
+`lib/data/*`, which calls each content subdomain's public `GET /public` route. The frontend has no
 Firestore SDK (ESLint) and no Firestore role (IAM). → [ADR 0022](./.docs/adr/0022-backend-owns-all-data-access.md)
 
 **3 · Clients never write to Firestore.** Rules deny all client writes, including admin. Every
@@ -94,12 +94,13 @@ failure mode is a leaked credential, not a build error.
 server `<Nav>`, never a client `<Nav>`.
 
 **6 · Domains and subdomains are isolated; layering is one way.**
-`backend/functions/src/<domain>/<subdomain>/` does one job, deploys as `api_<domain>_<sub>`, and
-owns `main.py` · `routes.py` · `schemas.py` · `service.py` · `repository.py`. Domains never import
-each other, subdomains never import siblings, there is **no `common/` folder**, no `__init__.py`
-outside `shared/generated`, and tests live only in `backend/functions/tests/`. Content subdomains
-subclass `kernel.crud` (copy `src/content/skills/`).
-→ [ADR 0017](./.docs/adr/0017-bounded-context-domains.md) · `.claude/rules/backend.md`
+`backend/src/<domain>/<subdomain>/` does one job, is served at `/api/v1/<domain>/<sub>`, and
+owns `routes.py` (+ `events.py` if an event starts it) · `schemas.py` · `service.py` ·
+`repository.py`. Domains never import each other, subdomains never import siblings, there is
+**no `common/` folder**, no `__init__.py` outside `shared/generated`, and tests live only in
+`backend/tests/`. `backend/apps/api.py` mounts them all into the one service and nothing imports
+it. Content subdomains subclass `kernel.crud` (copy `src/content/skills/`).
+→ [ADR 0017](./.docs/adr/0017-bounded-context-domains.md) · [ADR 0023](./.docs/adr/0023-backend-as-one-cloud-run-service.md) · `.claude/rules/backend.md`
 
 **7 · Architectural changes get an ADR; code-level choices get a decision entry.** Anything a
 stranger would ask "why is it like this?" about. ADRs are immutable — supersede, never edit.

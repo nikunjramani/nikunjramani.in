@@ -31,8 +31,8 @@ env:
     value: "https://nikunjramani-in--nikunjramani-in-staging.asia-southeast1.hosted.app"
     availability: [BUILD, RUNTIME]
 
-  - variable: FUNCTIONS_BASE_URL
-    value: "https://asia-south1-nikunjramani-in-staging.cloudfunctions.net"
+  - variable: API_BASE_URL
+    value: "https://api-659120187836.asia-south1.run.app"
     availability: [BUILD, RUNTIME]
 
   # Staging's own reCAPTCHA Enterprise key for App Check (ADR 0020), restricted to the staging

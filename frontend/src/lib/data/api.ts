@@ -1,6 +1,6 @@
 import "server-only";
 
-import { functionUrl } from "@/lib/backend";
+import { apiUrl } from "@/lib/backend";
 
 /**
  * The public site's only way to its data: the Python API's unauthenticated `/public`
@@ -22,7 +22,7 @@ interface RecordOut<T> {
 const withId = <T>({ id, data }: RecordOut<T>): WithId<T> => ({ ...data, id });
 
 async function request(route: string, path: string): Promise<Response | null> {
-  const res = await fetch(`${functionUrl(route)}/public${path}`, {
+  const res = await fetch(`${apiUrl(route)}/public${path}`, {
     cache: "no-store",
     headers: { Accept: "application/json" },
   });

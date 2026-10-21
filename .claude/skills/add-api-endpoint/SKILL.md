@@ -1,19 +1,20 @@
 ---
 name: add-api-endpoint
-description: Add or modify an endpoint in the Python Firebase Functions backend. Use for any new API route, CRUD operation, Firestore trigger, or scheduled job — this backend has strict domain/subdomain isolation and one-way layering that are easy to violate by accident.
+description: Add or modify an endpoint in the Python backend (one FastAPI service on Cloud Run). Use for any new API route, CRUD operation, event handler (Storage/Firestore via Eventarc), or scheduled job — this backend has strict domain/subdomain isolation and one-way layering that are easy to violate by accident.
 ---
 
 # Adding a backend endpoint
 
-Read [backend/functions/README.md](../../../backend/functions/README.md) first — it has the domain
-map and the rules. → [ADR 0017](../../../.docs/adr/0017-bounded-context-domains.md)
+Read [backend/README.md](../../../backend/README.md) first — it has the domain
+map and the rules. → [ADR 0017](../../../.docs/adr/0017-bounded-context-domains.md) ·
+[ADR 0023](../../../.docs/adr/0023-backend-as-one-cloud-run-service.md)
 
 ## First: which domain and subdomain?
 
 ```
-src/<domain>/<subdomain>/      one job, one deployed function: api_<domain>_<subdomain>
-├── main.py         the Firebase function(s) — make_function(router, ...) or a trigger
+src/<domain>/<subdomain>/      one job, served at /api/v1/<domain>/<subdomain>
 ├── routes.py       HTTP only: parse, authorise (AdminClaims), delegate, serialise
+├── events.py       only if an event or schedule starts the work — HTTP only, InternalCaller
 ├── schemas.py      request / response models
 ├── service.py      the rules — no HTTP, raises kernel.errors
 ├── repository.py   its collection — the only Firestore SDK user
@@ -31,18 +32,19 @@ src/<domain>/<subdomain>/      one job, one deployed function: api_<domain>_<sub
 
 Copy `src/content/skills/`. Its `repository.py` subclasses `kernel.crud.repository.BaseRepository`,
 its `service.py` subclasses `kernel.crud.service.CrudService` (audit stamps, publish/unpublish
-transitions, RFC 7386 merge-patch, reorder), and its `routes.py` is written out in full. A
-singleton (one fixed document) follows `src/content/profile/`. Add only what's specific to the
-collection — `ProjectService.duplicate` is the example.
+transitions, RFC 7386 merge-patch, reorder, public reads), and its `routes.py` is written out in
+full. A singleton (one fixed document) follows `src/content/profile/`. Add only what's specific
+to the collection — `ProjectService.duplicate` is the example.
 
 ## Layering — one way only
 
-`main → routes → schemas → service → repository → Firestore`, enforced by import-linter's
+`routes | events → schemas → service → repository → Firestore`, enforced by import-linter's
 layers contract and `tests/test_import_rules.py`.
 
 | Layer | Does | Must never |
 |---|---|---|
 | **routes** | Parse, `AdminClaims`, delegate, serialise | Contain rules or touch Firestore |
+| **events** | `InternalCaller`, read the event (`kernel.events`), delegate | Contain rules or touch Firestore |
 | **service** | Rules, orchestration | Know HTTP — no `Request`, no status codes |
 | **repository** | Every Firestore SDK call for its collection | Contain rules |
 
@@ -66,59 +68,62 @@ The one exception is a content subdomain's public read: `GET /public` (and `/pub
 auth, returning `service.list_public()` / `get_public()` with `response_model_exclude_none=True`
 — never a raw admin read (ADR 0022). Declare it before `/{doc_id}`.
 
-**5 · Entry point** — `main.py`:
+**5 · Events and jobs** (only if the work starts from an event or a schedule) — `events.py`:
 
 ```python
-from kernel.http import make_function
-from src.<domain>.<sub>.routes import router
+router = APIRouter(dependencies=[InternalCaller])     # kernel.events — never omit it
 
-api_<domain>_<sub> = make_function(router, name="api_<domain>_<sub>", secrets=["NAME"])
+@router.post("/<thing>-happened", status_code=204)
+async def thing_happened(request: Request) -> Response:
+    obj = await storage_object(request)               # or firestore_document(request)
+    await run_in_threadpool(Service().handle, obj.name)  # off the event loop
+    return Response(status_code=204)
 ```
 
-Bound secrets must have a Secret Manager version before deploy. Triggers and scheduled jobs are
-defined in `main.py` too, with their logic in `service.py`.
+Idempotent: Eventarc delivers at least once and retries any non-2xx. Then add the Eventarc
+trigger or Cloud Scheduler job in `infra/terraform/modules/api` (the destination path is the
+route; the identity is the runtime account; a scheduler's OIDC audience is the service URL).
 
 **6 · Tests** — in `tests/<domain>/<sub>/`, mirroring the source:
 - service unit tests with the repository faked (see `tests/inbox/contact/test_service.py`)
 - route tests with the service overridden (see `tests/media/library/test_routes.py`)
+- event tests posting a recorded payload (see `tests/media/processing/test_events.py`)
 - repository/integration tests on the `db` fixture — they run against the Firestore emulator and
   skip without it (see `tests/content/projects/test_service.py`)
 
 ## Registering a new subdomain
 
-`tests/test_domain_registry.py` fails `make test` until all four are done — each one, missed,
-fails silently in production:
+`tests/test_domain_registry.py` fails `make test` until these are done:
 
-1. **`src/<domain>/main.py`** — add `"api_<domain>_<sub>": "src.<domain>.<sub>.main"` to
-   `FUNCTIONS` (triggers too, under their own names). Not listed → never deployed.
+1. **`backend/apps/api.py`** — import its router and add `"<domain>/<sub>": router` to `ROUTES`
+   (an `events.py` router goes in `INTERNAL` with its `/internal/…` prefix). Not mounted → 404.
 2. **`architecture/api-routes.json`** — add `"<sub>": "<domain>/<sub>"` under its domain, then
-   `make gen` (it generates the Next.js rewrites in `frontend/src/generated/api-routes.ts`).
-   Missing → a 404 that reads like a routing bug.
-3. **`backend/functions/pyproject.toml`** — add the subdomain to its domain's independence
-   contract and to the layers contract's `containers`.
-4. **`infra/terraform/modules/functions/main.tf`** — add `api_<domain>_<sub>` to
-   `http_functions`. Missing → Cloud Run answers 403.
+   `make gen` (the frontend's `API_ROUTES`).
+3. **`backend/pyproject.toml`** — add the subdomain to its domain's independence contract and
+   to the layers contract's `containers`.
 
-A new **domain** also needs `src/<domain>/main.py`, an import of its `FUNCTIONS` in the root
-`main.py`, and a place in the domain-independence contract.
+A new **domain** also needs a place in the domain-independence contract.
+
+## Secrets
+
+Bound in the Makefile's `deploy-api` (`--set-secrets NAME=NAME:latest`), read through the
+subdomain's `settings.py`. Terraform creates the container (`modules/secrets`); the owner adds
+the value; a version must exist before the deploy.
 
 ## Verify
 
 ```bash
-make lint    # ruff · mypy --strict · import-linter
-make test    # emulator-backed tests skip unless the Firestore emulator is running
-make dev     # then check the subdomain's /docs shows the route with correct models
-firebase deploy --only functions:api_<domain>_<sub>
+make lint          # ruff · mypy --strict · import-linter
+make test          # emulator-backed tests skip unless the Firestore emulator is running
+make dev-backend   # then check /docs shows the route with the right models
 ```
 
 ## Gotchas
 
-- **Secrets aren't available at import time**, only at request time.
 - **Firestore `in` queries cap at 30 values.**
 - **Composite queries need composite indexes** — add to `x-firestore.indexes` in the schema.
-- **`/docs` must be disabled in production** (`kernel/http.py` does this).
-- **A change under `kernel/` or `shared/` redeploys every function.**
-- **Never construct `a2wsgi.ASGIMiddleware` directly** — use `kernel/wsgi_bridge.py`. Its thread
-  dies when the dev server forks and every request hangs.
-- **A `TestClient` pass does not prove the Firebase adapter works.** Changes to `kernel/http.py`
-  or `kernel/wsgi_bridge.py` need a real request through the emulator.
+- **`/docs` is off in production** (`kernel/app.py`).
+- **CPU-bound work in an `async def` blocks every concurrent request** — `run_in_threadpool` or
+  a plain `def` route.
+- **Collection roots are `"/"`** — reached as `/api/v1/<domain>/<sub>` through the rewrite;
+  `kernel/app.py` handles the missing slash without redirecting.

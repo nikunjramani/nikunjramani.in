@@ -9,7 +9,7 @@ description: Add or change a field on any content model (project, skill, experie
 
 ## Never do this
 
-- ❌ Edit a file under `frontend/src/generated/` or `backend/functions/shared/generated/`
+- ❌ Edit a file under `frontend/src/generated/` or `backend/shared/generated/`
 - ❌ Add a field to a Pydantic model or TypeScript interface directly
 - ❌ Add a form input to the admin panel by hand
 

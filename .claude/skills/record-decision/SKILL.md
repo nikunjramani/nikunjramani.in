@@ -13,7 +13,7 @@ comment. `.docs/CODE_FLOW.md` holds how requests and deploys move through the co
 
 | Area | File | Prefix |
 |---|---|---|
-| Python functions, kernel, domains | `.docs/decisions/backend.md` | `BE-` |
+| Python API: apps, kernel, domains | `.docs/decisions/backend.md` | `BE-` |
 | Next.js site and admin | `.docs/decisions/frontend.md` | `FE-` |
 | Terraform, Firestore rules, GCP | `.docs/decisions/infra.md` | `IN-` |
 | Workflows, actions, deploys | `.docs/decisions/ci-cd.md` | `CI-` |
@@ -26,7 +26,7 @@ Append at the end of the right section; numbers are never reused.
 ```markdown
 ### BE-39 · <the decision, stated as what the code does>
 
-- **Where:** [path/to/file.py](../../backend/functions/path/to/file.py) — the symbol
+- **Where:** [path/to/file.py](../../backend/path/to/file.py) — the symbol
 - **Decision:** what the code does, in one or two sentences.
 - **Why:** the constraint or failure that forced it — the real one, specifically.
 - **Outcome:** what it buys, and what it costs.

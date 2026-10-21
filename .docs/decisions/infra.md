@@ -39,7 +39,7 @@ Flow: [CODE_FLOW §11](../CODE_FLOW.md#11--infrastructure). Entries IN-01…IN-1
 - **Where:** `google_storage_bucket.backups` — lifecycle `age = 30`
 - **Why:** bounded cost; a month covers noticing a bad edit.
 
-### IN-05 · Functions get their invoker binding from Terraform, after they exist
+### ~~IN-05~~ Superseded by [IN-16](#in-16--terraform-owns-what-points-at-the-api-ci-owns-the-service) · Functions get their invoker binding from Terraform, after they exist
 
 - **Where:** [modules/functions](../../infra/terraform/modules/functions/main.tf)
 - **Decision:** `allUsers` `roles/run.invoker` on each HTTP function via
@@ -48,7 +48,7 @@ Flow: [CODE_FLOW §11](../CODE_FLOW.md#11--infrastructure). Entries IN-01…IN-1
   exist first. Admin routes authenticate in-process (BE-16).
 - **Outcome:** CI deploys code before Terraform (CI-11).
 
-### IN-06 · Runtime limits and secret bindings live in the Python decorators
+### ~~IN-06~~ Superseded by [IN-16](#in-16--terraform-owns-what-points-at-the-api-ci-owns-the-service) · Runtime limits and secret bindings live in the Python decorators
 
 - **Where:** `make_function(...)`, trigger decorators; not in Terraform
 - **Why:** `firebase deploy` owns the function resource; two owners of one setting drift.
@@ -123,3 +123,24 @@ Flow: [CODE_FLOW §11](../CODE_FLOW.md#11--infrastructure). Entries IN-01…IN-1
   before Terraform applies, so the new frontend is live before the role goes.
 - **Related:** ADR 0022 · IN-07 · FE-26
 - **Since:** 2026-10-20
+
+### IN-16 · Terraform owns what points at the API; CI owns the service
+
+- **Where:** [modules/api](../../infra/terraform/modules/api/main.tf); `deploy_roles` / `terraform_roles` and the service-agent bindings in [modules/iam](../../infra/terraform/modules/iam/main.tf)
+- **Decision:** the `api` Cloud Run service, its public invoke and its `backend` image repository
+  are created and updated by CI (`make api-registry`, `make deploy-api`). Terraform's
+  `modules/api` holds the two Eventarc triggers (Storage `object.finalized` on the media bucket;
+  Firestore `document.created` on `contact_messages/{message}`, protobuf) and the
+  `nightly-backup` Cloud Scheduler job, all signed as `functions-runtime@` for the service's
+  deterministic URL (`https://api-<project number>.<region>.run.app`, also its `api_url` output).
+  `github-deploy` gains `artifactregistry.admin` and loses the Functions/Eventarc/Scheduler roles;
+  `github-terraform` gains `eventarc.admin` and `cloudscheduler.admin`. The compute default
+  account's invoker and event-receiver bindings, which served only Firebase's triggers, are gone.
+- **Why:** the staging environment's Terraform applies only from `main`, so a Terraform-created
+  service couldn't exist for the PR that introduces it — the preview has to be able to create
+  it, as `firebase deploy` created functions. Two owners of the service's settings would drift
+  (IN-06's reason, still true), so Terraform doesn't touch it at all.
+- **Outcome:** the old 15 invoker bindings and `modules/functions` are deleted. Cost: one more
+  thing CI creates on first deploy (the registry), and code still deploys before Terraform.
+- **Related:** ADR 0023 · CI-16 · BE-45 · supersedes IN-05, IN-06
+- **Since:** 2026-10-21

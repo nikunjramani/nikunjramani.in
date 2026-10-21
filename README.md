@@ -12,7 +12,7 @@ Live at **[nikunjramani.in](https://nikunjramani.in)**.
 | Layer | Tech |
 |---|---|
 | Frontend | Next.js 16 (App Router) · TypeScript · Tailwind v4 · shadcn/ui |
-| Backend | Python 3.13 · FastAPI on Cloud Functions for Firebase (2nd gen) |
+| Backend | Python 3.13 · FastAPI, one service on Cloud Run |
 | Data | Cloud Firestore · Cloud Storage · Firebase Auth · App Check |
 | Hosting | Firebase App Hosting |
 | Infra | Terraform (`google` / `google-beta`) — a prod and a staging project |
@@ -26,7 +26,7 @@ Python owns every write; nothing on the read path can cold-start.
 ```
 architecture/   JSON Schemas — the single source of truth for every model
 frontend/       Next.js app (public site + /admin)
-backend/        Python Firebase Functions (API, triggers, scheduled jobs)
+backend/        the Python API — one FastAPI service (routes, event handlers, jobs)
 infra/          Terraform for Firebase/GCP + security rules
 .docs/          Code flow, code decisions, ADRs, runbook, build plan
 .claude/        Rules and skills for Claude Code
@@ -42,7 +42,7 @@ fields. Add a field once, and it appears everywhere.
 make gen     # regenerate all targets
 ```
 
-`frontend/src/generated/` and `backend/functions/shared/generated/` are committed but never edited
+`frontend/src/generated/` and `backend/shared/generated/` are committed but never edited
 by hand — CI regenerates and fails on any diff.
 
 ## Getting started

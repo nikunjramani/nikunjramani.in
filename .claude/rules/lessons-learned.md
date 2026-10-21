@@ -31,7 +31,7 @@ first within each section, with the date.
 ## Backend structure (ADR 0017)
 
 - **2026-10-13 · Tests placed inside `src/` subdomains.** → Tests live only in
-  `backend/functions/tests/`, mirroring the source tree.
+  `backend/tests/`, mirroring the source tree.
 - **2026-10-13 · A `common/` folder per domain that did every job.** → No `common/` anywhere; each
   subdomain owns its slice, even if that means two small files that look alike.
 - **2026-10-13 · `__init__.py` everywhere; a separate `domains/` folder instead of `src/`.** → Implicit
@@ -41,21 +41,28 @@ first within each section, with the date.
 
 ## Infrastructure and deploys
 
+- **2026-10-21 · Asked the owner for grants Terraform would have made itself.** Phase 9's
+  prerequisites had the owner grant the apply identity roles for resource types that didn't
+  exist yet; Terraform grants those in the same apply (the module depends on `module.iam`). Only
+  the deploy identity's Artifact Registry role truly needed a hand: the PR preview runs before
+  any apply. → Ask for a manual grant only for a refresh of an existing resource (below) or a
+  role a preview needs before merge (`infra.md`).
 - **2026-10-16 · Terraform can't grant itself a role it needs to *read* a resource.** The apply
   account lacked `roles/recaptchaenterprise.admin`; refresh 403'd before apply could grant it.
   PR plans passed only because the plan account has `roles/viewer`. → When a module adds a new
   resource type, check the *apply* identity's roles (`terraform_roles` in `modules/iam`), not just
-  the plan's — and grant it by hand once in existing projects.
+  the plan's — and grant it by hand once in existing projects *if Terraform already manages a
+  resource of that type* (a refresh comes before any grant).
 - **2026-10-16 · `firebase deploy --only storage` on a project without Firebase Storage.** The media
   bucket is plain GCS behind IAM. → Storage rules are emulator-only; never deploy them.
 - **2026-10-16 · Secret Manager rejects an empty version.** → A not-yet-configured secret gets a
   single newline; the reading settings use `str_strip_whitespace=True`.
 - **2026-10-16 · mypy rejected `module.httpx` (not re-exported).** → Patch the library where it's
   defined (`httpx.post`), not through another module's namespace.
-- **Earlier · a2wsgi's background thread hangs after fork; Admin SDK app not created before the
-  first `verify_id_token`.** Both type-checked and passed unit tests, failed only against the
-  real emulator. → Changes to `kernel/http.py`, `kernel/wsgi_bridge.py` or auth need a real
-  request through the emulator (`backend.md`).
+- **Earlier · Admin SDK app not created before the first `verify_id_token`.** It type-checked
+  and passed unit tests, and failed only against the real emulator. → Auth changes need a real
+  request against the emulators (`make dev-backend`). (The same entry used to cover a2wsgi's
+  thread hanging after a fork; that adapter went with the move to Cloud Run, ADR 0023.)
 
 ## Tooling on Windows
 

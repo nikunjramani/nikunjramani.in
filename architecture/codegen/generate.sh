@@ -8,7 +8,7 @@ set -euo pipefail
 cd "$(dirname "$0")/../.."
 ROOT="$PWD"
 SCHEMAS="$ROOT/architecture/schemas"
-PY_OUT="$ROOT/backend/functions/shared/generated"
+PY_OUT="$ROOT/backend/shared/generated"
 
 if ! compgen -G "$SCHEMAS/*.schema.json" > /dev/null; then
   echo "No schemas yet — nothing to generate."
@@ -52,7 +52,7 @@ uvx --quiet --from datamodel-code-generator datamodel-codegen \
   echo ']'
 } > "$PY_OUT/__init__.py"
 
-echo "  pydantic    → backend/functions/shared/generated/"
+echo "  pydantic    → backend/shared/generated/"
 
 # ── TypeScript + Zod ────────────────────────────────────────────────
 cd "$ROOT/architecture/codegen"

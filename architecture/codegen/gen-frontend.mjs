@@ -52,16 +52,14 @@ if (roots.length === 0) {
 await mkdir(OUT, { recursive: true });
 
 // ── API route contract ───────────────────────────────────────────────────────
-// One manifest feeds feature clients and Next.js rewrites. Backend registry tests also
-// compare it with deployed Firebase functions, so adding a subdomain cannot leave a stale
-// string hidden in a component or config file.
+// One manifest names every API route the frontend calls. The backend's registry test
+// compares it with the routers apps/api.py mounts, so adding a subdomain cannot leave a
+// stale string hidden in a component or config file.
 const apiRoutes = JSON.parse(await readFile(API_ROUTES_SOURCE, "utf8"));
 await writeFile(
   path.join(OUT, "api-routes.ts"),
   await prettier.format(
     `${API_ROUTES_BANNER}export const API_ROUTES = ${JSON.stringify(apiRoutes)} as const;
-
-export const BACKEND_ROUTES = Object.values(API_ROUTES).flatMap((domain) => Object.values(domain));
 
 export type ContentApiDomain = (typeof API_ROUTES.content)[keyof typeof API_ROUTES.content];
 `,
@@ -137,7 +135,7 @@ console.log(`  zod         → frontend/src/generated/schemas.zod.ts`);
 //
 // Every content collection is a subdomain of the backend's `content` domain (ADR 0017),
 // served at /api/v1/content/<subdomain>. The subdomain matches the collection name except
-// site_config, whose subdomain is `settings` (backend/functions/src/content/settings/).
+// site_config, whose subdomain is `settings` (backend/src/content/settings/).
 const CONTENT_SUBDOMAIN_OVERRIDES = { site_config: "settings" };
 
 const formSchemas = {};

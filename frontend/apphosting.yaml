@@ -33,9 +33,10 @@ env:
     value: "https://nikunjramani.in"
     availability: [BUILD, RUNTIME]
 
+  # The API on Cloud Run (ADR 0023) — its deterministic URL, `terraform output api_url`.
   # Next.js serializes rewrites at build time, so this must be available during BUILD.
-  - variable: FUNCTIONS_BASE_URL
-    value: "https://asia-south1-nikunjramani-in.cloudfunctions.net"
+  - variable: API_BASE_URL
+    value: "https://api-555631156536.asia-south1.run.app"
     availability: [BUILD, RUNTIME]
 
   # FIREBASE_SERVICE_ACCOUNT is deliberately absent — App Hosting's runtime service

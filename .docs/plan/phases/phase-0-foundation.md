@@ -94,7 +94,7 @@ checklist as it runs.
 
 ### 0.7 · Backend skeleton
 
-- [x] `backend/functions/` with `uv` and `pyproject.toml`, Python 3.13
+- [x] `backend/` with `uv` and `pyproject.toml`, Python 3.13
 - [x] `firebase.json` with `"runtime": "python313"`
 - [x] `shared/` skeleton — `core/`, `api.py`, `repositories/`
 - [x] `shared/api.py` — `make_function()`, the FastAPI + `a2wsgi` wrapper

@@ -28,16 +28,6 @@ variable "budget_amount" {
   default = 100
 }
 
-variable "functions_deployed" {
-  description = <<-EOT
-    False until the first `firebase deploy --only functions` has run. Flip to true
-    (terraform.tfvars) for the follow-up apply that wires the Cloud Run invoker
-    bindings — see modules/functions/main.tf.
-  EOT
-  type        = bool
-  default     = true # flipped after the first deploy (Phase 6); CI plans/applies with this
-}
-
 variable "apphosting_github_connection_id" {
   description = <<-EOT
     Set only after the App Hosting GitHub connection is authorised in the Firebase

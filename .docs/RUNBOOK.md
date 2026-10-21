@@ -11,7 +11,8 @@ Firebase CLI · gcloud · uv
 
 ```bash
 make setup     # install both sides
-make dev       # Next.js on :3000 + emulators (UI on :4040 — moved off the default :4000, which collides on macOS)
+make dev       # emulators (UI on :4040 — moved off the default :4000, which collides on macOS)
+               # + the API on :8000 (reloading) + Next.js on :3000
 ```
 
 | Command | Does |
@@ -57,20 +58,30 @@ editor preferences, so there's nothing to set up beyond opening the repo.
 
 | Config | What it does |
 |---|---|
-| **Backend: debug a domain** | Prompts for a domain name (e.g. `contact`), runs it directly via `functions-framework` under `debugpy`. Breakpoints in `routes.py`/`service.py`/`repository.py` work normally. Starts the data-only emulator task first. |
+| **Backend: debug the API** | Runs `uvicorn apps.api:app` on `:8000` under `debugpy`, against the emulators. Breakpoints in `routes.py`/`events.py`/`service.py`/`repository.py` work normally. Starts the data-only emulator task first. |
 | **Backend: debug pytest (current file)** / **all tests** | Runs the open test file, or the whole suite, under the debugger. |
 | **Frontend: debug full stack** | `next dev` with both server and client breakpoints — VS Code's own [Next.js debugging recipe](https://nextjs.org/docs/app/guides/debugging), launched via `node-terminal` with a `serverReadyAction` that opens Chrome once the dev server is up. |
-| **Full stack: backend domain + frontend** | Both of the above together. |
+| **Full stack: API + frontend** | Both of the above together. |
 
-**Debug the function directly — never through the Firebase Functions emulator.** A function's
-breakpoints won't reliably hit if you route through `firebase emulators:start --only functions`;
-that emulator manages its own subprocess per function, which doesn't compose with an attached
-debugger the way a plain `functions-framework` process does. Worse, for this project specifically,
-the WSGI/ASGI bridge outright hangs the first time the emulator's underlying reloader forks — see
-[ADR 0003](./adr/0003-fastapi-in-a-single-function.md)'s implementation note. The **"emulators:
-data services"** task deliberately starts only Firestore, Auth and Storage — real data, no
-Functions emulator in the way — and the debug configs talk to the target function's own dev server
-directly on `:8091`.
+The **"emulators: data services"** task starts Firestore, Auth and Storage — what the API runs
+against locally (`make dev-backend` does the same without the debugger). `/docs` on `:8000`
+lists every route.
+
+### Replaying an event locally
+
+Eventarc doesn't reach the emulators, so the three `/internal/*` routes never fire on their own
+in development. With `ENVIRONMENT=development` they accept an unsigned call, so replay one:
+
+```bash
+# an upload: after PUTting a file to the Storage emulator
+curl -X POST localhost:8000/internal/events/media-uploaded -H 'Content-Type: application/json' \
+  -d '{"bucket": "nikunjramani-in-media", "name": "uploads/media/<id>/original.jpg"}'
+# the nightly backup
+curl -X POST localhost:8000/internal/jobs/backup
+```
+
+`/internal/events/contact-created` takes a protobuf body; exercise it through its test
+(`tests/inbox/notifications/test_events.py`) rather than by hand.
 
 ---
 
@@ -80,19 +91,19 @@ directly on `:8091`.
 targets the merge touched, smoke-tests, rolls back on failure, then applies Terraform (prod behind
 your approval). See "CI/CD and staging" below and `.docs/CODE_FLOW.md`.
 
-`make deploy` is the break-glass path from a laptop, in the order CI uses for a fresh project —
-each step depends on the one before:
+`make deploy IMAGE=<image>` is the break-glass path from a laptop:
 
 ```bash
-make deploy
-# 1. terraform apply     infra, IAM, secrets, indexes
-# 2. firebase deploy     rules + indexes
-# 3. firebase deploy     functions (needs secrets to exist)
-# 4. firebase deploy --only apphosting   local source → Cloud Build → rollout
+make deploy IMAGE=asia-south1-docker.pkg.dev/nikunjramani-in/backend/api:<sha>
+# 1. terraform apply                    infra, IAM, secrets, triggers, scheduler
+# 2. firebase deploy                    rules + indexes
+# 3. make deploy-api                    that image as the `api` Cloud Run service
+# 4. firebase deploy --only apphosting  local source → Cloud Build → rollout
 ```
 
-(CI deploys code *before* Terraform instead, because Terraform's invoker bindings need the
-functions to exist — see "A change that adds a secret".)
+In a fresh project the `api` service must exist before Terraform can point triggers at it, so
+deploy the API first there (`make api-registry`, push an image, `make deploy-api`) — CI deploys
+code before Terraform for the same reason.
 
 ### Pre-flight
 
@@ -111,7 +122,7 @@ functions to exist — see "A change that adds a secret".)
 - [ ] Contact form delivers an email
 - [ ] `/admin` login works
 - [ ] An admin edit appears publicly within seconds
-- [ ] Function logs clean — check immediately; missing secrets surface here
+- [ ] The `api` service's logs clean — check immediately; missing secrets surface here
 
 ---
 
@@ -132,11 +143,12 @@ What runs for what (`dorny/paths-filter`, same filters in both workflows):
 | Change | Checks | Deploys |
 |---|---|---|
 | `frontend/**` (design, pages) | frontend | App Hosting |
-| `backend/**` | backend | functions |
+| `backend/**`, `Makefile` | backend | the API (Cloud Run) |
 | `infra/rules/**` | — | Firestore rules + indexes |
 | `infra/terraform/**` | `terraform plan` | — then, on `main`, `terraform apply` |
-| `architecture/**` | schemas, backend, frontend | functions + App Hosting |
-| `firebase.json`, `.firebaserc` | backend | everything |
+| `architecture/**` | schemas, backend, frontend | the API + App Hosting |
+| `firebase.json` | — | rules + App Hosting |
+| `.firebaserc` | — | everything |
 | `.github/**` | everything | everything |
 | `.docs/**`, `.claude/**`, any `*.md` anywhere | none (just the `checks` rollup, which branch protection requires) | nothing |
 
@@ -178,7 +190,7 @@ some-with-excludes`), so a README under `backend/` deploys nothing either.
 
 No bot opens dependency PRs (Dependabot was removed — one PR per ecosystem, each re-running the
 whole pipeline, cost more CI than it saved). Update everything **in one PR**: bump npm
-(`frontend/`, `architecture/codegen/`), `uv lock --upgrade` in `backend/functions/`, action
+(`frontend/`, `architecture/codegen/`), `uv lock --upgrade` in `backend/`, action
 versions in `.github/`, and provider constraints in `infra/terraform/envs/*/backend.tf`, then let
 that PR's single run — checks, both plans, a staging preview — prove it. Treat majors that need
 code changes (zod, TypeScript, Vitest, Firebase, the `$ref` resolver) as their own migrations.
@@ -201,8 +213,8 @@ GitHub job owner-equivalent rights on prod for that run; don't approve a run you
 
 ### A change that adds a secret
 
-`deploy.yml` deploys code before Terraform, so a function that binds a brand-new secret would
-deploy before the secret exists. Run **Actions → deploy → Run workflow → infra_only** first,
+`deploy.yml` deploys code before Terraform, so an API deploy that binds a brand-new secret
+(`--set-secrets` in the Makefile's `deploy-api`) would run before the secret exists. Run **Actions → deploy → Run workflow → infra_only** first,
 add the secret's value (`gcloud secrets versions add`), then merge the code.
 
 ### Staging
@@ -224,14 +236,13 @@ costs an afternoon.
 
 | Broken | Fix |
 |---|---|
-| One domain's function | Redeploy that domain from a known-good source revision (below) |
+| The API | Traffic to the previous revision (below) — seconds, no rebuild |
 | Frontend | App Hosting console → previous release |
 | Rules | `git revert` → `firebase deploy --only firestore:rules` |
 | Infra | `git revert` → `terraform apply` |
 | Data | Restore from the nightly export in `nikunjramani-in-backups` |
 
-Because functions are split per domain (ADR 0011), one domain rolls back without touching
-the rest.
+The API is one service (ADR 0023), so it rolls back as a whole; Cloud Run keeps every revision.
 
 ---
 
@@ -242,24 +253,42 @@ App Hosting rollout `phase6-rollback-rehearsal` restored build
 restored `build-2026-10-10-004`; health returned 200. The latter contains ADR 0014's
 cache correction and is the preferred recovery build. Repeated publish/edit/unpublish
 checks passed after restoration. Do not roll back to build 003 for normal recovery:
-it retains the known stale-CDN behavior. Function rollback has not been rehearsed.
+it retains the known stale-CDN behavior. API (Cloud Run revision) rollback has not been rehearsed.
 
-### Function rollback
+### The API on Cloud Run
 
-**Automatic:** when a `deploy.yml` deploy or its smoke test fails, the `rollback` job redeploys
-the previous commit (all targets) with the current deploy action.
+One service, `api`, in `asia-south1`, running as `functions-runtime@` (the name predates Cloud
+Run). CI deploys it (`.github/actions/cloud-run-deploy`): build `backend/Dockerfile`, push to
+`asia-south1-docker.pkg.dev/<project>/backend/api:<sha>`, `make deploy-api`, smoke-test
+`/api/v1/ops/health`. Its shape — CPU, memory, concurrency, scaling, timeout, secrets — is the
+`deploy-api` target; its non-secret config is `backend/deploy/<project>.yaml`.
 
-**By hand** — there is no `firebase functions:rollback` command. Check a known-good commit out
-in a separate worktree, run `make setup-backend`, then deploy only the affected functions, e.g.
-`firebase deploy --project nikunjramani-in --only functions:api_content_projects`. For a
-`kernel/` or `shared/` change, restore every function.
-Do not reset a working checkout with uncommitted edits. Verify `/health` and the affected
-feature after redeploying. A procedure written here is not evidence of a tested rollback.
+**Automatic rollback:** a failed deploy or smoke test sends traffic back to the revision that was
+serving before, inside the action. The `deploy.yml` `rollback` job then redeploys the previous
+commit's rules and site.
+
+**By hand:**
+
+```bash
+gcloud run revisions list --service api --region asia-south1 --project nikunjramani-in
+gcloud run services update-traffic api --region asia-south1 --project nikunjramani-in \
+  --to-revisions <revision>=100
+```
+
+Traffic pinned to a revision stays there — the next deploy's `make deploy-api` sends it back to
+the latest. Verify `/api/v1/ops/health` and the affected feature after any rollback.
+
+**Logs:** Cloud Run → `api` → Logs, or
+`gcloud run services logs read api --region asia-south1 --project nikunjramani-in`.
+
+**Keeping it warm:** cold starts are one shared start for every route. If they ever matter,
+`--min-instances 1` in `deploy-api` keeps one instance up (a few dollars a month).
 
 ### App Hosting
 
 The app root is `frontend`; configuration belongs in `frontend/apphosting.yaml`.
-`FUNCTIONS_BASE_URL` must be available at BUILD time because Next.js serializes rewrites.
+`API_BASE_URL` (the `api` service's URL, `terraform output api_url`) must be available at
+BUILD time because Next.js serializes rewrites.
 Node 22 is pinned in `frontend/package.json`. Use:
 
 ```bash
@@ -269,8 +298,8 @@ firebase deploy --only apphosting --project nikunjramani-in --non-interactive
 The backend is in `asia-southeast1` (Mumbai is not offered for App Hosting), with
 `GLOBAL_ACCESS` serving locality (`REGIONAL_STRICT` is rejected by the live API).
 The custom compute identity needs `roles/firebaseapphosting.computeRunner` for builds
-and artifacts, Firestore viewer for SSR, and the custom session-auth role for cookies.
-It has no Firestore write permission. GitHub OAuth is optional for local-source deploys.
+and artifacts, and the custom session-auth role for cookies. It has no Firestore role at all
+(ADR 0022). GitHub OAuth is optional for local-source deploys.
 
 ## Secrets
 
@@ -284,11 +313,11 @@ echo -n "value" | gcloud secrets versions add RESEND_API_KEY --data-file=- --pro
 ### Rotation
 
 1. Add the new version
-2. Redeploy the functions that bind it (`secrets=[...]` in their decorator) so they pick it up
+2. Redeploy the API (`--set-secrets …:latest` is resolved at deploy) so it picks it up
 3. Verify the dependent path (send a test email)
 4. Disable the old version — don't delete until the new one is proven
 
-### Contact form keys — required before the next functions deploy
+### Contact form keys
 
 Abuse protection is Firebase App Check with reCAPTCHA Enterprise (ADR 0020) — no secret. The
 key comes from Terraform (`terraform output recaptcha_site_key`) and is set as
@@ -296,12 +325,13 @@ key comes from Terraform (`terraform output recaptcha_site_key`) and is set as
 service **drops every submission** without a valid App Check token (it fails closed — an
 unprotected form lets anyone exhaust the rate limit).
 
-Email is the one part that needs secrets: `on_contact_created` binds `CONTACT_EMAIL_TO` and
-`RESEND_API_KEY`, and `firebase deploy` rejects a function whose bound secret has no version. So:
+Email is the one part that needs secrets: the API binds `CONTACT_EMAIL_TO` and `RESEND_API_KEY`
+(used by `/internal/events/contact-created`), and Cloud Run refuses a revision whose bound secret
+has no version. So:
 
 1. Add a Resend API key with a verified sending domain.
 2. `gcloud secrets versions add` for `RESEND_API_KEY` and (if not already) `CONTACT_EMAIL_TO`.
-3. Deploy functions; submit the live form and confirm the email arrives.
+3. Redeploy the API; submit the live form and confirm the email arrives.
 
 Until then, `RESEND_API_KEY` can hold a **single newline** (prod does, since 2026-10-16) —
 Secret Manager rejects an empty version, and the settings strip whitespace, so the deploy accepts
@@ -355,20 +385,19 @@ The claim lands in the **next** token issued — sign out and back in to pick it
 ## Backups
 
 Nightly JSON export → `nikunjramani-in-backups`, 30-day lifecycle. The collection list is
-`BACKED_UP_COLLECTIONS` in `shared/core/collections.py`. This is **not**
+`BACKED_UP_COLLECTIONS` in `backend/src/ops/backup/service.py`. This is **not**
 GCP's native Firestore export format; `gcloud firestore import` cannot restore it.
 The format is one `<UTC timestamp>/<collection>.json` file per collection, containing
 `[{"id": "document-id", "data": {...}}]`. Only the 11 named top-level collections are
 included; subcollections and rate-limit counters are not backed up.
 
 ```bash
-gcloud scheduler jobs run firebase-schedule-nightly_backup-asia-south1 \
-  --location=asia-south1 --project=nikunjramani-in
+gcloud scheduler jobs run nightly-backup --location=asia-south1 --project=nikunjramani-in
 gcloud storage ls --recursive gs://nikunjramani-in-backups/
 ```
 
 Verify all 11 files for the same timestamp, valid JSON, and sensible document counts.
-Restore by reading those files, applying `shared.core.timestamps.to_firestore` to each
+Restore by reading those files, applying `kernel.timestamps.to_firestore` to each
 `data` object, and writing it to the original collection/document ID using the Admin SDK.
 Set `FIRESTORE_EMULATOR_HOST` explicitly and use an isolated emulator project first.
 A production restore must follow a fresh backup and a reviewed collection/document diff;
@@ -383,10 +412,11 @@ it is not part of an ordinary code rollback.
 |---|---|
 | Domain stuck "pending" for hours | GoDaddy parking records not deleted |
 | Site renders empty, no errors | A document is missing `visibility` — the rule denies the read |
-| API 404s but the function deployed fine | Missing rewrite in `next.config.ts` |
+| An API route 404s but the deploy was green | Its router isn't in `backend/apps/api.py` (the registry test should have caught it) |
+| The browser is redirected to `*.run.app` | Something re-enabled trailing-slash redirects — `kernel/app.py` must keep `redirect_slashes=False` |
+| An upload never gets a thumbnail / no contact email | The Eventarc trigger's call was refused: look for 401/403 on `/internal/events/*` in the `api` logs — the token's audience must be in `SERVICE_URL` (`backend/deploy/<project>.yaml`) |
 | Deploy fails on a secret | Secret read at import time instead of runtime |
 | `uv` builds against Python 3.9 | System Python picked up; `make PYTHON=$(uv python find 3.13)` |
 | Contact form says "Thanks" but nothing arrives | App Check rejected the submission (logs: `App Check verification failed`) — check the site key matches the project and the domain is in the reCAPTCHA key's allowed domains — or Resend isn't set up (`RESEND_API_KEY not set`) |
 | Firestore query fails in prod only | Missing composite index |
-| `Could not detect runtime` / `Missing virtual environment at venv directory` | Run `make setup-backend` — Firebase needs `requirements.txt` and its own `venv/`, not `.venv/` |
-| A function request hangs forever, no response, no error | Something constructed `a2wsgi.ASGIMiddleware` directly instead of using `shared/wsgi_bridge.py` — see ADR 0003's implementation note |
+| The API answers slowly under load | A CPU-bound call inside an `async def` route is blocking the event loop — `run_in_threadpool` |

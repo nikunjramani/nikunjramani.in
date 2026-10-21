@@ -1,23 +1,17 @@
 {
   "version": "0.2.0",
-  "inputs": [
-    {
-      "id": "function",
-      "type": "promptString",
-      "description": "Subdomain to debug, as <domain>_<subdomain> (e.g. content_projects, inbox_contact)",
-      "default": "inbox_contact"
-    }
-  ],
   "configurations": [
     {
-      "name": "Backend: debug a subdomain",
+      "name": "Backend: debug the API",
       "type": "debugpy",
       "request": "launch",
-      "module": "functions_framework",
-      "args": ["--target=api_${input:function}", "--port=8091"],
-      "cwd": "${workspaceFolder}/backend/functions",
+      "module": "uvicorn",
+      "args": ["apps.api:app", "--port", "8000"],
+      "cwd": "${workspaceFolder}/backend",
       "env": {
         "FIRESTORE_EMULATOR_HOST": "127.0.0.1:8080",
+        "FIREBASE_AUTH_EMULATOR_HOST": "127.0.0.1:9099",
+        "FIREBASE_STORAGE_EMULATOR_HOST": "127.0.0.1:9199",
         "GOOGLE_CLOUD_PROJECT": "nikunjramani-in",
         "ENVIRONMENT": "development"
       },
@@ -31,7 +25,7 @@
       "request": "launch",
       "module": "pytest",
       "args": ["${file}", "-v", "-s"],
-      "cwd": "${workspaceFolder}/backend/functions",
+      "cwd": "${workspaceFolder}/backend",
       "env": {
         "FIRESTORE_EMULATOR_HOST": "127.0.0.1:8080",
         "GOOGLE_CLOUD_PROJECT": "nikunjramani-in"
@@ -45,7 +39,7 @@
       "request": "launch",
       "module": "pytest",
       "args": ["-v"],
-      "cwd": "${workspaceFolder}/backend/functions",
+      "cwd": "${workspaceFolder}/backend",
       "env": {
         "FIRESTORE_EMULATOR_HOST": "127.0.0.1:8080",
         "GOOGLE_CLOUD_PROJECT": "nikunjramani-in"
@@ -69,8 +63,8 @@
   ],
   "compounds": [
     {
-      "name": "Full stack: backend subdomain + frontend",
-      "configurations": ["Backend: debug a subdomain", "Frontend: debug full stack"],
+      "name": "Full stack: API + frontend",
+      "configurations": ["Backend: debug the API", "Frontend: debug full stack"],
       "stopAll": true,
       "presentation": { "group": "compound", "order": 1 }
     }

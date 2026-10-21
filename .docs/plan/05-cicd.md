@@ -91,6 +91,8 @@ generated code on both sides, so both suites must run.
 
 ### Deploying only what changed
 
+> **Since 2026-10-21 ([ADR 0023](../adr/0023-backend-as-one-cloud-run-service.md)):** the backend is one FastAPI service on Cloud Run, not one Cloud Function per subdomain; triggers are Eventarc and Cloud Scheduler calls to `/internal/*` routes on it. This section describes the original Functions design — [CODE_FLOW](../CODE_FLOW.md) and [backend/README.md](../../backend/README.md) describe what runs now.
+
 Each subdomain is its own function ([ADR 0017](../adr/0017-bounded-context-domains.md)), so the
 deploy can be narrowed to the subdomains a PR actually touched:
 

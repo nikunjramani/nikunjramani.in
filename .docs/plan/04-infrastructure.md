@@ -115,6 +115,8 @@ environment (PR preview deploys overwrite whatever was there before), not one pe
 
 ## Deploy order
 
+> **Since 2026-10-21 ([ADR 0023](../adr/0023-backend-as-one-cloud-run-service.md)):** the backend is one FastAPI service on Cloud Run, not one Cloud Function per subdomain; triggers are Eventarc and Cloud Scheduler calls to `/internal/*` routes on it. This section describes the original Functions design — [CODE_FLOW](../CODE_FLOW.md) and [backend/README.md](../../backend/README.md) describe what runs now.
+
 Dependencies run in one direction, so this order is not optional:
 
 ```
@@ -135,6 +137,8 @@ redeployed without touching the rest. App Hosting keeps previous releases one cl
 away, and Terraform state is versioned in the bucket.
 
 ### Per-domain configuration
+
+> **Since 2026-10-21 ([ADR 0023](../adr/0023-backend-as-one-cloud-run-service.md)):** the backend is one FastAPI service on Cloud Run, not one Cloud Function per subdomain; triggers are Eventarc and Cloud Scheduler calls to `/internal/*` routes on it. This section describes the original Functions design — [CODE_FLOW](../CODE_FLOW.md) and [backend/README.md](../../backend/README.md) describe what runs now.
 
 The functions module takes a map, so each domain gets limits matched to its actual use rather than
 to the worst case across all of them:

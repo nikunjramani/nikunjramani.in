@@ -12,7 +12,7 @@ that alters a flow (`.claude/rules/workflow.md`).
 [3 A visitor reads a page](#3--a-visitor-reads-a-page) · [4 The admin signs in](#4--the-admin-signs-in) ·
 [5 The admin edits content](#5--the-admin-edits-content) · [6 The contact form](#6--the-contact-form) ·
 [7 Media](#7--media-upload-processing-library) · [8 Background jobs](#8--background-jobs) ·
-[9 Inside one backend function](#9--inside-one-backend-function) ·
+[9 Inside the API service](#9--inside-the-api-service) ·
 [10 Schemas and codegen](#10--schemas-and-codegen) · [11 Infrastructure](#11--infrastructure) ·
 [12 CI/CD](#12--cicd) · [13 Local development](#13--local-development)
 
@@ -24,26 +24,27 @@ that alters a flow (`.claude/rules/workflow.md`).
                          ┌──────────────────────────── Google Cloud project ─────────────────────────────┐
                          │  (two of them: nikunjramani-in = prod, nikunjramani-in-staging = PR previews)  │
  Browser                 │                                                                                 │
- ───────                 │   App Hosting (asia-southeast1)          Cloud Functions 2nd gen (asia-south1) │
- visitor ──GET page────────▶ Next.js 16 server ──GET …/public──────────▶ api_<domain>_<sub> ──▶ Firestore │
- admin  ──/api/v1/…────────▶   (rewrites /api/v1/<d>/<s>/* ───────────────────────────▶ FastAPI per fn    │
+ ───────                 │   App Hosting (asia-southeast1)          Cloud Run service `api` (asia-south1) │
+ visitor ──GET page────────▶ Next.js 16 server ──GET …/public──────────▶ FastAPI: /api/v1/<d>/<s>/… ──▶ Firestore
+ admin  ──/api/v1/…────────▶   (rewrites /api/v1/* ───────────────────▶ the same service                  │
          ◀──Google sign-in──▶ Firebase Auth                                                │   │          │
-         ──PUT signed URL────────────────────────────▶ GCS media bucket ──finalize──▶ on_media_uploaded   │
-         ──App Check token── reCAPTCHA Enterprise                    contact_messages ──▶ on_contact_created ──▶ Resend
-                         │                                            nightly ──▶ nightly_backup ──▶ GCS backups bucket
-                         │   Secret Manager (RESEND_API_KEY, CONTACT_EMAIL_TO) → bound into functions          │
+         ──PUT signed URL────────────────────────────▶ GCS media bucket ──Eventarc──▶ /internal/events/media-uploaded
+         ──App Check token── reCAPTCHA Enterprise     contact_messages ──Eventarc──▶ /internal/events/contact-created ──▶ Resend
+                         │                            Cloud Scheduler (daily) ──▶ /internal/jobs/backup ──▶ GCS backups bucket
+                         │   Secret Manager (RESEND_API_KEY, CONTACT_EMAIL_TO) → env of the api service      │
                          └─────────────────────────────────────────────────────────────────────────────────┘
 ```
 
 Three rules shape every flow below:
 
-- **Only Python touches the database.** Pages read through each content function's public
+- **Only Python touches the database.** Pages read through each content subdomain's public
   `GET /public` routes; the frontend has no Firestore SDK and no Firestore role
   ([ADR 0022](./adr/0022-backend-owns-all-data-access.md)).
 - **Clients never write Firestore** — not even the admin. Every write is a Python API call
   ([ADR 0007](./adr/0007-deny-all-client-writes.md)).
-- **One backend subdomain = one deployed function**, isolated from every other
-  ([ADR 0017](./adr/0017-bounded-context-domains.md)).
+- **One backend service, isolated domains.** Every subdomain is a router in one FastAPI app on
+  Cloud Run; domains and subdomains stay isolated in the code
+  ([ADR 0017](./adr/0017-bounded-context-domains.md), [ADR 0023](./adr/0023-backend-as-one-cloud-run-service.md)).
 
 ---
 
@@ -62,16 +63,16 @@ Three rules shape every flow below:
 | [frontend/src/admin/](../frontend/src/admin/) | admin-only code: `components/`, `api-client/` (every Python API **call**), `auth/` (`cookie.ts` · `server.ts` verify · `client.ts` sign-in exchange), `lib/`, `admin.css`, `fonts.ts` |
 | [frontend/src/shared/](../frontend/src/shared/) | UI both surfaces use: theme provider, skip link, error view, `styles/base.css` tokens |
 | [frontend/src/lib/data/](../frontend/src/lib/data/) | every page **read** — calls the Python API's `/public` routes (server-only) |
-| [frontend/src/lib/backend.ts](../frontend/src/lib/backend.ts) | the API's URL scheme: `/api/v1` prefix, function names, base URL |
+| [frontend/src/lib/backend.ts](../frontend/src/lib/backend.ts) | the API's URL scheme: `/api/v1` prefix, `API_BASE_URL` |
 | [frontend/src/lib/firebase/](../frontend/src/lib/firebase/) | Admin SDK for Auth only (server), client SDK (Auth, App Check) |
 | [frontend/src/generated/](../frontend/src/generated/) | TS types, Zod, admin form schemas, API routes — generated |
-| [backend/functions/main.py](../backend/functions/main.py) | the one module Firebase loads |
-| [backend/functions/src/\<domain\>/\<sub\>/](../backend/functions/src/) | one job each: `main → routes → schemas → service → repository` |
-| [backend/functions/kernel/](../backend/functions/kernel/) | domain-free infrastructure: HTTP adapter, auth, audit, CRUD base |
-| [backend/functions/shared/generated/](../backend/functions/shared/generated/) | Pydantic models — generated |
-| [backend/functions/tests/](../backend/functions/tests/) | all backend tests |
+| [backend/main.py](../backend/main.py) | the one module Firebase loads |
+| [backend/src/\<domain\>/\<sub\>/](../backend/src/) | one job each: `main → routes → schemas → service → repository` |
+| [backend/kernel/](../backend/kernel/) | domain-free infrastructure: HTTP adapter, auth, audit, CRUD base |
+| [backend/shared/generated/](../backend/shared/generated/) | Pydantic models — generated |
+| [backend/tests/](../backend/tests/) | all backend tests |
 | [infra/terraform/envs/{prod,staging}/](../infra/terraform/envs/) | one Terraform root per project |
-| [infra/terraform/modules/](../infra/terraform/modules/) | project, iam, firestore, storage, secrets, functions, app-hosting, app-check, monitoring |
+| [infra/terraform/modules/](../infra/terraform/modules/) | project, iam, firestore, storage, secrets, api (triggers + scheduler), app-hosting, app-check, monitoring |
 | [infra/rules/](../infra/rules/) | Firestore rules + indexes (partly generated); emulator-only storage rules |
 | [.github/workflows/](../.github/workflows/) · [.github/actions/](../.github/actions/) | `pr.yml`, `deploy.yml` · composite actions |
 
@@ -91,9 +92,9 @@ frontend/src/app/(site)/projects/[slug]/page.tsx                          │ pe
   ├─ generateMetadata → getProjectBySlug(slug) lib/data/projects.ts      ─┤ called twice
   └─ Page            → getProjectBySlug(slug)                            ─┘
         │
-        ▼ lib/data/api.ts  getPublic()         fetch $FUNCTIONS_BASE_URL/api_content_projects/public/acme-rebuild
-        │                                      (lib/backend.ts functionUrl; cache: no-store; 404 → null → notFound())
-        ▼ api_content_projects  GET /public/{doc_id}           src/content/projects/routes.py (no auth)
+        ▼ lib/data/api.ts  getPublic()         fetch $API_BASE_URL/api/v1/content/projects/public/acme-rebuild
+        │                                      (lib/backend.ts apiUrl; cache: no-store; 404 → null → notFound())
+        ▼ api  GET /api/v1/content/projects/public/{doc_id}    src/content/projects/routes.py (no auth)
         ▼ ProjectService.get_public()          kernel/crud/service.py: visibility must be public|unlisted,
         │                                      else 404; to_public() drops `audit`, and
         │                                      client.confidential → name + logo stripped HERE
@@ -107,8 +108,8 @@ HTML with the real content (SEO: view-source shows it) + JSON-LD (site/component
   [lib/data/api.ts](../frontend/src/lib/data/api.ts) → `GET /public` → `CrudService.list_public()`:
   `where visibility == "public"` `orderBy order`. "Featured" is filtered from that list in
   `lib/data`, not queried separately.
-- **Cold starts:** a view after an idle period waits for the content functions it calls to start
-  (in parallel). Accepted in ADR 0022; `minInstances` is the lever if it matters.
+- **Cold starts:** a view after an idle period waits for the `api` service to start — once, for
+  every read the page makes. `--min-instances 1` in the Makefile's `deploy-api` is the lever.
 - **Filters** on `/projects` live in the URL (`?kind=&tech=&status=`) —
   [site/components/project-filters.tsx](../frontend/src/site/components/project-filters.tsx) is the
   only client piece.
@@ -147,7 +148,7 @@ Python API re-verifies everything — the frontend gates are convenience, not se
 
 Admin access is granted with the `admin: true` custom claim — by
 [infra/scripts/set_admin_claim.py](../infra/scripts/set_admin_claim.py) the first time, then from
-the panel's **Access** page (`api_identity_admins`, section 9).
+the panel's **Access** page (`/api/v1/identity/admins`, section 9).
 
 ---
 
@@ -167,13 +168,12 @@ BROWSER  admin/components/content-collection-screen.tsx
      401 → hard navigation to /admin/login;  !ok → ApiError(message from {"error":{…}})
         │
         ▼ same origin, no CORS
-NEXT.JS  next.config.ts rewrites()  /api/v1/content/skills/:path* → $FUNCTIONS_BASE_URL/api_content_skills/:path*
-        │                           (routes generated from architecture/api-routes.json)
+NEXT.JS  next.config.ts rewrites()  /api/v1/:path* → $API_BASE_URL/api/v1/:path*   (one rule)
         ▼
-CLOUD RUN  api-content-skills (allUsers invoker — auth is in-process)
-        ▼
-PYTHON   main.py → FUNCTION_TARGET=api_content_skills → imports only src/content/skills/main.py
-         kernel/http.py make_function → Flask request → kernel/wsgi_bridge.py → FastAPI app
+CLOUD RUN  api (allUsers invoker — auth is in-process) · uvicorn · apps/api.py
+         kernel/app.py: a path with no trailing slash that only matches as "…/" is served as
+         "…/" in place — never redirected (a redirect would point at the Cloud Run host)
+PYTHON   router mounted at /api/v1/content/skills (apps/api.py ROUTES)
          src/content/skills/routes.py   update_skills(doc_id, patch, claims: AdminClaims, service)
             AdminClaims = kernel/security.py require_admin:
                verify_id_token (401 if missing/invalid) → claims["admin"] is True (403 otherwise)
@@ -197,12 +197,12 @@ NEXT VISIT to the public page reads Firestore fresh (section 3) — no cache to 
   0..n-1 in one batch). **Singletons** (`profile/main`, `site_config/main`) are `GET /`, `PUT /`
   (full replace, `CrudService.upsert`) and `PATCH /` on their one fixed document. **Projects** add
   `POST /{id}/duplicate` (fresh `-copy` slug, reset to draft).
-- **Errors**: services raise [kernel/errors.py](../backend/functions/kernel/errors.py) exceptions;
-  [kernel/http.py](../backend/functions/kernel/http.py) turns them into
+- **Errors**: services raise [kernel/errors.py](../backend/kernel/errors.py) exceptions;
+  [kernel/app.py](../backend/kernel/app.py) turns them into
   `{"error": {"code", "message"}}` with the right status; `client.ts` shows `message`.
 - The **audit trail** shows inside each record's editor
   ([admin/components/audit-trail.tsx](../frontend/src/admin/components/audit-trail.tsx)), read via
-  `api_ops_audit` — newest first, filtered by collection and document, 50 entries.
+  `/api/v1/ops/audit` — newest first, filtered by collection and document, 50 entries.
 
 ---
 
@@ -215,7 +215,7 @@ BROWSER  /contact  site/components/contact-form.tsx (client)
   submit → getAppCheckToken() → site/lib/contact.ts submitContact()
            POST /api/v1/inbox/contact  {name, email, subject?, message, honeypot}
                 X-Firebase-AppCheck: <token>
-        ▼ rewrite → api_inbox_contact (public)
+        ▼ rewrite → api: /api/v1/inbox/contact (public)
 PYTHON   src/inbox/contact/routes.py  ContactRequest validated (length caps → honest 422s)
          client IP = first X-Forwarded-For hop (best effort)
          src/inbox/contact/service.py ContactService.submit — every failure below is SILENT (202 anyway):
@@ -226,11 +226,13 @@ PYTHON   src/inbox/contact/routes.py  ContactRequest validated (length caps → 
            4. spam.score_spam(message)                  → 0..1, flags only
            5. NewMessageRepository.create → contact_messages/<auto>  (expiresAt = +2 years, TTL)
          → 202 {"ok": true, "message": "Thanks — …"}
-        ▼ Firestore onCreate
-TRIGGER  src/inbox/notifications/main.py on_contact_created (secrets: CONTACT_EMAIL_TO, RESEND_API_KEY)
+        ▼ Firestore document.created → Eventarc trigger contact-created (protobuf, signed as functions-runtime@)
+EVENT    POST /internal/events/contact-created   src/inbox/notifications/events.py
+           InternalCaller (kernel/events.py) → firestore_document() decodes the protobuf
+           (secrets CONTACT_EMAIL_TO, RESEND_API_KEY are the service's env)
            service.render_email → every visitor value HTML-escaped; spam ≥ 0.5 flagged in the body
            email.send_email → Resend API, 2 retries;  key empty/whitespace → log + skip
-ADMIN    /admin/messages → api_inbox_messages: list (null-safe newest-first), mark read/replied,
+ADMIN    /admin/messages → /api/v1/inbox/messages: list (null-safe newest-first), mark read/replied,
          delete, CSV export (formula-injection-safe), all audited
 ```
 
@@ -251,7 +253,8 @@ documents and messages expire through Firestore TTL policies on `expiresAt`.
                                         runtime SA (no key file)
 2 · PUT    browser → uploadToSignedUrl → GCS  <project>-media/uploads/media/<id>/original.<ext>
            (private prefix; may still carry EXIF/GPS)
-3 · PROCESS  GCS finalize event → src/media/processing/main.py on_media_uploaded (1 GiB, ≤ 2 instances)
+3 · PROCESS  GCS object.finalized → Eventarc trigger media-uploaded → POST /internal/events/media-uploaded
+           src/media/processing/events.py: InternalCaller → storage_object() → in the threadpool,
            service.handle_upload:
              path doesn't match UPLOAD_PATTERN → ignore (its own outputs never re-trigger it)
              media_assets/<id> already exists  → ignore (events are at-least-once)
@@ -274,47 +277,49 @@ documents and messages expire through Firestore TTL policies on `expiresAt`.
 
 ## 8 · Background jobs
 
-| Function | Trigger | Does | Code |
-|---|---|---|---|
-| `on_contact_created` | Firestore create on `contact_messages/{id}` | emails the owner | [src/inbox/notifications/](../backend/functions/src/inbox/notifications/) |
-| `on_media_uploaded` | GCS object finalized in the media bucket | WebP + thumbnail + blurhash → `media_assets` | [src/media/processing/](../backend/functions/src/media/processing/) |
-| `nightly_backup` | Cloud Scheduler, every 24 h | every collection in `BACKED_UP_COLLECTIONS` → `<project>-backups/<timestamp>/<collection>.json` | [src/ops/backup/](../backend/functions/src/ops/backup/) |
+All three are routes on the `api` service under `/internal/*`, called with a Google-signed token
+for the service's URL from `functions-runtime@` — `InternalCaller` rejects anything else. The
+triggers and the job are Terraform ([modules/api](../infra/terraform/modules/api/main.tf)).
 
-Monitoring ([modules/monitoring](../infra/terraform/modules/monitoring/main.tf)): an uptime check on
-`/api/v1/ops/health`, a log-based function-error metric, and email alerts for both.
+| Route | Started by | Does | Code |
+|---|---|---|---|
+| `POST /internal/events/contact-created` | Eventarc: Firestore `document.created` on `contact_messages/{id}` | emails the owner | [src/inbox/notifications/](../backend/src/inbox/notifications/) |
+| `POST /internal/events/media-uploaded` | Eventarc: Storage `object.finalized` in the media bucket | WebP + thumbnail + blurhash → `media_assets` | [src/media/processing/](../backend/src/media/processing/) |
+| `POST /internal/jobs/backup` | Cloud Scheduler `nightly-backup`, 02:00 IST | every collection in `BACKED_UP_COLLECTIONS` → `<project>-backups/<timestamp>/<collection>.json` | [src/ops/backup/](../backend/src/ops/backup/) |
+
+Eventarc delivers at least once and retries any non-2xx, so handlers are idempotent and return
+204 for "nothing to do". Monitoring ([modules/monitoring](../infra/terraform/modules/monitoring/main.tf)):
+an uptime check on `/api/v1/ops/health`, a log-based error metric, and email alerts for both.
 
 ---
 
-## 9 · Inside one backend function
+## 9 · Inside the API service
 
 ```
-firebase deploy discovers:      backend/functions/main.py (FUNCTION_TARGET unset → imports every subdomain)
-a deployed instance cold-starts: FUNCTION_TARGET=api_content_projects
-                                 → main.py imports ONLY src/content/projects/main.py
-                                   (one function's cold start never builds another's app)
-
-main.py                      set_global_options(service_account=functions-runtime@…, max_instances=3)
-                             FUNCTIONS = {**content, **identity, **inbox, **media, **ops}
-src/<domain>/main.py         FUNCTIONS = {"api_<domain>_<sub>": "src.<domain>.<sub>.main", …}   (no imports)
-src/<domain>/<sub>/main.py   api_<domain>_<sub> = make_function(router, name="api_<domain>_<sub>")
-kernel/http.py make_function make_app: FastAPI (/docs off in prod), CORS allowlist, DomainError handler
-                             wsgi_from_asgi(app) → a fresh asyncio.run() per request (no thread to die on fork)
-                             _handler.__name__ = name BEFORE https_fn.on_request (the SDK names the
-                             deployed function from it)
+container   backend/Dockerfile: uv-built venv + apps/ kernel/ shared/ src/ → uvicorn apps.api:app on $PORT
+config      backend/deploy/<project>.yaml (non-secret) + Secret Manager (RESEND_API_KEY, CONTACT_EMAIL_TO),
+            set by `make deploy-api` — also CPU 1 · 1 GiB · concurrency 80 · 0–3 instances · 600 s
+apps/api.py create_app(): every subdomain router → /api/v1/<domain>/<sub>   (ROUTES)
+                          every events router    → /internal/events | /internal/jobs   (INTERNAL)
+kernel/app.py make_app(): FastAPI (/docs off in prod), CORS allowlist, DomainError → JSON,
+                          redirect_slashes=False + TrailingSlashFallback
+kernel/events.py          InternalCaller (Google ID token: audience ∈ SERVICE_URL, email = runtime SA,
+                          verified email; unsigned allowed only in development) · storage_object() ·
+                          firestore_document() (protobuf → plain values, timestamps as ISO)
 ```
 
-| Domain | Subdomains → functions |
+| Domain | Subdomains |
 |---|---|
-| content | profile, projects, skills, experience, education, certifications, posts, settings → `api_content_*` |
-| media | upload → `api_media_upload` · processing → `on_media_uploaded` · library → `api_media_library` |
-| inbox | contact → `api_inbox_contact` (public) · messages → `api_inbox_messages` · notifications → `on_contact_created` |
-| ops | health → `api_ops_health` (public) · audit → `api_ops_audit` · backup → `nightly_backup` |
-| identity | admins → `api_identity_admins` (list / grant / revoke the admin claim) |
+| content | profile, projects, skills, experience, education, certifications, posts, settings → `/api/v1/content/*` |
+| media | upload · library → `/api/v1/media/*` · processing → `/internal/events/media-uploaded` |
+| inbox | contact (public) · messages → `/api/v1/inbox/*` · notifications → `/internal/events/contact-created` |
+| ops | health (public) · audit → `/api/v1/ops/*` · backup → `/internal/jobs/backup` |
+| identity | admins → `/api/v1/identity/admins` (list / grant / revoke the admin claim) |
 
-Layering inside a subdomain is one way — `main → routes → schemas → service → repository` —
-enforced by import-linter ([pyproject.toml](../backend/functions/pyproject.toml)) and
-`tests/test_import_rules.py`. Registration (four places) is checked by
-`tests/test_domain_registry.py`; see [backend/functions/README.md](../backend/functions/README.md).
+Layering inside a subdomain is one way — `routes | events → schemas → service → repository` —
+and nothing imports `apps/`, enforced by import-linter ([pyproject.toml](../backend/pyproject.toml))
+and `tests/test_import_rules.py`. Registration (`apps/api.py` + `api-routes.json`) is checked by
+`tests/test_domain_registry.py`; see [backend/README.md](../backend/README.md).
 
 ---
 
@@ -324,9 +329,9 @@ enforced by import-linter ([pyproject.toml](../backend/functions/pyproject.toml)
 architecture/schemas/*.schema.json   (+ enums/, common/, x-firestore: collection, publicRead, indexes, ttlField)
 architecture/api-routes.json
         │  make gen → architecture/codegen/generate.sh
-        ├─ datamodel-codegen      → backend/functions/shared/generated/*.py  (+ curated __init__.py)
+        ├─ datamodel-codegen      → backend/shared/generated/*.py  (+ curated __init__.py)
         ├─ gen-frontend.mjs       → frontend/src/generated/types.ts, schemas.zod.ts,
-        │                           admin-schemas.ts (drives <SchemaForm>), api-routes.ts (drives rewrites)
+        │                           admin-schemas.ts (drives <SchemaForm>), api-routes.ts (route names)
         ├─ gen-indexes.py         → infra/rules/firestore.indexes.json (composite indexes + TTL overrides)
         ├─ gen-rules.py           → infra/rules/firestore.rules (the generated public-read block)
         └─ gen-docs.py            → architecture/docs/ERD.md
@@ -354,14 +359,16 @@ infra/terraform/envs/staging  ─┘  state: GCS bucket <project>-tfstate
    modules/storage      <project>-media (versioned, CORS for signed PUTs, public/ managed folder)
                         <project>-backups (30-day lifecycle)
    modules/secrets      secret containers + accessor bindings (values added by hand)
-   modules/functions    allUsers invoker on every HTTP function (needs them deployed first)
+   modules/api          Eventarc triggers (Storage, Firestore) + Cloud Scheduler job → the `api`
+                        service, signed as functions-runtime@ (needs the service deployed first)
    modules/app-hosting  web app, App Hosting backend, apex + www domains
    modules/app-check    reCAPTCHA Enterprise SCORE key + App Check registration
    modules/monitoring   uptime check, error metric, alerts
 ```
 
-What Terraform doesn't own: function code and runtime limits (the Python decorators,
-`firebase deploy`), Firestore rules/indexes (`firebase deploy`), secret values (by hand), the
+What Terraform doesn't own: the `api` service itself — image, env, secrets binding, sizing,
+public invoke (`make deploy-api`, from CI) and its `backend` image repository (`make api-registry`) —
+Firestore rules/indexes (`firebase deploy`), secret values (by hand), the
 first admin claim (`set_admin_claim.py`), and bootstrap roles on the billing account
 ([04-infrastructure.md](./plan/04-infrastructure.md)).
 
@@ -379,15 +386,18 @@ PULL REQUEST  .github/workflows/pr.yml
                                                    └─ infra-plan (prod + staging) → actions/terraform-plan
                                                                     (fmt, plan as github-plan, plan posted on the PR)
   checks   ← the one required status: every job succeeded or was skipped
-  preview  (same-repo PRs, after checks, only touched targets) → actions/firebase-deploy
-             project=staging · rules / functions / apphosting · retried 3× · smoke test
+  preview  (same-repo PRs, after checks, only touched targets)
+             api → actions/cloud-run-deploy project=staging: build + push the image, make deploy-api,
+                   smoke /api/v1/ops/health, traffic back to the previous revision on failure
+             rules / apphosting → actions/firebase-deploy project=staging · retried 3× · smoke test
            → Lighthouse (report only) → sticky PR comment with the staging URL
 
 MERGE TO MAIN  .github/workflows/deploy.yml   (only if vars.PROD_DEPLOY_ENABLED == "true")
   changes  (same filters, diffed against the previous main)
-  deploy   environment=production → actions/firebase-deploy project=default, touched targets only,
-           smoke test /  and /api/v1/ops/health
-  rollback if deploy failed: check out the previous commit, deploy everything with the current action
+  deploy   environment=production, touched targets only: actions/cloud-run-deploy (api) →
+           actions/firebase-deploy (rules, apphosting) → smoke test /  and /api/v1/ops/health
+  rollback if deploy failed: check out the previous commit, redeploy its rules + site with the
+           current action (the API's rollback already happened in cloud-run-deploy)
   terraform if infra/terraform changed (or manual infra_only):
            staging-infra apply → production-infra apply (waits for the owner's approval)
 ```
@@ -403,13 +413,14 @@ MERGE TO MAIN  .github/workflows/deploy.yml   (only if vars.PROD_DEPLOY_ENABLED 
 ## 13 · Local development
 
 ```
-make setup   uv venv + venv/ + requirements.txt (backend) · npm install (frontend)
-make dev     firebase emulators (auth 9099, functions 5001, firestore 8080, storage 9199, UI 4040)
-             + next dev on :3000 — rewrites point at the functions emulator
+make setup   uv venv + uv sync (backend) · npm install (frontend)
+make dev     firebase emulators (auth 9099, firestore 8080, storage 9199, UI 4040)
+             + the API on :8000 (uvicorn --reload, against the emulators; /docs lists every route)
+             + next dev on :3000 — API_BASE_URL=http://127.0.0.1:8000
 make gen     after any schema change
 make lint    ruff · mypy --strict · import-linter · tsc · eslint · terraform fmt
 make test    pytest (emulator-backed tests skip without the emulator) · vitest
 ```
 
-Debug one function with `functions-framework` (VS Code "Backend: debug a subdomain"), not through
-the functions emulator — [RUNBOOK](./RUNBOOK.md#debugging-vs-code).
+Debug the API with VS Code's "Backend: debug the API". Events don't arrive locally (the Storage
+emulator can't reach Eventarc) — replay one by hand: [RUNBOOK](./RUNBOOK.md#replaying-an-event-locally).
