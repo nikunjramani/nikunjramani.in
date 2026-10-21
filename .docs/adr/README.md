@@ -34,6 +34,7 @@ reader would reasonably ask "why on earth is it like this?", belongs here.
 | [0020](./0020-app-check-replaces-turnstile.md) | Firebase App Check replaces Cloudflare Turnstile on the contact form | ✅ Accepted | 2026-10-16 |
 | [0021](./0021-site-and-admin-are-separate-surfaces.md) | The public site and the admin are separate surfaces with their own root layouts | ✅ Accepted | 2026-10-16 |
 | [0022](./0022-backend-owns-all-data-access.md) | The Python API owns every read and write; the frontend never touches Firestore | ✅ Accepted | 2026-10-20 |
+| [0023](./0023-backend-as-one-cloud-run-service.md) | Run the backend as one FastAPI service on Cloud Run, keeping its domains and subdomains | 🟡 Proposed | 2026-10-21 |
 
 **Status:** 🟡 Proposed · ✅ Accepted · ⛔ Rejected · 🔄 Superseded · ⚠️ Deprecated
 
