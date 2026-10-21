@@ -9,12 +9,13 @@ import pytest
 from google.cloud.firestore_v1 import Client, CollectionReference
 
 from kernel.errors import ConflictError
+from kernel.security import Actor
 from kernel.timestamps import now_iso, to_firestore
 from shared.generated import MediaAsset
 from src.media.library.repository import LibraryRepository
 from src.media.library.service import LibraryService
 
-CLAIMS = {"uid": "admin-1", "email": "admin@example.com", "admin": True}
+ACTOR = Actor(uid="admin-1", email="admin@example.com")
 
 
 CONTENT = "_test_scratch_content"
@@ -25,7 +26,7 @@ def _service(db: Client, collection_name: str, storage: MagicMock) -> LibrarySer
         collection = collection_name
         content_collections = (CONTENT,)
 
-    return LibraryService(repo=ScratchRepo(db), storage=storage, audit=MagicMock())
+    return LibraryService(repo=ScratchRepo(db), storage=storage)
 
 
 def _seed(svc: LibraryService, asset_id: str = "a1") -> None:
@@ -47,7 +48,7 @@ def _seed(svc: LibraryService, asset_id: str = "a1") -> None:
 def test_update_metadata_sets_alt_and_caption(db: Client, clean_collection: str) -> None:
     svc = _service(db, clean_collection, MagicMock())
     _seed(svc)
-    updated = svc.update_metadata("a1", alt="A dashboard screenshot", caption="v2", claims=CLAIMS)
+    updated = svc.update_metadata("a1", alt="A dashboard screenshot", caption="v2", actor=ACTOR)
     assert updated.data.alt == "A dashboard screenshot"
     assert svc.get("a1").data.caption == "v2"
 
@@ -56,7 +57,7 @@ def test_delete_removes_storage_objects_and_the_document(db: Client, clean_colle
     storage = MagicMock()
     svc = _service(db, clean_collection, storage)
     _seed(svc)
-    svc.delete("a1", CLAIMS)
+    svc.delete("a1", ACTOR)
     assert storage.delete.call_args_list == [
         call("uploads/media/a1/original.webp"),
         call("public/media/a1/processed.webp"),
@@ -70,7 +71,7 @@ def test_delete_survives_already_missing_storage_objects(db: Client, clean_colle
     storage.delete.side_effect = Exception("not found")
     svc = _service(db, clean_collection, storage)
     _seed(svc)
-    svc.delete("a1", CLAIMS)  # must not raise
+    svc.delete("a1", ACTOR)  # must not raise
     assert storage.delete.call_count == 3
     assert svc.repo.get("a1") is None
 
@@ -111,8 +112,8 @@ def test_delete_refuses_an_asset_still_in_use_unless_forced(
     content.document("uses-it").set({"cover": {"url": "https://x/processed.webp"}})
 
     with pytest.raises(ConflictError):
-        svc.delete("a1", CLAIMS)
+        svc.delete("a1", ACTOR)
     assert svc.repo.get("a1") is not None
 
-    svc.delete("a1", CLAIMS, force=True)
+    svc.delete("a1", ACTOR, force=True)
     assert svc.repo.get("a1") is None

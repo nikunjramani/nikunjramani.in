@@ -32,16 +32,17 @@ def test_list_recent_filters_by_collection_and_doc_id_and_orders_newest_first(
     try:
         repo = AuditLogRepository(db)
         result = repo.list_recent(collection="projects", doc_id="p1")
-        assert [e["action"] for e in result] == ["update", "create"]  # newest first
-        assert all(e["docId"] == "p1" for e in result)
+        assert [e.data.action for e in result] == ["update", "create"]  # newest first
+        assert all(e.data.docId == "p1" for e in result)
 
         by_collection = repo.list_recent(collection="skills")
         assert len(by_collection) == 1
-        assert by_collection[0]["docId"] == "s1"
+        assert by_collection[0].data.docId == "s1"
 
         limited = repo.list_recent(collection="projects", limit=1)
         assert len(limited) == 1
-        assert limited[0]["docId"] == "p1" and limited[0]["at"].startswith("2026-01-03")
+        assert limited[0].data.docId == "p1"
+        assert limited[0].data.at.isoformat().startswith("2026-01-03")
     finally:
         for doc in docs:
             doc.delete()

@@ -12,8 +12,8 @@ from PIL import UnidentifiedImageError
 from kernel.logging import get_logger
 from kernel.timestamps import now_iso
 from shared.generated import MediaAsset
+from src.media.bucket import UPLOAD_PATTERN, processed_path, public_url, thumbnail_path
 from src.media.processing.image import process_image
-from src.media.processing.paths import UPLOAD_PATTERN, processed_path, thumbnail_path
 from src.media.processing.repository import NewAssetRepository
 from src.media.processing.storage import ProcessingStorage
 
@@ -54,7 +54,7 @@ class ProcessingService:
             thumbnail_path(asset_id), processed.thumbnail_webp, content_type="image/webp"
         )
         asset = MediaAsset(
-            url=self._storage.public_url(processed_path(asset_id)),  # type: ignore[arg-type]
+            url=public_url(processed_path(asset_id)),  # type: ignore[arg-type]
             path=object_name,
             type="image",  # type: ignore[arg-type]
             contentType="image/webp",
@@ -62,7 +62,7 @@ class ProcessingService:
             width=processed.width,
             height=processed.height,
             blurhash=processed.blurhash,
-            thumbnailUrl=self._storage.public_url(thumbnail_path(asset_id)),  # type: ignore[arg-type]
+            thumbnailUrl=public_url(thumbnail_path(asset_id)),  # type: ignore[arg-type]
             uploadedBy=uploaded_by,
             uploadedAt=now_iso(),  # type: ignore[arg-type]
         )

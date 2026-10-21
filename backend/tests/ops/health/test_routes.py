@@ -15,6 +15,7 @@ def test_health_returns_ok() -> None:
 def test_docs_disabled_in_production(monkeypatch: pytest.MonkeyPatch) -> None:
     """A production /docs endpoint leaks the whole API surface."""
     monkeypatch.setenv("ENVIRONMENT", "production")
+    monkeypatch.setenv("SERVICE_URL", "https://api-123.asia-south1.run.app")
     config.get_settings.cache_clear()
     try:
         assert TestClient(make_app(router, "health")).get("/docs").status_code == 404

@@ -26,7 +26,7 @@ def test_the_new_message_is_passed_to_notify_owner() -> None:
             headers={"Content-Type": "application/protobuf"},
         )
     assert response.status_code == 204
-    notify.assert_called_once_with({"name": "Ada", "message": "Hi"})
+    notify.assert_called_once_with("m1", {"name": "Ada", "message": "Hi"})
 
 
 def test_a_failed_send_is_a_5xx_so_eventarc_retries() -> None:

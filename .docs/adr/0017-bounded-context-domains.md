@@ -1,6 +1,6 @@
 # 0017 · Organise the backend as isolated domains of self-contained subdomains
 
-**Status:** ✅ Accepted — deployment (one function per subdomain) superseded by [0023](./0023-backend-as-one-cloud-run-service.md). Supersedes the code-structure parts of [0011](./0011-domain-wise-separate-functions.md), [0012](./0012-generic-content-crud-in-shared.md) and [0016](./0016-content-domains-from-a-factory.md).
+**Status:** ✅ Accepted — deployment (one function per subdomain) superseded by [0023](./0023-backend-as-one-cloud-run-service.md); "no shared code within a domain" amended by [0024](./0024-a-domain-may-own-one-shared-contract.md). Supersedes the code-structure parts of [0011](./0011-domain-wise-separate-functions.md), [0012](./0012-generic-content-crud-in-shared.md) and [0016](./0016-content-domains-from-a-factory.md).
 **Date:** 2026-10-13
 **Deciders:** Nikunj Ramani
 

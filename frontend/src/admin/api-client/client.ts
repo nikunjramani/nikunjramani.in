@@ -7,8 +7,8 @@
  * practice: there's no separate refresh machinery, just always asking the SDK for a current
  * token right before the request that needs it.
  *
- * Requests go to /api/v1/<domain>/<subdomain>/..., which next.config.ts rewrites to that
- * subdomain's Python function — the browser only ever talks to one origin. See ADR 0017.
+ * Requests go to /api/v1/<domain>/<subdomain>/..., which next.config.ts rewrites to the
+ * Python API on Cloud Run — the browser only ever talks to one origin. See ADR 0023.
  */
 import { API_PREFIX } from "@/lib/backend";
 import { auth } from "@/lib/firebase/client";
@@ -41,17 +41,10 @@ async function authHeader(): Promise<string> {
 async function parseErrorMessage(res: Response): Promise<string> {
   const body: unknown = await res.json().catch(() => null);
   if (body && typeof body === "object") {
-    // shared/core/errors.py's DomainError shape.
+    // The API answers every error as {"error": {code, message}} (backend/kernel/app.py).
     if ("error" in body && typeof body.error === "object" && body.error && "message" in body.error) {
       const message = (body.error as { message: unknown }).message;
       if (typeof message === "string") return message;
-    }
-    // FastAPI's own pydantic validation-error shape (a malformed request body, distinct
-    // from a validated-but-rejected one, which is the DomainError case above).
-    if ("detail" in body) {
-      const detail = (body as { detail: unknown }).detail;
-      if (typeof detail === "string") return detail;
-      if (Array.isArray(detail) && detail[0]?.msg) return String(detail[0].msg);
     }
   }
   return `Request failed with status ${res.status}.`;

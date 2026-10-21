@@ -28,13 +28,14 @@ reader would reasonably ask "why on earth is it like this?", belongs here.
 | [0014](./0014-request-scoped-content-cache.md) | Render mutable content per request | ✅ Accepted — webhook clause superseded by 0015 | 2026-10-10 |
 | [0015](./0015-remove-revalidation-webhook.md) | Remove the cache-revalidation webhook | ✅ Accepted | 2026-10-13 |
 | [0016](./0016-content-domains-from-a-factory.md) | Build standard content domains from their model; keep Firestore in repositories | 🔄 Structure superseded by 0017 | 2026-10-13 |
-| [0017](./0017-bounded-context-domains.md) | Organise the backend as isolated domains of self-contained subdomains | ✅ Accepted — deployment superseded by 0023 | 2026-10-13 |
+| [0017](./0017-bounded-context-domains.md) | Organise the backend as isolated domains of self-contained subdomains | ✅ Accepted — deployment superseded by 0023; in-domain sharing amended by 0024 | 2026-10-13 |
 | [0018](./0018-staging-project-for-pr-previews.md) | A separate Firebase project for PR preview deploys | ✅ Accepted | 2026-10-13 |
 | [0019](./0019-ci-identities-gated-by-github-environment.md) | CI identities are gated by GitHub environment, and CI applies Terraform | ✅ Accepted | 2026-10-15 |
 | [0020](./0020-app-check-replaces-turnstile.md) | Firebase App Check replaces Cloudflare Turnstile on the contact form | ✅ Accepted | 2026-10-16 |
 | [0021](./0021-site-and-admin-are-separate-surfaces.md) | The public site and the admin are separate surfaces with their own root layouts | ✅ Accepted | 2026-10-16 |
 | [0022](./0022-backend-owns-all-data-access.md) | The Python API owns every read and write; the frontend never touches Firestore | ✅ Accepted | 2026-10-20 |
 | [0023](./0023-backend-as-one-cloud-run-service.md) | Run the backend as one FastAPI service on Cloud Run, keeping its domains and subdomains | ✅ Accepted | 2026-10-21 |
+| [0024](./0024-a-domain-may-own-one-shared-contract.md) | Let a domain own one shared contract module its subdomains import | ✅ Accepted | 2026-10-21 |
 
 **Status:** 🟡 Proposed · ✅ Accepted · ⛔ Rejected · 🔄 Superseded · ⚠️ Deprecated
 

@@ -37,10 +37,12 @@ def render_email(data: dict[str, Any]) -> tuple[str, str]:
     return subject, html
 
 
-def notify_owner(data: dict[str, Any]) -> None:
+def notify_owner(message_id: str, data: dict[str, Any]) -> None:
+    """Email the owner about contact_messages/`message_id`. Eventarc may deliver the same
+    event twice; the message id as Resend's idempotency key makes the second send a no-op."""
     to = get_notification_settings().contact_email_to
     if not to:
         log.warning("CONTACT_EMAIL_TO not set — cannot forward this message")
         return
     subject, html = render_email(data)
-    send_email(to=to, subject=subject, html=html)
+    send_email(to=to, subject=subject, html=html, idempotency_key=f"contact-message/{message_id}")

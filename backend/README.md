@@ -60,17 +60,20 @@ backend/
 │       ├── schemas.py            request / response models
 │       ├── service.py            the rules
 │       ├── repository.py         its collection — the only Firestore SDK user
-│       └── settings.py · storage.py · paths.py · …   whatever else this job alone needs
+│       └── settings.py · storage.py · …   whatever else this job alone needs
+│   └── <domain>/bucket.py        (media only) the contract its subdomains share — ADR 0024
 ├── kernel/                       infrastructure every subdomain uses; knows no domain
-│   ├── app.py                    make_app(): errors → JSON, CORS, /docs outside prod, no
-│   │                             trailing-slash redirects
+│   ├── app.py                    make_app(): every error as {"error": {code, message}},
+│   │                             CORS, /docs outside prod, no trailing-slash redirects,
+│   │                             the request's trace id for logs
 │   ├── events.py                 InternalCaller (who may call /internal/*), event readers
-│   ├── security.py               verify_token(), AdminClaims, actor_of()
-│   ├── audit.py                  AuditWriter — the audit_log entry every admin mutation writes
+│   ├── security.py               require_admin → Actor; `admin: Admin` on every admin route
+│   ├── audit.py                  AuditEntry — committed with the change it records (stage())
 │   ├── crud/                     model-agnostic CRUD base: BaseRepository, CrudService
 │   │                             (audit stamps, publish transitions, merge-patch, reorder,
 │   │                             public reads), RecordOut / ReorderIn
-│   └── config.py · errors.py · firebase.py · logging.py · records.py · timestamps.py
+│   ├── config.py                 ServiceSettings — production never falls back to a default
+│   └── errors.py · firebase.py · logging.py · records.py · timestamps.py
 ├── shared/generated/             Pydantic models generated from architecture/schemas
 ├── tests/                        every test, mirroring apps/, src/ and kernel/
 ├── deploy/                       <project>.yaml — the deployed service's non-secret config;
@@ -94,9 +97,9 @@ Enforced, not recommended — `make lint` (import-linter) and `make test`
    `architecture/schemas` fixes (`audit_log` is the main example).
 2. **Subdomains are independent too — even within one domain.** No sibling imports and no
    `common/` folder. If two subdomains of a domain need the same thing, each owns the slice it
-   uses. The media bucket layout is the example: `upload/paths.py`, `processing/paths.py` and
-   `library/paths.py` each spell out their part, and `tests/media/test_layout.py` holds the
-   three to one contract.
+   uses. One exception (ADR 0024): a contract every subdomain of a domain must agree on may live
+   in a single module at the domain's root, holding no logic — `src/media/bucket.py`, the media
+   bucket's name and layout, which upload, processing and library all import.
 3. **Layers run one way inside a subdomain:** `routes | events → schemas → service →
    repository`. Routes and events never touch Firestore; services know nothing about HTTP and
    raise `kernel.errors`; only repositories import the Firestore SDK. One documented
@@ -108,8 +111,8 @@ Enforced, not recommended — `make lint` (import-linter) and `make test`
 
 What looks like sharing but isn't:
 
-- **Several domains writing `audit_log`.** They all call `kernel.audit.AuditWriter`; `ops/audit`
-  reads. The schema is the contract.
+- **Several domains writing `audit_log`.** They all build a `kernel.audit.AuditEntry` and
+  their repository commits it with the change; `ops/audit` reads. The schema is the contract.
 - **Scanning another domain's collections by name.** The media library's "where is this image
   used?" check reads the content collections as opaque documents (`CONTENT_COLLECTIONS` in
   `src/media/library/repository.py`) and imports no content code.
@@ -136,7 +139,9 @@ What looks like sharing but isn't:
    `infra/terraform/modules/api`.
 6. **A new secret** goes in `--set-secrets` in the Makefile's `deploy-api`, and must have a
    Secret Manager version before the deploy.
-7. **Every admin mutation** writes an entry through `kernel.audit.AuditWriter`.
+7. **Every admin mutation** passes a `kernel.audit.AuditEntry` to its repository write.
+8. **A new setting** subclasses `kernel.config.ServiceSettings`; production-only values go in
+   `required_in_production`, both `deploy/<project>.yaml` files, and `SETTINGS` in `apps/api.py`.
 
 A new **domain** also needs an entry in the domain-independence contract.
 

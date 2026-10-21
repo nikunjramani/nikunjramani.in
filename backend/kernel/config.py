@@ -1,15 +1,44 @@
-"""Settings the whole service needs. Domain-specific settings (buckets, API keys, addresses)
-live in that domain's own settings module, so the kernel knows no domain."""
+"""Settings the whole service needs, and the base every settings class builds on.
+
+Domain-specific settings (buckets, API keys, addresses) live in that domain's own settings
+module, so the kernel knows no domain. Each subclasses `ServiceSettings`.
+
+Defaults exist for local development and name the production project and its buckets. A
+deployed service must never fall back to them — a line missing from staging's
+deploy/<project>.yaml would point staging at production — so in production every field in
+`required_in_production` has to come from the environment, and apps/api.py builds every
+settings class at startup: a missing value stops the revision before it takes traffic.
+"""
 
 from functools import lru_cache
-from typing import Literal
+from typing import ClassVar, Literal, Self
 
-from pydantic import AliasChoices, Field
+from pydantic import AliasChoices, Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
-class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+class ServiceSettings(BaseSettings):
+    # Whitespace counts as empty: Secret Manager rejects an empty version, so a secret not
+    # set up yet is bound as a single newline (.docs/RUNBOOK.md, Contact form keys).
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore", str_strip_whitespace=True)
+
+    #: Fields a production deploy must set explicitly (see the module docstring).
+    required_in_production: ClassVar[tuple[str, ...]] = ()
+
+    def _in_production(self) -> bool:
+        return get_settings().is_production
+
+    @model_validator(mode="after")
+    def _set_explicitly_in_production(self) -> Self:
+        if self.required_in_production and self._in_production():
+            missing = [f for f in self.required_in_production if f not in self.model_fields_set]
+            if missing:
+                raise ValueError(f"not set in production: {', '.join(missing)}")
+        return self
+
+
+class Settings(ServiceSettings):
+    required_in_production = ("firebase_project_id", "service_url")
 
     # Cloud Run gets GOOGLE_CLOUD_PROJECT from backend/deploy/<project>.yaml; FIREBASE_PROJECT_ID
     # wins locally (.env).
@@ -23,6 +52,9 @@ class Settings(BaseSettings):
     # the audiences Eventarc and Cloud Scheduler may sign their tokens for (kernel/events.py).
     # Empty locally, where /internal/* accepts unsigned calls.
     service_url: str = ""
+
+    def _in_production(self) -> bool:
+        return self.is_production
 
     @property
     def is_production(self) -> bool:

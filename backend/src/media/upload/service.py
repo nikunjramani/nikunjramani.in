@@ -4,7 +4,7 @@ through Python but the decision to allow it."""
 from __future__ import annotations
 
 from kernel.errors import ValidationError
-from src.media.upload.paths import new_upload_path
+from src.media.bucket import new_upload_path
 from src.media.upload.storage import UploadStorage
 
 ALLOWED_CONTENT_TYPES = {

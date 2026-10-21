@@ -12,7 +12,6 @@ ASSET_ID = "0123456789abcdef0123456789abcdef"
 
 def _run(name: str, *, already_recorded: bool) -> tuple[MagicMock, MagicMock]:
     storage = MagicMock()
-    storage.public_url.side_effect = lambda path: f"https://cdn.example.com/{path}"
     repo = MagicMock()
     repo.exists.return_value = already_recorded
     processed = SimpleNamespace(
@@ -40,6 +39,9 @@ def test_new_upload_is_processed_into_public_derivatives() -> None:
     assert asset_id == ASSET_ID
     assert asset.blurhash == "LKO2"
     assert asset.path == f"uploads/media/{ASSET_ID}/original.jpg"
+    assert str(asset.url) == (
+        f"https://storage.googleapis.com/nikunjramani-in-media/public/media/{ASSET_ID}/processed.webp"
+    )
 
 
 def test_redelivered_event_does_not_duplicate_the_asset() -> None:

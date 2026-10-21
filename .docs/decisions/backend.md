@@ -64,7 +64,7 @@ Entries BE-01…BE-38 were backfilled on 2026-10-16 from the code and its histor
 
 ## Structure and layering
 
-### BE-06 · Subdomains own their slice — even when two slices look alike
+### ~~BE-06~~ Superseded by [BE-47](#be-47--media-subdomains-share-the-bucket-contract-from-srcmediabucketpy) · Subdomains own their slice — even when two slices look alike
 
 - **Where:** `src/media/{upload,processing,library}/paths.py`; `tests/media/test_layout.py`
 - **Decision:** no `common/` folder and no sibling imports. Where subdomains share a convention
@@ -84,7 +84,7 @@ Entries BE-01…BE-38 were backfilled on 2026-10-16 from the code and its histor
 - **Outcome:** enforced by `make lint`, not review. Cost: a thin repository class even for one call.
 - **Related:** ADR 0016 (superseded structure), ADR 0017
 
-### BE-08 · Services raise `kernel.errors`; one handler turns them into JSON
+### ~~BE-08~~ Superseded by [BE-49](#be-49--every-error-has-one-json-shape) · Services raise `kernel.errors`; one handler turns them into JSON
 
 - **Where:** [kernel/errors.py](../../backend/kernel/errors.py), `make_app` in kernel/http.py
 - **Decision:** `DomainError` subclasses carry `status_code` and `code`; the app's exception handler
@@ -152,7 +152,7 @@ Entries BE-01…BE-38 were backfilled on 2026-10-16 from the code and its histor
   possibly forever. Every unit test mocked `verify_id_token`, so only the emulator found it.
 - **Related:** lessons-learned
 
-### BE-16 · Every admin route verifies the token *and* the `admin` claim, every request
+### ~~BE-16~~ Superseded by [BE-48](#be-48--admin-routes-hand-services-an-actor-not-token-claims) · Every admin route verifies the token *and* the `admin` claim, every request
 
 - **Where:** `require_admin` / `AdminClaims` in kernel/security.py
 - **Decision:** a missing or bad token is 401; a valid token without `admin: true` is 403. No session
@@ -245,7 +245,7 @@ Entries BE-01…BE-38 were backfilled on 2026-10-16 from the code and its histor
 
 ### BE-27 · Raw uploads are private; derivatives are public; the trigger can't re-trigger itself
 
-- **Where:** `src/media/*/paths.py`, [processing/service.py](../../backend/src/media/processing/service.py)
+- **Where:** [src/media/bucket.py](../../backend/src/media/bucket.py), [processing/service.py](../../backend/src/media/processing/service.py)
 - **Decision:** raw files land in `uploads/media/<id>/original.<ext>`; WebP derivatives in
   `public/media/<id>/`. The trigger acts only on paths matching `UPLOAD_PATTERN` and stops if
   `media_assets/<id>` already exists.
@@ -452,7 +452,7 @@ Entries BE-01…BE-38 were backfilled on 2026-10-16 from the code and its histor
 - **Related:** ADR 0023 · supersedes BE-35, BE-36, BE-37 · IN-16 · CI-16
 - **Since:** 2026-10-21
 
-### BE-46 · Owner email: retry what a retry can fix, drop what it can't
+### ~~BE-46~~ Superseded by [BE-52](#be-52--owner-email-one-attempt-per-delivery-idempotent-across-redeliveries) · Owner email: retry what a retry can fix, drop what it can't
 
 - **Where:** `send_email` / `_rejected_for_good` in [inbox/notifications/email.py](../../backend/src/inbox/notifications/email.py)
 - **Decision:** a network error, a 5xx or a 429 from Resend raises `EmailDeliveryError` (the
@@ -465,4 +465,105 @@ Entries BE-01…BE-38 were backfilled on 2026-10-16 from the code and its histor
   line, not a retry storm. Cost: a dropped email isn't resent once the key is fixed — check the
   admin inbox after fixing it.
 - **Related:** BE-24, BE-25, BE-44 · ADR 0023
+- **Since:** 2026-10-21
+
+## Review of 2026-10-21
+
+### BE-47 · Media subdomains share the bucket contract from `src/media/bucket.py`
+
+- **Where:** [src/media/bucket.py](../../backend/src/media/bucket.py); [tests/media/test_bucket.py](../../backend/tests/media/test_bucket.py)
+- **Decision:** the media bucket's name, layout (`UPLOAD_PATTERN`, `new_upload_path`,
+  `asset_id_of`, `processed_path`, `thumbnail_path`, `public_url`) and one cached Storage client
+  live in a single domain-root module that upload, processing and library import. Each keeps its
+  own `storage.py` for what it does with the bucket.
+- **Why:** three `MediaSettings` classes and two copies of the derivative paths, held together
+  only by a test. That bought independent deploys while each subdomain was a function; inside
+  one service (ADR 0023) it was duplication with nothing gained.
+- **Outcome:** a layout change is one edit. Cost: a subdomain is no longer readable entirely on its own.
+- **Related:** ADR 0024 · ADR 0017 · supersedes BE-06
+- **Since:** 2026-10-21
+
+### BE-48 · Admin routes hand services an `Actor`, not token claims
+
+- **Where:** `Actor`, `require_admin`, `Admin` in [kernel/security.py](../../backend/kernel/security.py)
+- **Decision:** `require_admin` verifies the token and the `admin` claim on every request (as
+  before), then returns `Actor(uid, email)`. Routes take `admin: Admin`; services take
+  `actor: Actor`. `require_admin` is a plain `def`.
+- **Why:** services passed around `dict[str, object]` claims only to pull a uid and email out
+  with `actor_of()`, which tied every service to how Firebase spells a token. It's a plain `def`
+  because verification can fetch Google's keys over the network, and an `async def` would block
+  the event loop that all 80 concurrent requests share.
+- **Outcome:** services are typed and identity-provider agnostic. Cost: none worth naming.
+- **Related:** ADR 0007 · supersedes BE-16
+- **Since:** 2026-10-21
+
+### BE-49 · Every error has one JSON shape
+
+- **Where:** `make_app` / `error_response` in [kernel/app.py](../../backend/kernel/app.py)
+- **Decision:** `DomainError`, a request body FastAPI rejects (`RequestValidationError`, as
+  `"<field.path>: <reason>"`), a path or method nothing serves (Starlette's `HTTPException`) and
+  any unhandled exception all answer `{"error": {"code", "message"}}`. A 500 never carries details.
+- **Why:** only `DomainError` had the shape; the rest answered FastAPI's `{"detail": …}`, and the
+  admin client parsed both.
+- **Outcome:** the admin client parses one shape. Cost: FastAPI's full list of validation errors
+  is reduced to the first one, which is what the client showed anyway.
+- **Related:** supersedes BE-08
+- **Since:** 2026-10-21
+
+### BE-50 · A change and its audit entry commit in one batch
+
+- **Where:** `AuditEntry`, `stage` in [kernel/audit.py](../../backend/kernel/audit.py); the write
+  methods of `BaseRepository`, `MessageRepository`, `LibraryRepository`
+- **Decision:** a service builds an `AuditEntry` and passes it to the repository write; the
+  repository commits the document and the entry in one Firestore batch. An auto-id is picked
+  (`new_id()`) before the write so the entry can name it. `AuditWriter` remains only for
+  identity/admins, whose change is in Firebase Auth.
+- **Why:** they were two writes. If the second failed, the change landed with no trail.
+- **Outcome:** no unaudited change and no orphan entry. It's also the shape a SQL move needs (one
+  transaction). Cost: `after` in an entry is the validated model as written, not a re-read.
+- **Related:** BE-17
+- **Since:** 2026-10-21
+
+### BE-51 · Production never falls back to a default setting
+
+- **Where:** `ServiceSettings` in [kernel/config.py](../../backend/kernel/config.py); `SETTINGS`
+  and the lifespan in [apps/api.py](../../backend/apps/api.py)
+- **Decision:** every settings class subclasses `ServiceSettings` and lists its
+  `required_in_production` fields: the project, `SERVICE_URL`, both buckets, `MAIL_FROM`. In
+  production each must come from the environment. The app builds every settings class in its
+  lifespan, so a missing value stops the revision at startup.
+- **Why:** the defaults name production's project and buckets (they're for local development).
+  A line missing from staging's `deploy/<project>.yaml` would have pointed staging at production,
+  silently.
+- **Outcome:** a bad config fails the deploy's revision before traffic moves (CI's smoke test
+  and rollback). Cost: a new production setting must be added to both deploy files at once.
+- **Related:** BE-45
+- **Since:** 2026-10-21
+
+### BE-52 · Owner email: one attempt per delivery, idempotent across redeliveries
+
+- **Where:** `send_email` in [inbox/notifications/email.py](../../backend/src/inbox/notifications/email.py); `notify_owner`
+- **Decision:** each delivery makes one request to Resend with `Idempotency-Key:
+  contact-message/<id>`. A network error, a 5xx, a 429 or a 409 (Resend still handling the same
+  key) raises and Eventarc redelivers. Any other 4xx is logged and dropped (as in BE-46).
+- **Why:** Eventarc delivers at least once, and a redelivery used to send a second email. The
+  in-process retries duplicated Eventarc's own (with no backoff). Resend keeps a key for 24
+  hours, the same window Eventarc retries in.
+- **Outcome:** one email per message. Cost: none.
+- **Related:** BE-44 · supersedes BE-46
+- **Since:** 2026-10-21
+
+### BE-53 · Blocking work never runs on the event loop; log lines carry the request's trace
+
+- **Where:** `submit_contact` in [inbox/contact/routes.py](../../backend/src/inbox/contact/routes.py),
+  `require_internal_caller` in [kernel/events.py](../../backend/kernel/events.py), `TraceContext`
+  in [kernel/app.py](../../backend/kernel/app.py), [kernel/logging.py](../../backend/kernel/logging.py)
+- **Decision:** routes and dependencies that make blocking calls (App Check, a Firestore
+  transaction, token verification) are plain `def`, which FastAPI runs in its threadpool. A
+  middleware binds Cloud Run's `X-Cloud-Trace-Context` to the request, and every JSON log line
+  carries it as `logging.googleapis.com/trace`.
+- **Why:** these were `async def` with sync network calls inside. One slow call stalled every
+  request on the instance. Without the trace, a request's log lines couldn't be found together.
+- **Outcome:** Cloud Logging groups a request's lines under its request entry. Cost: none.
+- **Related:** BE-44
 - **Since:** 2026-10-21

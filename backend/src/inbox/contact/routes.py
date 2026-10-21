@@ -1,5 +1,8 @@
 """POST /api/v1/inbox/contact — the one public write endpoint without admin auth. Always
-answers with the same success, whatever the anti-abuse checks decide (see service.py)."""
+answers with the same success, whatever the anti-abuse checks decide (see service.py).
+
+A plain `def`: App Check verification and the rate-limit transaction are blocking network
+calls, so FastAPI runs the route in the threadpool rather than on the event loop."""
 
 from __future__ import annotations
 
@@ -29,7 +32,7 @@ def _client_ip(request: Request) -> str:
 
 
 @router.post("/", response_model=ContactResponse, status_code=202)
-async def submit_contact(
+def submit_contact(
     payload: ContactRequest,
     request: Request,
     service: Annotated[ContactService, Depends(get_contact_service)],

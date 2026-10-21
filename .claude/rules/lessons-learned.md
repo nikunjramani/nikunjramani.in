@@ -72,5 +72,6 @@ first within each section, with the date.
   file content, not `cat <<EOF`.
 - **Python's stdout is cp1252** → scripts that print `→`/`✓` crash; set
   `sys.stdout.reconfigure(encoding="utf-8")` in a throwaway one-liner, or run under CI.
-- **Backend tests can't run on this Windows box** (blurhash-python needs MSVC) → CI is the test
-  runner; lint what you can locally.
+- **blurhash-python can't build on this Windows box** (it needs MSVC) → CI is the real test
+  run, but everything else runs locally: sync without that one package and stub it
+  (`.claude/rules/backend.md`, Gotchas).

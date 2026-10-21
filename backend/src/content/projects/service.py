@@ -9,6 +9,7 @@ from __future__ import annotations
 from kernel.crud.service import CrudService
 from kernel.errors import ValidationError
 from kernel.records import Record
+from kernel.security import Actor
 from shared.generated import Project
 from src.content.projects.repository import ProjectRepository
 
@@ -25,11 +26,11 @@ class ProjectService(CrudService[Project]):
         super().__init__(repo if repo is not None else ProjectRepository())
 
     def create(
-        self, payload: Project, claims: dict[str, object], *, doc_id: str | None = None
+        self, payload: Project, actor: Actor, *, doc_id: str | None = None
     ) -> Record[Project]:
         if payload.slug in RESERVED_SLUGS:
             raise ValidationError(f"slug '{payload.slug}' is reserved.")
-        return super().create(payload, claims, doc_id=doc_id)
+        return super().create(payload, actor, doc_id=doc_id)
 
     def to_public(self, record: Record[Project]) -> Record[Project]:
         """`client.confidential` means nothing identifying the client leaves the API — not
@@ -41,7 +42,7 @@ class ProjectService(CrudService[Project]):
         stripped = client.model_copy(update={"name": None, "logoUrl": None})
         return Record(id=record.id, data=record.data.model_copy(update={"client": stripped}))
 
-    def duplicate(self, doc_id: str, claims: dict[str, object]) -> Record[Project]:
+    def duplicate(self, doc_id: str, actor: Actor) -> Record[Project]:
         original = self.repo.require(doc_id)
 
         new_slug = self._unique_copy_slug(original.data.slug)
@@ -54,7 +55,7 @@ class ProjectService(CrudService[Project]):
         data.pop("audit", None)
 
         copy = Project.model_validate(data)
-        return self.create(copy, claims, doc_id=new_slug)
+        return self.create(copy, actor, doc_id=new_slug)
 
     def _unique_copy_slug(self, base_slug: str) -> str:
         candidate = f"{base_slug}-copy"

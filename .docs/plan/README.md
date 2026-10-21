@@ -33,7 +33,7 @@ The plan lives here, split by topic and phase. Start with the
 | 6 | [Deploy & DNS](./phases/phase-6-deploy.md) | ~5h | 🟡 `nikunjramani.in` live over HTTPS; a few launch checks remain |
 | 7 | [CI/CD Hardening](./phases/phase-7-cicd.md) | ~5h | 🟡 PR checks, staging previews and prod deploys live (prod since 2026-10-16) |
 | 8 | [Post-Launch](./phases/phase-8-post-launch.md) | ongoing | ⬜ Not started |
-| 9 | [Backend on Cloud Run](./phases/phase-9-cloud-run-backend.md) | one PR | 🟡 Built; cutover on merge, then delete the old functions |
+| 9 | [Backend on Cloud Run](./phases/phase-9-cloud-run-backend.md) | one PR | ✅ Done 2026-10-21 |
 
 **Launch is the end of Phase 6.** Total: ~67h of build + ~5h of your writing.
 

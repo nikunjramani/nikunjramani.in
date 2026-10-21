@@ -5,6 +5,7 @@ from __future__ import annotations
 
 from google.cloud.firestore_v1 import Client, CollectionReference
 
+from kernel.audit import AuditEntry, stage
 from kernel.errors import NotFoundError
 from kernel.firebase import get_db
 from kernel.records import Record
@@ -43,14 +44,23 @@ class MessageRepository:
         field, and an inbox must never lose a message. Callers sort null-safely."""
         return [self._record(s.id, s.to_dict() or {}) for s in self._ref.stream()]
 
-    def update(self, doc_id: str, fields: dict[str, object]) -> Record[ContactMessage]:
+    def update(
+        self, doc_id: str, fields: dict[str, object], *, audit: AuditEntry | None = None
+    ) -> Record[ContactMessage]:
+        """Partial update, committed with its audit entry (kernel/audit.py)."""
         self.require(doc_id)  # 404 rather than silently creating
-        self._ref.document(doc_id).update(to_firestore(dict(fields)))
+        batch = self._db.batch()
+        batch.update(self._ref.document(doc_id), to_firestore(dict(fields)))
+        stage(self._db, batch, audit)
+        batch.commit()
         return self.require(doc_id)
 
-    def delete(self, doc_id: str) -> None:
+    def delete(self, doc_id: str, *, audit: AuditEntry | None = None) -> None:
         self.require(doc_id)
-        self._ref.document(doc_id).delete()
+        batch = self._db.batch()
+        batch.delete(self._ref.document(doc_id))
+        stage(self._db, batch, audit)
+        batch.commit()
 
     @staticmethod
     def _record(doc_id: str, raw: dict[str, object]) -> Record[ContactMessage]:

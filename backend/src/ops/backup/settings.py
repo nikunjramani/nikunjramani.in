@@ -1,10 +1,10 @@
 from functools import lru_cache
 
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from kernel.config import ServiceSettings
 
 
-class BackupSettings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+class BackupSettings(ServiceSettings):
+    required_in_production = ("backups_bucket",)
 
     backups_bucket: str = "nikunjramani-in-backups"
 

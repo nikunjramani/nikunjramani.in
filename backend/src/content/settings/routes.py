@@ -8,7 +8,7 @@ from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends
 
-from kernel.security import AdminClaims
+from kernel.security import Admin
 from shared.generated import SiteConfig
 from src.content.settings.schemas import SiteConfigOut
 from src.content.settings.service import SiteConfigService
@@ -30,16 +30,16 @@ def read_public_settings(service: Service) -> SiteConfigOut:
 
 
 @router.get("/", response_model=SiteConfigOut)
-def read_settings(claims: AdminClaims, service: Service) -> SiteConfigOut:
+def read_settings(admin: Admin, service: Service) -> SiteConfigOut:
     return SiteConfigOut.of(service.read())
 
 
 @router.put("/", response_model=SiteConfigOut)
-def replace_settings(payload: SiteConfig, claims: AdminClaims, service: Service) -> SiteConfigOut:
-    return SiteConfigOut.of(service.replace(payload, claims))
+def replace_settings(payload: SiteConfig, admin: Admin, service: Service) -> SiteConfigOut:
+    return SiteConfigOut.of(service.replace(payload, admin))
 
 
 @router.patch("/", response_model=SiteConfigOut)
-def update_settings(patch: dict[str, Any], claims: AdminClaims, service: Service) -> SiteConfigOut:
+def update_settings(patch: dict[str, Any], admin: Admin, service: Service) -> SiteConfigOut:
     """RFC 7386 merge patch: `null` removes a field."""
-    return SiteConfigOut.of(service.update(patch, claims))
+    return SiteConfigOut.of(service.update(patch, admin))

@@ -5,6 +5,8 @@ from unittest.mock import MagicMock, patch
 from fastapi.testclient import TestClient
 
 from kernel.app import make_app
+from kernel.records import Record
+from shared.generated import AuditLog
 from src.ops.audit.routes import get_audit_service, router
 
 ADMIN = {"uid": "admin-1", "email": "admin@example.com", "admin": True}
@@ -24,12 +26,24 @@ def test_audit_log_requires_admin() -> None:
 
 def test_audit_log_passes_filters_through() -> None:
     fake = MagicMock()
-    fake.list_entries.return_value = [{"id": "a1", "action": "update"}]
+    entry = AuditLog.model_validate(
+        {
+            "actor": "u1",
+            "action": "update",
+            "collection": "projects",
+            "docId": "p1",
+            "at": "2026-01-03T00:00:00Z",
+        }
+    )
+    fake.list_entries.return_value = [Record(id="a1", data=entry)]
     with patch("kernel.security.auth.verify_id_token", return_value=ADMIN):
         response = _client(fake).get(
             "/?collection=projects&docId=p1&limit=5",
             headers={"Authorization": "Bearer x"},
         )
     assert response.status_code == 200
-    assert response.json() == [{"id": "a1", "action": "update"}]
+    [listed] = response.json()
+    assert listed["id"] == "a1"
+    assert listed["action"] == "update"  # the entry's fields, flat beside its id
+    assert listed["at"].startswith("2026-01-03")
     fake.list_entries.assert_called_once_with(collection="projects", doc_id="p1", limit=5)

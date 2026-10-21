@@ -10,7 +10,7 @@ from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, Query, Response
 
-from kernel.security import AdminClaims
+from kernel.security import Admin
 from shared.generated import Education
 from src.content.education.schemas import EducationOut, ReorderIn
 from src.content.education.service import EducationService
@@ -33,7 +33,7 @@ def list_public_education(service: Service) -> list[EducationOut]:
 
 @router.get("/", response_model=list[EducationOut])
 def list_education(
-    claims: AdminClaims,
+    admin: Admin,
     service: Service,
     visibility: Annotated[str | None, Query()] = None,
 ) -> list[EducationOut]:
@@ -41,30 +41,30 @@ def list_education(
 
 
 @router.post("/", response_model=EducationOut, status_code=201)
-def create_education(payload: Education, claims: AdminClaims, service: Service) -> EducationOut:
-    return EducationOut.of(service.create(payload, claims, doc_id=None))
+def create_education(payload: Education, admin: Admin, service: Service) -> EducationOut:
+    return EducationOut.of(service.create(payload, admin, doc_id=None))
 
 
 @router.post("/reorder", status_code=204)
-def reorder_education(body: ReorderIn, claims: AdminClaims, service: Service) -> Response:
-    service.reorder(body.ids, claims)
+def reorder_education(body: ReorderIn, admin: Admin, service: Service) -> Response:
+    service.reorder(body.ids, admin)
     return Response(status_code=204)
 
 
 @router.get("/{doc_id}", response_model=EducationOut)
-def read_education(doc_id: str, claims: AdminClaims, service: Service) -> EducationOut:
+def read_education(doc_id: str, admin: Admin, service: Service) -> EducationOut:
     return EducationOut.of(service.get(doc_id))
 
 
 @router.patch("/{doc_id}", response_model=EducationOut)
 def update_education(
-    doc_id: str, patch: dict[str, Any], claims: AdminClaims, service: Service
+    doc_id: str, patch: dict[str, Any], admin: Admin, service: Service
 ) -> EducationOut:
     """RFC 7386 merge patch: `null` removes a field."""
-    return EducationOut.of(service.patch(doc_id, patch, claims))
+    return EducationOut.of(service.patch(doc_id, patch, admin))
 
 
 @router.delete("/{doc_id}", status_code=204)
-def delete_education(doc_id: str, claims: AdminClaims, service: Service) -> Response:
-    service.delete(doc_id, claims)
+def delete_education(doc_id: str, admin: Admin, service: Service) -> Response:
+    service.delete(doc_id, admin)
     return Response(status_code=204)

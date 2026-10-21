@@ -8,11 +8,12 @@ import pytest
 from google.cloud.firestore_v1 import Client
 
 from kernel.errors import NotFoundError, ValidationError
+from kernel.security import Actor
 from shared.generated import Project
 from src.content.projects.repository import ProjectRepository
 from src.content.projects.service import ProjectService
 
-CLAIMS = {"uid": "admin-1", "email": "admin@example.com", "admin": True}
+ACTOR = Actor(uid="admin-1", email="admin@example.com")
 
 
 def _project(slug: str, **overrides: object) -> Project:
@@ -40,8 +41,8 @@ def test_duplicate_resets_publish_state_and_gets_a_new_slug(
     db: Client, clean_collection: str
 ) -> None:
     svc = _service(db, clean_collection)
-    original = svc.create(_project("inventory-sync"), CLAIMS, doc_id="inventory-sync")
-    copy = svc.duplicate(original.id, CLAIMS)
+    original = svc.create(_project("inventory-sync"), ACTOR, doc_id="inventory-sync")
+    copy = svc.duplicate(original.id, ACTOR)
 
     assert copy.id == "inventory-sync-copy"
     assert copy.data.title == "Realtime Inventory Sync (copy)"
@@ -52,9 +53,9 @@ def test_duplicate_resets_publish_state_and_gets_a_new_slug(
 
 def test_duplicate_twice_gets_distinct_slugs(db: Client, clean_collection: str) -> None:
     svc = _service(db, clean_collection)
-    svc.create(_project("aa"), CLAIMS, doc_id="aa")
-    first = svc.duplicate("aa", CLAIMS)
-    second = svc.duplicate("aa", CLAIMS)
+    svc.create(_project("aa"), ACTOR, doc_id="aa")
+    first = svc.duplicate("aa", ACTOR)
+    second = svc.duplicate("aa", ACTOR)
     assert first.id == "aa-copy"
     assert second.id == "aa-copy-2"
 
@@ -66,16 +67,16 @@ def test_duplicate_missing_project_is_404(db: Client, clean_collection: str) -> 
 
     svc = _service(db, clean_collection)
     with pytest.raises(NotFoundError):
-        svc.duplicate("nope", CLAIMS)
+        svc.duplicate("nope", ACTOR)
 
 
 def test_get_public_serves_unlisted_but_list_public_never_lists_it(
     db: Client, clean_collection: str
 ) -> None:
     svc = _service(db, clean_collection)
-    svc.create(_project("shown"), CLAIMS, doc_id="shown")
-    svc.create(_project("by-link", visibility="unlisted"), CLAIMS, doc_id="by-link")
-    svc.create(_project("wip", visibility="draft"), CLAIMS, doc_id="wip")
+    svc.create(_project("shown"), ACTOR, doc_id="shown")
+    svc.create(_project("by-link", visibility="unlisted"), ACTOR, doc_id="by-link")
+    svc.create(_project("wip", visibility="draft"), ACTOR, doc_id="wip")
 
     assert [r.id for r in svc.list_public()] == ["shown"]
     assert svc.get_public("by-link").id == "by-link"
@@ -91,7 +92,7 @@ def test_public_reads_strip_a_confidential_client(db: Client, clean_collection: 
         "confidential": True,
         "publicLabel": "a logistics client",
     }
-    svc.create(_project("secret", client=client), CLAIMS, doc_id="secret")
+    svc.create(_project("secret", client=client), ACTOR, doc_id="secret")
 
     for record in (svc.get_public("secret"), svc.list_public()[0]):
         assert record.data.client is not None
@@ -106,4 +107,4 @@ def test_reserved_slugs_are_refused(db: Client, clean_collection: str) -> None:
     svc = _service(db, clean_collection)
     for slug in ("public", "reorder"):
         with pytest.raises(ValidationError):
-            svc.create(_project(slug), CLAIMS, doc_id=slug)
+            svc.create(_project(slug), ACTOR, doc_id=slug)

@@ -18,6 +18,7 @@ from google.cloud.firestore_v1 import Client, CollectionReference, Query
 from google.cloud.firestore_v1.base_query import FieldFilter
 from pydantic import BaseModel
 
+from kernel.audit import AuditEntry, stage
 from kernel.errors import NotFoundError
 from kernel.firebase import get_db
 from kernel.records import Record
@@ -76,36 +77,43 @@ class BaseRepository[T: BaseModel]:
         return [self._to_record(s.id, s.to_dict() or {}) for s in query.stream()]
 
     # ── writes ───────────────────────────────────────────────────────
+    #
+    # Each write takes the audit entry describing it and commits both in one batch
+    # (kernel/audit.py): the change and its trail land together or not at all.
 
     def exists(self, doc_id: str) -> bool:
         return bool(self._ref.document(doc_id).get().exists)
 
-    def create(self, data: T, *, doc_id: str | None = None) -> Record[T]:
-        ref = self._ref.document(doc_id) if doc_id else self._ref.document()
-        ref.set(self._payload(data))
-        return self.require(ref.id)
+    def new_id(self) -> str:
+        """A fresh auto-id, known before the write so its audit entry can name it."""
+        return str(self._ref.document().id)
 
-    def save(self, doc_id: str, data: T) -> Record[T]:
+    def create(
+        self, data: T, *, doc_id: str | None = None, audit: AuditEntry | None = None
+    ) -> Record[T]:
+        return self.save(doc_id or self.new_id(), data, audit=audit)
+
+    def save(self, doc_id: str, data: T, *, audit: AuditEntry | None = None) -> Record[T]:
         """Full replace (upsert) of the document at `doc_id`."""
-        self._ref.document(doc_id).set(self._payload(data))
+        batch = self._db.batch()
+        batch.set(self._ref.document(doc_id), self._payload(data))
+        stage(self._db, batch, audit)
+        batch.commit()
         return self.require(doc_id)
 
-    def update(self, doc_id: str, patch: dict[str, object]) -> Record[T]:
-        """Partial update. `patch` uses dotted paths for nested fields, same as Firestore's
-        own `update()` — the caller is responsible for only including fields that changed."""
-        self.require(doc_id)  # 404s before writing, rather than silently upserting
-        self._ref.document(doc_id).update(to_firestore(dict(patch)))
-        return self.require(doc_id)
-
-    def delete(self, doc_id: str) -> None:
+    def delete(self, doc_id: str, *, audit: AuditEntry | None = None) -> None:
         self.require(doc_id)
-        self._ref.document(doc_id).delete()
+        batch = self._db.batch()
+        batch.delete(self._ref.document(doc_id))
+        stage(self._db, batch, audit)
+        batch.commit()
 
-    def reorder(self, ordered_ids: list[str]) -> None:
+    def reorder(self, ordered_ids: list[str], *, audit: AuditEntry | None = None) -> None:
         """Assign `order` = 0..n-1 following the given id sequence, in one batch."""
         batch = self._db.batch()
         for index, doc_id in enumerate(ordered_ids):
             batch.update(self._ref.document(doc_id), {"order": index})
+        stage(self._db, batch, audit)
         batch.commit()
 
     # ── internal ─────────────────────────────────────────────────────

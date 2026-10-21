@@ -6,6 +6,7 @@ from __future__ import annotations
 
 from google.cloud.firestore_v1 import Client, CollectionReference
 
+from kernel.audit import AuditEntry, stage
 from kernel.errors import NotFoundError
 from kernel.firebase import get_db
 from kernel.records import Record
@@ -58,13 +59,23 @@ class LibraryRepository:
         query = self._ref.order_by("uploadedAt")
         return [self._record(s.id, s.to_dict() or {}) for s in query.stream()]
 
-    def save(self, asset_id: str, asset: MediaAsset) -> Record[MediaAsset]:
-        self._ref.document(asset_id).set(self._payload(asset))
+    # Writes commit with their audit entry, in one batch (kernel/audit.py).
+
+    def save(
+        self, asset_id: str, asset: MediaAsset, *, audit: AuditEntry | None = None
+    ) -> Record[MediaAsset]:
+        batch = self._db.batch()
+        batch.set(self._ref.document(asset_id), self._payload(asset))
+        stage(self._db, batch, audit)
+        batch.commit()
         return self.require(asset_id)
 
-    def delete(self, asset_id: str) -> None:
+    def delete(self, asset_id: str, *, audit: AuditEntry | None = None) -> None:
         self.require(asset_id)
-        self._ref.document(asset_id).delete()
+        batch = self._db.batch()
+        batch.delete(self._ref.document(asset_id))
+        stage(self._db, batch, audit)
+        batch.commit()
 
     def find_references(self, urls: set[str]) -> list[str]:
         """`collection/id` of every content document — drafts included — that mentions any

@@ -16,11 +16,11 @@ from typing import Any
 from pydantic import BaseModel
 from pydantic import ValidationError as PydanticValidationError
 
-from kernel.audit import Action, AuditWriter
+from kernel.audit import Action, AuditEntry
 from kernel.crud.repository import BaseRepository
 from kernel.errors import ConflictError, NotFoundError, ValidationError
 from kernel.records import Record
-from kernel.security import actor_of
+from kernel.security import Actor
 from kernel.timestamps import now_iso
 
 
@@ -42,14 +42,8 @@ class CrudService[T: BaseModel]:
     #: Visibility values get_public serves. A subclass widens it (projects add `unlisted`).
     reachable_by_url: frozenset[str] = frozenset({"public"})
 
-    def __init__(
-        self,
-        repo: BaseRepository[T],
-        *,
-        audit: AuditWriter | None = None,
-    ) -> None:
+    def __init__(self, repo: BaseRepository[T]) -> None:
         self.repo = repo
-        self._audit = audit if audit is not None else AuditWriter(repo.db)
         self._has_audit_field = "audit" in repo.model.model_fields
 
     # ── reads ────────────────────────────────────────────────────────
@@ -83,26 +77,23 @@ class CrudService[T: BaseModel]:
 
     # ── writes ───────────────────────────────────────────────────────
 
-    def create(
-        self, payload: T, claims: dict[str, object], *, doc_id: str | None = None
-    ) -> Record[T]:
+    def create(self, payload: T, actor: Actor, *, doc_id: str | None = None) -> Record[T]:
         if doc_id is not None and self.repo.exists(doc_id):
             raise ConflictError(f"'{doc_id}' already exists.")
-        uid, _ = actor_of(claims)
+        doc_id = doc_id or self.repo.new_id()
         data = payload.model_dump(mode="json", exclude_none=True)
         if self._has_audit_field:
-            data["audit"] = self._stamp_new(data, uid)
-        record = self.repo.create(self._validate(data), doc_id=doc_id)
-        self._record("create", record.id, claims, before=None, after=self._dump(record))
-        return record
+            data["audit"] = self._stamp_new(data, actor.uid)
+        model = self._validate(data)
+        entry = self._entry("create", doc_id, actor, before=None, after=model)
+        return self.repo.create(model, doc_id=doc_id, audit=entry)
 
-    def upsert(self, doc_id: str, payload: T, claims: dict[str, object]) -> Record[T]:
+    def upsert(self, doc_id: str, payload: T, actor: Actor) -> Record[T]:
         """Full replace at a known id — used by singletons (profile/main, site_config/main).
 
         createdAt/createdBy and the first publishedAt survive the replace; only a
         draft-to-public transition stamps a new publishedAt, exactly as patch() does.
         """
-        uid, _ = actor_of(claims)
         existing = self.repo.get(doc_id)
         before = self._dump(existing) if existing else None
         data = payload.model_dump(mode="json", exclude_none=True)
@@ -111,17 +102,17 @@ class CrudService[T: BaseModel]:
             action = _transition(before.get("visibility"), data.get("visibility"))
         if self._has_audit_field:
             previous = dict(before.get("audit") or {}) if before else {}
-            stamp = self._stamp_new(data, uid)
+            stamp = self._stamp_new(data, actor.uid)
             audit = {**stamp, **{k: v for k, v in previous.items() if k != "updatedAt"}}
             audit["updatedAt"] = stamp["updatedAt"]
             if data.get("visibility") == "public" and not audit.get("publishedAt"):
                 audit["publishedAt"] = stamp["updatedAt"]
             data["audit"] = audit
-        record = self.repo.save(doc_id, self._validate(data))
-        self._record(action, doc_id, claims, before=before, after=self._dump(record))
-        return record
+        model = self._validate(data)
+        entry = self._entry(action, doc_id, actor, before=before, after=model)
+        return self.repo.save(doc_id, model, audit=entry)
 
-    def patch(self, doc_id: str, patch: dict[str, Any], claims: dict[str, object]) -> Record[T]:
+    def patch(self, doc_id: str, patch: dict[str, Any], actor: Actor) -> Record[T]:
         existing = self.repo.require(doc_id)
         before = self._dump(existing)
 
@@ -138,22 +129,21 @@ class CrudService[T: BaseModel]:
                 audit["publishedAt"] = audit.get("publishedAt") or now_iso()
             merged["audit"] = audit
 
-        record = self.repo.save(doc_id, self._validate(merged))
-        self._record(action, doc_id, claims, before=before, after=self._dump(record))
-        return record
+        model = self._validate(merged)
+        entry = self._entry(action, doc_id, actor, before=before, after=model)
+        return self.repo.save(doc_id, model, audit=entry)
 
-    def delete(self, doc_id: str, claims: dict[str, object]) -> None:
+    def delete(self, doc_id: str, actor: Actor) -> None:
         before = self._dump(self.repo.require(doc_id))
-        self.repo.delete(doc_id)
-        self._record("delete", doc_id, claims, before=before, after=None)
+        self.repo.delete(doc_id, audit=self._entry("delete", doc_id, actor, before=before))
 
-    def reorder(self, ids: list[str], claims: dict[str, object]) -> None:
+    def reorder(self, ids: list[str], actor: Actor) -> None:
         known = {r.id for r in self.repo.list_all()}
         unknown = [i for i in ids if i not in known]
         if unknown or len(set(ids)) != len(ids):
             raise ValidationError("Reorder needs each existing id exactly once.")
-        self.repo.reorder(ids)
-        self._record("reorder", None, claims, before=None, after={"ids": ids})
+        entry = AuditEntry(actor, "reorder", self.repo.collection, None, None, {"ids": ids})
+        self.repo.reorder(ids, audit=entry)
 
     # ── internal ─────────────────────────────────────────────────────
 
@@ -178,23 +168,17 @@ class CrudService[T: BaseModel]:
             stamp["publishedAt"] = now
         return stamp
 
-    def _record(
+    def _entry(
         self,
         action: Action,
-        doc_id: str | None,
-        claims: dict[str, object],
+        doc_id: str,
+        actor: Actor,
         *,
         before: dict[str, Any] | None,
-        after: dict[str, Any] | None,
-    ) -> None:
-        self._audit.record(
-            claims=claims,
-            action=action,
-            collection=self.repo.collection,
-            doc_id=doc_id,
-            before=before,
-            after=after,
-        )
+        after: T | None = None,
+    ) -> AuditEntry:
+        dumped = after.model_dump(mode="json", exclude_none=True) if after is not None else None
+        return AuditEntry(actor, action, self.repo.collection, doc_id, before, dumped)
 
 
 def _visibility(record: Record[Any]) -> object:
