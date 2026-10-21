@@ -387,15 +387,18 @@ Entries BE-01…BE-38 were backfilled on 2026-10-16 from the code and its histor
 - **Where:** [kernel/events.py](../../backend/kernel/events.py) — `InternalCaller`, `verify_internal_caller`
 - **Decision:** every `events.py` router has `dependencies=[InternalCaller]`. It requires a Google ID
   token (`google.oauth2.id_token.verify_oauth2_token`: signature, expiry, issuer) whose audience
-  is one of `SERVICE_URL`'s comma-separated URLs and whose verified email is the runtime account
+  is one of `SERVICE_URL`'s comma-separated URLs (bare, or with this request's path) and whose
+  verified email is the runtime account
   `functions-runtime@` — the identity the Eventarc triggers and the scheduler job sign as. No
   `SERVICE_URL` → 403 rather than skipping the audience. `ENVIRONMENT=development` lets an
   unsigned call through for local replays; a token that is sent is always verified.
 - **Why:** the service is public at the Cloud Run layer (admin routes authenticate in-process), so
   Cloud Run IAM can't protect a path. `SERVICE_URL` is a list because Cloud Run serves one
   service at more than one URL: Cloud Scheduler signs for the deterministic URL we give it, and
-  Eventarc — observed on staging, 2026-10-21 — signs for the service's `status.url`, the older
-  hashed `*-el.a.run.app` one.
+  Eventarc — observed on staging, 2026-10-21, in its push subscription's OIDC config — signs
+  for the service's `status.url` (the hashed `*-el.a.run.app` one) **plus the destination
+  path**. So each configured URL is accepted bare and with the path the request arrived on;
+  a token minted for another route still fails.
 - **Outcome:** the backup job and the event handlers can't be called by anyone else. Cost: the
   protection is our code — tested once like `require_admin` (`tests/kernel/test_events.py`).
 - **Related:** ADR 0023 · BE-16

@@ -83,7 +83,28 @@ def test_the_audience_checked_is_this_service(production: None) -> None:
         return_value={"email": RUNTIME, "email_verified": True},
     ) as verify:
         assert _post() == 200
-    assert verify.call_args.kwargs["audience"] == [SERVICE_URL]
+    assert verify.call_args.kwargs["audience"] == [SERVICE_URL, f"{SERVICE_URL}/job"]
+
+
+def test_eventarc_audience_is_a_service_url_plus_this_route(
+    production: None, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Eventarc signs for `<status.url><destination path>` (seen on staging, 2026-10-21): the
+    audiences are each configured URL bare and with the path the request arrived on — nothing
+    broader, so a token minted for another route is refused."""
+    monkeypatch.setenv("SERVICE_URL", f"{SERVICE_URL},https://api-hash-el.a.run.app")
+    config.get_settings.cache_clear()
+    with patch(
+        "kernel.events.id_token.verify_oauth2_token",
+        return_value={"email": RUNTIME, "email_verified": True},
+    ) as verify:
+        assert _post("/job") == 200
+    assert verify.call_args.kwargs["audience"] == [
+        SERVICE_URL,
+        f"{SERVICE_URL}/job",
+        "https://api-hash-el.a.run.app",
+        "https://api-hash-el.a.run.app/job",
+    ]
 
 
 def test_another_account_is_403(production: None) -> None:
