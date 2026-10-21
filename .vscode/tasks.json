@@ -3,7 +3,7 @@
   "tasks": [
     {
       "label": "emulators: data services",
-      "detail": "Firestore + Auth + Storage only — no Functions. Debug a function directly via functions-framework instead (see launch.json); routing it through the Firebase Functions emulator's own subprocess model breaks breakpoints and, for the WSGI/ASGI bridge specifically, hangs outright — see ADR 0003's implementation note.",
+      "detail": "Firestore + Auth + Storage — what the API runs against locally (`Backend: debug the API` in launch.json, or `make dev-backend`).",
       "type": "shell",
       "command": "firebase emulators:start --only firestore,auth,storage --project nikunjramani-in",
       "isBackground": true,

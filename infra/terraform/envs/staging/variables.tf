@@ -23,12 +23,6 @@ variable "budget_amount" {
   default = 50
 }
 
-variable "functions_deployed" {
-  description = "Flipped after the first staging functions deploy (2026-10-15); see envs/prod."
-  type        = bool
-  default     = true
-}
-
 variable "apphosting_region" {
   type    = string
   default = "asia-southeast1"

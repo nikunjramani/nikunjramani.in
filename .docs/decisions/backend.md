@@ -1,23 +1,23 @@
 # Backend decisions
 
-Python 3.13 · FastAPI · Cloud Functions for Firebase 2nd gen. Root:
-[backend/functions/](../../backend/functions/). Flow: [CODE_FLOW §5–9](../CODE_FLOW.md#5--the-admin-edits-content).
+Python 3.13 · FastAPI · one Cloud Run service (ADR 0023; Cloud Functions for Firebase 2nd gen
+until 2026-10-21). Root: [backend/](../../backend/). Flow: [CODE_FLOW §5–9](../CODE_FLOW.md#5--the-admin-edits-content).
 Entries BE-01…BE-38 were backfilled on 2026-10-16 from the code and its history.
 
 ## Entry points and the HTTP adapter
 
-### BE-01 · The deployed function's `__name__` is set before decorating it
+### ~~BE-01~~ Superseded by [BE-41](#be-41--one-app-mounts-every-subdomain;-two-registrations) · The deployed function's `__name__` is set before decorating it
 
-- **Where:** [kernel/http.py](../../backend/functions/kernel/http.py) — `make_function`
+- **Where:** [kernel/http.py](../../backend/kernel/http.py) — `make_function`
 - **Decision:** `_handler.__name__ = name` (and `__qualname__`) before `https_fn.on_request(...)` is applied.
 - **Why:** the Firebase SDK derives the deployed function's name from the handler's `__name__` at
   decoration time. Without this every subdomain deployed as `handler` and collided.
 - **Outcome:** one adapter serves every subdomain. Cost: a non-obvious ordering constraint, documented in the module docstring.
 - **Related:** ADR 0011, ADR 0017
 
-### BE-02 · A hand-written ASGI→WSGI bridge instead of `a2wsgi.ASGIMiddleware`
+### ~~BE-02~~ Superseded by [BE-41](#be-41--one-app-mounts-every-subdomain;-two-registrations) · A hand-written ASGI→WSGI bridge instead of `a2wsgi.ASGIMiddleware`
 
-- **Where:** [kernel/wsgi_bridge.py](../../backend/functions/kernel/wsgi_bridge.py) — `wsgi_from_asgi`
+- **Where:** [kernel/wsgi_bridge.py](../../backend/kernel/wsgi_bridge.py) — `wsgi_from_asgi`
 - **Decision:** each WSGI call runs the FastAPI app in a fresh `asyncio.run()`; only a2wsgi's pure
   `build_scope` helper is reused.
 - **Why:** `ASGIMiddleware` starts a background event-loop thread at construction. Werkzeug's
@@ -27,9 +27,9 @@ Entries BE-01…BE-38 were backfilled on 2026-10-16 from the code and its histor
   one request at a time. Type-checked and unit-tested code hid this; only the emulator showed it.
 - **Related:** ADR 0003 (implementation note), lessons-learned
 
-### BE-03 · The root `main.py` imports only the module `FUNCTION_TARGET` names
+### ~~BE-03~~ Superseded by [BE-41](#be-41--one-app-mounts-every-subdomain;-two-registrations) · The root `main.py` imports only the module `FUNCTION_TARGET` names
 
-- **Where:** [main.py](../../backend/functions/main.py)
+- **Where:** [main.py](../../backend/main.py)
 - **Decision:** merge every domain's `FUNCTIONS` table; when `FUNCTION_TARGET` is set (inside a
   deployed instance) import only that function's subdomain module; when unset (deploy discovery,
   emulator, pytest) import all.
@@ -39,7 +39,7 @@ Entries BE-01…BE-38 were backfilled on 2026-10-16 from the code and its histor
   in a table, not just defined — BE-04.
 - **Related:** ADR 0017
 
-### BE-04 · Three levels of entry point, checked by tests
+### ~~BE-04~~ Superseded by [BE-41](#be-41--one-app-mounts-every-subdomain;-two-registrations) · Three levels of entry point, checked by tests
 
 - **Where:** `main.py` → `src/<domain>/main.py` (`FUNCTIONS` dict, no imports) → `src/<domain>/<sub>/main.py`
 - **Decision:** the subdomain defines its function; the domain lists it by name and module path;
@@ -53,7 +53,7 @@ Entries BE-01…BE-38 were backfilled on 2026-10-16 from the code and its histor
 
 ### BE-05 · No `__init__.py`; mypy `explicit_package_bases`; pytest `importlib` mode
 
-- **Where:** [pyproject.toml](../../backend/functions/pyproject.toml)
+- **Where:** [pyproject.toml](../../backend/pyproject.toml)
 - **Decision:** implicit namespace packages everywhere except `shared/generated` (whose generated
   `__init__.py` is the curated re-export).
 - **Why:** the owner asked to drop boilerplate `__init__.py` files. With them gone, many files share
@@ -86,7 +86,7 @@ Entries BE-01…BE-38 were backfilled on 2026-10-16 from the code and its histor
 
 ### BE-08 · Services raise `kernel.errors`; one handler turns them into JSON
 
-- **Where:** [kernel/errors.py](../../backend/functions/kernel/errors.py), `make_app` in kernel/http.py
+- **Where:** [kernel/errors.py](../../backend/kernel/errors.py), `make_app` in kernel/http.py
 - **Decision:** `DomainError` subclasses carry `status_code` and `code`; the app's exception handler
   returns `{"error": {"code", "message"}}`.
 - **Why:** services must not import HTTP concepts (BE-07), yet each failure needs a precise status.
@@ -94,7 +94,7 @@ Entries BE-01…BE-38 were backfilled on 2026-10-16 from the code and its histor
 
 ### BE-09 · Generic content CRUD lives once in `kernel.crud`; routes stay written out
 
-- **Where:** [kernel/crud/](../../backend/functions/kernel/crud/) — `BaseRepository`, `CrudService`, `RecordOut`
+- **Where:** [kernel/crud/](../../backend/kernel/crud/) — `BaseRepository`, `CrudService`, `RecordOut`
 - **Decision:** audit stamps, publish transitions, merge-patch and reorder are implemented once and
   subclassed per collection; each subdomain still writes its own `routes.py`.
 - **Why:** the rules are identical for every visibility/order collection; a route factory (ADR 0016)
@@ -104,7 +104,7 @@ Entries BE-01…BE-38 were backfilled on 2026-10-16 from the code and its histor
 
 ### BE-10 · Updates are RFC 7386 merge patches; `slug` and `audit` are protected
 
-- **Where:** `CrudService.patch`, `deep_merge` in [kernel/crud/service.py](../../backend/functions/kernel/crud/service.py)
+- **Where:** `CrudService.patch`, `deep_merge` in [kernel/crud/service.py](../../backend/kernel/crud/service.py)
 - **Decision:** `null` deletes a key, objects merge, lists replace. A client-sent `audit` is dropped
   (server-owned); changing `slug` is a 422.
 - **Why:** a form sending its values can't clear a field (`undefined` disappears in JSON); merge
@@ -120,14 +120,14 @@ Entries BE-01…BE-38 were backfilled on 2026-10-16 from the code and its histor
 
 ### BE-12 · Repositories return `Record[T]` — the id travels beside the model
 
-- **Where:** [kernel/records.py](../../backend/functions/kernel/records.py)
+- **Where:** [kernel/records.py](../../backend/kernel/records.py)
 - **Decision:** `Record(id, data)` rather than an `id` field on the model.
 - **Why:** every schema sets `additionalProperties: false` and has no `id`; injecting one fails validation.
 - **Related:** SC-02, FE-06 (`WithId` on the frontend)
 
 ### BE-13 · Timestamps cross the Firestore boundary in exactly one module, matched strictly
 
-- **Where:** [kernel/timestamps.py](../../backend/functions/kernel/timestamps.py)
+- **Where:** [kernel/timestamps.py](../../backend/kernel/timestamps.py)
 - **Decision:** `to_firestore` / `from_firestore` walk the document; only strings matching a full
   date-*time* (`YYYY-MM-DDTHH:MM`) become datetimes.
 - **Why:** schemas store ISO strings, Firestore stores Timestamps. A looser match corrupted valid
@@ -145,7 +145,7 @@ Entries BE-01…BE-38 were backfilled on 2026-10-16 from the code and its histor
 
 ### BE-15 · `ensure_app()` runs before verifying a token
 
-- **Where:** `verify_token` in [kernel/security.py](../../backend/functions/kernel/security.py); [kernel/firebase.py](../../backend/functions/kernel/firebase.py)
+- **Where:** `verify_token` in [kernel/security.py](../../backend/kernel/security.py); [kernel/firebase.py](../../backend/kernel/firebase.py)
 - **Decision:** initialise the Admin SDK app explicitly before `verify_id_token`.
 - **Why:** on a cold instance token verification is the first SDK call; without an app it raised
   "default app does not exist", caught by the broad `except` and reported as an invalid token —
@@ -163,7 +163,7 @@ Entries BE-01…BE-38 were backfilled on 2026-10-16 from the code and its histor
 
 ### BE-17 · Audit entries keep explicit `null`s
 
-- **Where:** [kernel/audit.py](../../backend/functions/kernel/audit.py)
+- **Where:** [kernel/audit.py](../../backend/kernel/audit.py)
 - **Decision:** `before` on a create and `after` on a delete are stored as `null`, not omitted.
 - **Why:** an explicit null reads differently from a missing key to anyone inspecting the trail.
 
@@ -171,7 +171,7 @@ Entries BE-01…BE-38 were backfilled on 2026-10-16 from the code and its histor
 
 ### BE-18 · Every anti-abuse check fails silently; field validation stays honest
 
-- **Where:** [src/inbox/contact/service.py](../../backend/functions/src/inbox/contact/service.py)
+- **Where:** [src/inbox/contact/service.py](../../backend/src/inbox/contact/service.py)
 - **Decision:** honeypot, App Check, rate limit — any trip returns the same 202 success. Malformed
   fields (too long, missing) still get a 422 from Pydantic.
 - **Why:** telling a bot which check fired helps it tune; a real visitor benefits from field errors.
@@ -188,7 +188,7 @@ Entries BE-01…BE-38 were backfilled on 2026-10-16 from the code and its histor
 
 ### BE-20 · Rate limits are fixed windows in a Firestore transaction
 
-- **Where:** [src/inbox/contact/rate_limit.py](../../backend/functions/src/inbox/contact/rate_limit.py)
+- **Where:** [src/inbox/contact/rate_limit.py](../../backend/src/inbox/contact/rate_limit.py)
 - **Decision:** a document per scope/identifier/window start; read-check-write in one transaction;
   `expiresAt` = two windows ahead, deleted by a TTL policy.
 - **Why:** `Increment()` can't express "reject if over"; two concurrent requests at count 4 of 5 must
@@ -197,7 +197,7 @@ Entries BE-01…BE-38 were backfilled on 2026-10-16 from the code and its histor
 
 ### BE-21 · The request model is narrower than the stored model
 
-- **Where:** [src/inbox/contact/schemas.py](../../backend/functions/src/inbox/contact/schemas.py) — `ContactRequest`
+- **Where:** [src/inbox/contact/schemas.py](../../backend/src/inbox/contact/schemas.py) — `ContactRequest`
 - **Decision:** the body accepts only name, email, subject, message, honeypot; ip, userAgent,
   spamScore, read flags and timestamps are set server-side.
 - **Why:** accepting the full `ContactMessage` would let a POST forge its own metadata.
@@ -210,22 +210,23 @@ Entries BE-01…BE-38 were backfilled on 2026-10-16 from the code and its histor
 
 ### BE-23 · Spam is scored, never blocked — three cheap signals
 
-- **Where:** [src/inbox/contact/spam.py](../../backend/functions/src/inbox/contact/spam.py)
+- **Where:** [src/inbox/contact/spam.py](../../backend/src/inbox/contact/spam.py)
 - **Decision:** links, all-caps ratio, character runs → 0..1; the notification flags ≥ 0.5.
 - **Why:** this form gets little traffic; a model tuned against traffic that doesn't exist is
   premature, and a false positive should still reach the inbox.
 
 ### BE-24 · The owner's email is sent by a Firestore trigger, not the request
 
-- **Where:** [src/inbox/notifications/](../../backend/functions/src/inbox/notifications/) — `on_contact_created`
-- **Decision:** the API only persists; `on_document_created` renders and sends via Resend, with two
-  retries. Every visitor value is HTML-escaped.
+- **Where:** [src/inbox/notifications/](../../backend/src/inbox/notifications/) — `events.py` (was the
+  `on_contact_created` function; an Eventarc Firestore trigger since BE-44)
+- **Decision:** the API only persists; the `document.created` event renders and sends via Resend,
+  with two retries. Every visitor value is HTML-escaped.
 - **Why:** the visitor's request stays fast and doesn't fail when the mail provider does; the email
   body is untrusted input landing in the owner's inbox.
 
 ### BE-25 · An empty or whitespace mail key means "not configured" — skip, don't fail
 
-- **Where:** [src/inbox/notifications/settings.py](../../backend/functions/src/inbox/notifications/settings.py) (`str_strip_whitespace=True`), `send_email`
+- **Where:** [src/inbox/notifications/settings.py](../../backend/src/inbox/notifications/settings.py) (`str_strip_whitespace=True`), `send_email`
 - **Decision:** a blank `RESEND_API_KEY` logs a warning and skips sending.
 - **Why:** a bound secret must have a version before deploy, and Secret Manager rejects empty
   versions — so an unconfigured key is a single newline, which stripping turns into "empty".
@@ -236,7 +237,7 @@ Entries BE-01…BE-38 were backfilled on 2026-10-16 from the code and its histor
 
 ### BE-26 · Uploads go straight to Storage on a short-lived signed URL
 
-- **Where:** [src/media/upload/](../../backend/functions/src/media/upload/)
+- **Where:** [src/media/upload/](../../backend/src/media/upload/)
 - **Decision:** the API validates type (webp/jpeg/png/gif) and size (≤ 20 MiB) and returns a v4
   signed PUT URL valid 15 minutes, signed through IAM `signBlob` as the runtime service account.
 - **Why:** large files never pass through a 256 MB function; no key file exists to sign with.
@@ -244,7 +245,7 @@ Entries BE-01…BE-38 were backfilled on 2026-10-16 from the code and its histor
 
 ### BE-27 · Raw uploads are private; derivatives are public; the trigger can't re-trigger itself
 
-- **Where:** `src/media/*/paths.py`, [processing/service.py](../../backend/functions/src/media/processing/service.py)
+- **Where:** `src/media/*/paths.py`, [processing/service.py](../../backend/src/media/processing/service.py)
 - **Decision:** raw files land in `uploads/media/<id>/original.<ext>`; WebP derivatives in
   `public/media/<id>/`. The trigger acts only on paths matching `UPLOAD_PATTERN` and stops if
   `media_assets/<id>` already exists.
@@ -253,7 +254,7 @@ Entries BE-01…BE-38 were backfilled on 2026-10-16 from the code and its histor
 
 ### BE-28 · Images are EXIF-rotated, then re-encoded (which strips EXIF)
 
-- **Where:** [processing/image.py](../../backend/functions/src/media/processing/image.py)
+- **Where:** [processing/image.py](../../backend/src/media/processing/image.py)
 - **Decision:** `exif_transpose`, convert to RGB(A), WebP q82, a 400 px thumbnail, a 4×3 blurhash from
   a 100 px sample. Pure functions over bytes.
 - **Why:** phones store orientation in EXIF; the re-encoded WebP carries none, so rotate first.
@@ -274,7 +275,7 @@ Entries BE-01…BE-38 were backfilled on 2026-10-16 from the code and its histor
 
 ### BE-31 · Backups are per-document JSON, not GCP's native export
 
-- **Where:** [src/ops/backup/service.py](../../backend/functions/src/ops/backup/service.py)
+- **Where:** [src/ops/backup/service.py](../../backend/src/ops/backup/service.py)
 - **Decision:** a daily job writes each collection in `BACKED_UP_COLLECTIONS` to the backups bucket.
   A test checks the list covers every collection the schemas declare.
 - **Why:** a backup must be restorable into the *emulator* for verification first; the native
@@ -282,14 +283,14 @@ Entries BE-01…BE-38 were backfilled on 2026-10-16 from the code and its histor
 
 ### BE-32 · Admin revocation refuses self-removal and removing the last admin
 
-- **Where:** [src/identity/admins/service.py](../../backend/functions/src/identity/admins/service.py)
+- **Where:** [src/identity/admins/service.py](../../backend/src/identity/admins/service.py)
 - **Decision:** revoke also revokes the user's refresh tokens; grant takes effect at next sign-in.
 - **Why:** locking the only owner out of their own panel has no recovery path short of a script;
   revoking sessions makes a removal immediate (the panel checks `checkRevoked`).
 
 ### BE-33 · CSV export neutralises spreadsheet formulas
 
-- **Where:** `csv_safe` in [src/inbox/messages/service.py](../../backend/functions/src/inbox/messages/service.py)
+- **Where:** `csv_safe` in [src/inbox/messages/service.py](../../backend/src/inbox/messages/service.py)
 - **Why:** every text column comes from the public form; a cell starting `=`, `+`, `-`, `@` would run
   as a formula in Excel/Sheets.
 
@@ -297,25 +298,25 @@ Entries BE-01…BE-38 were backfilled on 2026-10-16 from the code and its histor
 
 ### BE-34 · `/docs` is off in production; CORS is an allowlist
 
-- **Where:** `make_app` in kernel/http.py; `ALLOWED_ORIGINS`
+- **Where:** `make_app` in kernel/app.py; `ALLOWED_ORIGINS`
 - **Why:** OpenAPI docs are a development aid and an information leak in production. The browser
   normally calls same-origin through the rewrite, so CORS is a backstop.
 
-### BE-35 · Project id comes from `GCLOUD_PROJECT` as an alias
+### ~~BE-35~~ Superseded by [BE-45](#be-45--the-services-shape-lives-in-the-makefile;-its-config-in-env<project>yaml) · Project id comes from `GCLOUD_PROJECT` as an alias
 
-- **Where:** [kernel/config.py](../../backend/functions/kernel/config.py)
+- **Where:** [kernel/config.py](../../backend/kernel/config.py)
 - **Why:** a deployed function's dotenv can't set `FIREBASE_*` (reserved prefix); the CLI sets
   `GCLOUD_PROJECT` at discovery and runtime. Domain settings (buckets, mail) live in each
   subdomain's own `settings.py`, so the kernel knows no domain.
 
-### BE-36 · One region, one runtime identity, three instances by default
+### ~~BE-36~~ Superseded by [BE-45](#be-45--the-services-shape-lives-in-the-makefile;-its-config-in-env<project>yaml) · One region, one runtime identity, three instances by default
 
 - **Where:** `set_global_options` in main.py; `DEFAULT_REGION` in kernel/http.py
 - **Decision:** `asia-south1` (Mumbai, next to Firestore), every function as `functions-runtime@`,
   `max_instances=3` (media processing: 2, 1 GiB).
 - **Why:** latency to the owner and the database; least privilege; a cost ceiling on a personal site.
 
-### BE-37 · Two Python environments
+### ~~BE-37~~ Superseded by [BE-45](#be-45--the-services-shape-lives-in-the-makefile;-its-config-in-env<project>yaml) · Two Python environments
 
 - **Where:** Makefile `setup-backend`
 - **Decision:** uv's `.venv/` for lint/test, plus a stdlib `venv/` and an exported `requirements.txt`.
@@ -323,7 +324,7 @@ Entries BE-01…BE-38 were backfilled on 2026-10-16 from the code and its histor
 
 ### BE-38 · Logs are single-line JSON
 
-- **Where:** [kernel/logging.py](../../backend/functions/kernel/logging.py)
+- **Where:** [kernel/logging.py](../../backend/kernel/logging.py)
 - **Why:** Cloud Logging parses JSON lines into queryable fields (`severity`, extra fields); the
   monitoring module's error metric relies on it.
 
@@ -331,7 +332,7 @@ Entries BE-01…BE-38 were backfilled on 2026-10-16 from the code and its histor
 
 ### BE-39 · The media library answers "where is this image used?", and delete enforces it
 
-- **Where:** `find_references` in [media/library/repository.py](../../backend/functions/src/media/library/repository.py), `LibraryService.usage` / `.delete`
+- **Where:** `find_references` in [media/library/repository.py](../../backend/src/media/library/repository.py), `LibraryService.usage` / `.delete`
 - **Decision:** `GET /{id}/usage` lists `collection/id` of every content document — drafts
   included — that mentions the asset's URL or thumbnail URL. `DELETE` raises 409 while that list
   is non-empty, unless `?force=true` (sent only after the admin has seen the list and confirmed).
@@ -347,7 +348,7 @@ Entries BE-01…BE-38 were backfilled on 2026-10-16 from the code and its histor
 
 ### BE-40 · Public reads live in `CrudService`, beside the admin routes
 
-- **Where:** `list_public`, `get_public`, `to_public`, `reachable_by_url` in [kernel/crud/service.py](../../backend/functions/kernel/crud/service.py); `GET /public` in each content subdomain's `routes.py`; `ProjectService`
+- **Where:** `list_public`, `get_public`, `to_public`, `reachable_by_url` in [kernel/crud/service.py](../../backend/kernel/crud/service.py); `GET /public` in each content subdomain's `routes.py`; `ProjectService`
 - **Decision:** each content subdomain serves an unauthenticated `GET /public` (projects also
   `GET /public/{slug}`) from the same function as its admin routes. `list_public` returns only
   `public` documents in `order`; `get_public` 404s unless the visibility is in
@@ -361,3 +362,87 @@ Entries BE-01…BE-38 were backfilled on 2026-10-16 from the code and its histor
   serve only what the pages already show, and `max_instances` caps abuse.
 - **Related:** ADR 0022 · FE-26
 - **Since:** 2026-10-20
+
+## One service on Cloud Run (ADR 0023)
+
+### BE-41 · One app mounts every subdomain; two registrations
+
+- **Where:** [apps/api.py](../../backend/apps/api.py) — `ROUTES`, `INTERNAL`, `create_app`; [tests/test_domain_registry.py](../../backend/tests/test_domain_registry.py)
+- **Decision:** one FastAPI app mounts each subdomain's `routes.py` router at
+  `/api/v1/<domain>/<sub>` and each `events.py` router under `/internal/…`. Registering a subdomain
+  is its line here plus its route in `architecture/api-routes.json`; the registry test demands
+  that both agree with `src/*/*/routes.py` and `events.py`, and with the import-linter contracts.
+  An import-linter contract forbids anything importing `apps/`.
+- **Why:** the 15 + 3 Firebase functions needed four registrations each (BE-04), a name-before-
+  decorate trick (BE-01), a hand-written WSGI bridge (BE-02) and a `FUNCTION_TARGET` loader
+  (BE-03) — all Functions machinery, none of it domain isolation, which import-linter already
+  gave.
+- **Outcome:** a new endpoint is a route; a new subdomain is a folder plus two lines. Cost: one
+  process runs every domain, so a crash affects all of them (ADR 0023's accepted cost).
+- **Related:** ADR 0017, ADR 0023 · supersedes BE-01, BE-02, BE-03, BE-04
+- **Since:** 2026-10-21
+
+### BE-42 · `/internal/*` accepts only Google-signed calls from the runtime account
+
+- **Where:** [kernel/events.py](../../backend/kernel/events.py) — `InternalCaller`, `verify_internal_caller`
+- **Decision:** every `events.py` router has `dependencies=[InternalCaller]`. It requires a Google ID
+  token (`google.oauth2.id_token.verify_oauth2_token`: signature, expiry, issuer) whose audience
+  is one of `SERVICE_URL`'s comma-separated URLs and whose verified email is the runtime account
+  `functions-runtime@` — the identity the Eventarc triggers and the scheduler job sign as. No
+  `SERVICE_URL` → 403 rather than skipping the audience. `ENVIRONMENT=development` lets an
+  unsigned call through for local replays; a token that is sent is always verified.
+- **Why:** the service is public at the Cloud Run layer (admin routes authenticate in-process), so
+  Cloud Run IAM can't protect a path. `SERVICE_URL` is a list because Cloud Run serves one
+  service at more than one URL and Eventarc's audience choice isn't documented.
+- **Outcome:** the backup job and the event handlers can't be called by anyone else. Cost: the
+  protection is our code — tested once like `require_admin` (`tests/kernel/test_events.py`).
+- **Related:** ADR 0023 · BE-16
+- **Since:** 2026-10-21
+
+### BE-43 · Collection roots are served with or without the slash — never redirected
+
+- **Where:** `TrailingSlashFallback` and `redirect_slashes=False` in [kernel/app.py](../../backend/kernel/app.py)
+- **Decision:** a request that matches no route as sent but matches with a trailing slash is
+  rewritten in place to the slashed path; nothing ever answers with a redirect.
+- **Why:** collection roots are declared at `"/"` (`/api/v1/content/skills/`), and the browser
+  reaches them through the Next.js rewrite, which drops the slash. Starlette's default 307 would
+  point at the Cloud Run host, so the browser would leave the site and drop its Authorization
+  header. Under Functions each subdomain was its own app, so the root was just `/`.
+- **Outcome:** both forms work; routes keep their natural `"/"`. Cost: one middleware that tries a
+  second match on a miss.
+- **Related:** FE-28
+- **Since:** 2026-10-21
+
+### BE-44 · Events arrive over HTTP and are handled idempotently, off the event loop
+
+- **Where:** `events.py` in [media/processing](../../backend/src/media/processing/events.py), [inbox/notifications](../../backend/src/inbox/notifications/events.py), [ops/backup](../../backend/src/ops/backup/events.py); `storage_object`, `firestore_document` in kernel/events.py
+- **Decision:** Eventarc delivers the Storage `object.finalized` (JSON) and Firestore
+  `document.created` (protobuf, decoded with `google-events`) events, and Cloud Scheduler calls the
+  backup, as HTTP POSTs. Handlers return 204 for "handled or nothing to do" and raise for "retry";
+  CPU-bound work runs in the threadpool (`run_in_threadpool`, or a plain `def` route). Firestore
+  values arrive as plain Python, timestamps as ISO strings — the shape `from_firestore` gives.
+- **Why:** delivery is at-least-once and any non-2xx is retried; with concurrency 80 an image
+  encode on the event loop would stall every other request. The services were already
+  idempotent (processing skips an existing asset), so only the entry point changed.
+- **Outcome:** the services didn't change. Cost: `google-events`' last release is 2024-12; a
+  failing decode is a 422 that Eventarc retries, and the fallback is `protobuf` + Google's `.proto`.
+- **Related:** ADR 0023 · BE-24, BE-27
+- **Since:** 2026-10-21
+
+### BE-45 · The service's shape lives in the Makefile; its config in `deploy/<project>.yaml`
+
+- **Where:** Makefile `deploy-api` and `api-registry`; [deploy/<project>.yaml](../../backend/deploy/); [Dockerfile](../../backend/Dockerfile); [deploy/cleanup-policy.json](../../backend/deploy/cleanup-policy.json)
+- **Decision:** `make deploy-api PROJECT= IMAGE=` is the only `gcloud run deploy`: `asia-south1`, as
+  `functions-runtime@`, 1 vCPU · 1 GiB · concurrency 80 · 0–3 instances · 600 s timeout, public,
+  env from `backend/deploy/<project>.yaml` (incl. `GOOGLE_CLOUD_PROJECT` and `SERVICE_URL`), secrets
+  `RESEND_API_KEY` and `CONTACT_EMAIL_TO` from Secret Manager. CI calls it; so does break-glass.
+  The image is a two-stage build: uv resolves the locked deps (gcc for blurhash) into a venv
+  that the slim runtime stage copies, non-root. One Python environment (uv's) remains.
+- **Why:** the shape used to be spread over decorators (`max_instances`, memory) and the Firebase
+  CLI's `.env.<project>` files, which also reserved the `FIREBASE_` prefix (BE-35). One target
+  means CI and a laptop can't deploy different services; 1 GiB covers image processing, which
+  is rare and admin-only.
+- **Outcome:** one place to change sizing or config. The runtime account keeps its old id because
+  service accounts can't be renamed.
+- **Related:** ADR 0023 · supersedes BE-35, BE-36, BE-37 · IN-16 · CI-16
+- **Since:** 2026-10-21

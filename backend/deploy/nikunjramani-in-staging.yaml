@@ -1,0 +1,10 @@
+# Staging runtime config — the twin of nikunjramani-in.yaml for the staging project (ADR 0018).
+# Staging behaves like production on purpose: /docs off, /internal/* requires signed calls.
+GOOGLE_CLOUD_PROJECT: nikunjramani-in-staging
+ENVIRONMENT: production
+SERVICE_URL: https://api-659120187836.asia-south1.run.app
+ALLOWED_ORIGINS: https://nikunjramani-in--nikunjramani-in-staging.asia-southeast1.hosted.app
+SITE_URL: https://nikunjramani-in--nikunjramani-in-staging.asia-southeast1.hosted.app
+STORAGE_BUCKET: nikunjramani-in-staging-media
+BACKUPS_BUCKET: nikunjramani-in-staging-backups
+MAIL_FROM: staging@nikunjramani.in

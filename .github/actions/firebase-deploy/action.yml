@@ -1,7 +1,8 @@
 name: firebase-deploy
 description: >
-  Toolchain, keyless auth, `firebase deploy` (retried) and a smoke test — shared by the staging
-  preview, the production deploy and its rollback. The project comes from a .firebaserc alias,
+  Toolchain, keyless auth, `firebase deploy` of rules and App Hosting (retried) and a smoke
+  test — shared by the staging preview, the production deploy and its rollback. The API is
+  deployed by cloud-run-deploy, before this runs. The project comes from a .firebaserc alias,
   so no project ID is hard-coded in CI.
 
 inputs:
@@ -13,9 +14,6 @@ inputs:
   # behind IAM (Terraform's storage module), not a Firebase Storage bucket.
   rules:
     description: "Firestore rules + indexes"
-    default: "true"
-  functions:
-    description: "Cloud Functions"
     default: "true"
   apphosting:
     description: "App Hosting (the website)"
@@ -31,15 +29,6 @@ inputs:
 runs:
   using: composite
   steps:
-    - uses: actions/setup-python@v7
-      if: inputs.functions == 'true'
-      with:
-        python-version-file: .python-version
-    - uses: astral-sh/setup-uv@v10.3.0
-      if: inputs.functions == 'true'
-      with:
-        enable-cache: true
-        cache-dependency-glob: backend/functions/uv.lock
     - uses: actions/setup-node@v7
       with:
         node-version-file: .nvmrc
@@ -49,23 +38,17 @@ runs:
       with:
         workload_identity_provider: ${{ inputs.workload_identity_provider }}
         service_account: ${{ inputs.service_account }}
-    # The Firebase CLI needs requirements.txt + a stdlib venv/ to load the Python functions.
-    - shell: bash
-      if: inputs.functions == 'true'
-      run: make setup-backend
-    # Retried: a fresh project's first deploys hit documented propagation races (Eventarc
-    # service agent, gcf-artifacts repo, source bucket) whose remedy is "retry in a few minutes".
+    # Retried: a fresh project's first App Hosting deploys hit documented propagation races
+    # whose remedy is "retry in a few minutes".
     - name: Deploy
       shell: bash
       env:
         PROJECT: ${{ inputs.project }}
         RULES: ${{ inputs.rules }}
-        FUNCTIONS: ${{ inputs.functions }}
         APPHOSTING: ${{ inputs.apphosting }}
       run: |
         targets=()
         [ "$RULES" = true ] && targets+=(firestore:rules firestore:indexes)
-        [ "$FUNCTIONS" = true ] && targets+=(functions)
         [ "$APPHOSTING" = true ] && targets+=(apphosting)
         [ ${#targets[@]} -gt 0 ] || { echo "::error::Nothing to deploy"; exit 1; }
         ONLY=$(IFS=,; echo "${targets[*]}")

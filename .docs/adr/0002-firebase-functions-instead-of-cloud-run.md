@@ -1,6 +1,6 @@
 # 0002 · Firebase Functions instead of standalone Cloud Run
 
-**Status:** ✅ Accepted · **Date:** 2026-09-06
+**Status:** 🔄 Superseded by [0023](./0023-backend-as-one-cloud-run-service.md) · **Date:** 2026-09-06
 
 ---
 

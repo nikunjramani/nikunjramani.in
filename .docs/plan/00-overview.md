@@ -24,6 +24,8 @@ Three principles drive every decision below:
 
 ## Architecture
 
+> The original design. Since then the backend became one Cloud Run service ([ADR 0023](../adr/0023-backend-as-one-cloud-run-service.md)) and owns reads as well as writes ([ADR 0022](../adr/0022-backend-owns-all-data-access.md)); [CODE_FLOW §1](../CODE_FLOW.md#1--the-system) has the current picture.
+
 ```
                     ┌───────────────────────────────────────────┐
   visitor ────────▶ │  Firebase App Hosting                     │
@@ -75,8 +77,8 @@ Three principles drive every decision below:
 | Animation | **Motion** (ex Framer Motion) | latest | Scroll reveals, page transitions |
 | Forms | **react-hook-form** + **Zod** | latest | Zod schemas are generated |
 | Icons | **lucide-react** | latest | |
-| Backend | **Cloud Functions for Firebase**, 2nd gen | `python313` | Verified newest supported runtime |
-| API | **FastAPI** per domain, one deployed function each | latest | Pydantic validation + OpenAPI, with per-domain isolation · [ADR 0011](../adr/0011-domain-wise-separate-functions.md) |
+| Backend | **Cloud Run**, one service (Cloud Functions for Firebase until [ADR 0023](../adr/0023-backend-as-one-cloud-run-service.md)) | Python 3.13 | One container image, uvicorn |
+| API | **FastAPI**, one app; domains isolated in the code | latest | Pydantic validation + OpenAPI · [ADR 0017](../adr/0017-bounded-context-domains.md), [ADR 0023](../adr/0023-backend-as-one-cloud-run-service.md) |
 | Pkg manager (py) | **uv** | latest | Fast, lockfile-based |
 | Lint (py) | **ruff** + **mypy --strict** | latest | |
 | DB | **Cloud Firestore** | | |
@@ -103,12 +105,16 @@ the server, which solves it outright. It's also the most transferable frontend s
 
 ### Why Firebase Functions rather than Cloud Run
 
+> **Since 2026-10-21 ([ADR 0023](../adr/0023-backend-as-one-cloud-run-service.md)):** the backend is one FastAPI service on Cloud Run, not one Cloud Function per subdomain; triggers are Eventarc and Cloud Scheduler calls to `/internal/*` routes on it. This section describes the original Functions design — [CODE_FLOW](../CODE_FLOW.md) and [backend/README.md](../../backend/README.md) describe what runs now.
+
 They're the same infrastructure — 2nd-gen functions *run on* Cloud Run. Choosing Functions means one
 toolchain (`firebase deploy`), one project, one billing view, and Firestore/Storage triggers for
 free. Nothing is given up. And because the API is a plain FastAPI app behind a thin adapter, moving
 it to standalone Cloud Run later is a config change, not a rewrite.
 
 ### Why Python owns writes but not reads
+
+> Superseded by [ADR 0022](../adr/0022-backend-owns-all-data-access.md): the API owns reads too.
 
 A Python function cold-starts in 1–3s. On a contact-form submit that's invisible behind a spinner.
 On a page load it would be the difference between a fast site and a slow one. So reads go
@@ -122,7 +128,7 @@ validation, business rules and secret handling actually earn their keep.
 ```
 architecture/   JSON Schemas — the single source of truth
 frontend/       Next.js app (public site + /admin)
-backend/        Python Firebase Functions (API, triggers, scheduled jobs)
+backend/        the Python API — one FastAPI service on Cloud Run (routes, event handlers, jobs)
 infra/          Terraform for Firebase/GCP + security rules
 .docs/adr/       Architecture decision records — one file per decision
 .docs/plan/      These documents

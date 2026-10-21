@@ -11,7 +11,7 @@ nikunjramani.in/
 ├── README.md · Makefile · .gitignore · .gitattributes · .editorconfig
 ├── architecture/     # JSON Schemas — source of truth
 ├── frontend/         # Next.js 16
-├── backend/          # Python 3.13 Firebase Functions
+├── backend/          # Python 3.13 FastAPI — one Cloud Run service
 ├── infra/            # Terraform + security rules
 ├── .docs/
 │   ├── adr/          # architecture decision records — one file per decision
@@ -108,8 +108,10 @@ Firebase client SDK never ship to a visitor reading a project page.
 
 ## `backend/`
 
+> **Since 2026-10-21 ([ADR 0023](../adr/0023-backend-as-one-cloud-run-service.md)):** the backend is one FastAPI service on Cloud Run, not one Cloud Function per subdomain; triggers are Eventarc and Cloud Scheduler calls to `/internal/*` routes on it. This section describes the original Functions design — [CODE_FLOW](../CODE_FLOW.md) and [backend/README.md](../../backend/README.md) describe what runs now.
+
 ```
-backend/functions/
+backend/
 ├── main.py                        # imports + re-exports every function
 │
 ├── shared/                        # imported by every domain; owns nothing itself

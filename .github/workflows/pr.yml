@@ -27,7 +27,7 @@ jobs:
       frontend: ${{ steps.filter.outputs.frontend }}
       infra: ${{ steps.filter.outputs.infra }}
       rules: ${{ steps.filter.outputs.rules }}
-      functions: ${{ steps.filter.outputs.functions }}
+      api: ${{ steps.filter.outputs.api }}
       apphosting: ${{ steps.filter.outputs.apphosting }}
     permissions:
       pull-requests: read
@@ -47,14 +47,12 @@ jobs:
             schemas:
               - *ci
               - architecture/**
-              - backend/functions/shared/generated/**
+              - backend/shared/generated/**
               - frontend/src/generated/**
             backend:
               - *ci
               - architecture/**
               - backend/**
-              - firebase.json
-              - .firebaserc
               - '!**/*.md'
             frontend:
               - *ci
@@ -71,11 +69,11 @@ jobs:
               - infra/rules/**
               - firebase.json
               - .firebaserc
-            functions:
+            api:
               - *ci
               - architecture/**
               - backend/**
-              - firebase.json
+              - Makefile
               - .firebaserc
               - '!**/*.md'
             apphosting:
@@ -163,7 +161,7 @@ jobs:
     needs: [changes, checks]
     if: >
       always() && !failure() && !cancelled()
-      && (needs.changes.outputs.rules == 'true' || needs.changes.outputs.functions == 'true'
+      && (needs.changes.outputs.rules == 'true' || needs.changes.outputs.api == 'true'
           || needs.changes.outputs.apphosting == 'true')
       && github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
@@ -179,11 +177,18 @@ jobs:
       pull-requests: write
     steps:
       - uses: actions/checkout@v7
+      # The API first: the site it deploys next calls it (ADR 0023).
+      - uses: ./.github/actions/cloud-run-deploy
+        if: needs.changes.outputs.api == 'true'
+        with:
+          project: staging
+          workload_identity_provider: ${{ vars.WIF_PROVIDER }}
+          service_account: ${{ vars.DEPLOY_SA }}
       - uses: ./.github/actions/firebase-deploy
+        if: needs.changes.outputs.rules == 'true' || needs.changes.outputs.apphosting == 'true'
         with:
           project: staging
           rules: ${{ needs.changes.outputs.rules }}
-          functions: ${{ needs.changes.outputs.functions }}
           apphosting: ${{ needs.changes.outputs.apphosting }}
           url: ${{ vars.SITE_URL }}
           workload_identity_provider: ${{ vars.WIF_PROVIDER }}

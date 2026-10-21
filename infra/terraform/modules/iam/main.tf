@@ -16,11 +16,14 @@ variable "infra_environment" {
   description = "GitHub environment whose jobs may act as github-terraform (terraform apply)."
 }
 
-# ── Functions runtime ───────────────────────────────────────────────
+# ── API runtime ─────────────────────────────────────────────────────
+# The `api` Cloud Run service runs as this account, and Eventarc and Cloud Scheduler sign
+# their calls to /internal/* as it (ADR 0023). The id predates Cloud Run: a service account
+# can't be renamed, and a new one would mean re-granting everything for a name.
 resource "google_service_account" "functions" {
   project      = var.project_id
   account_id   = "functions-runtime"
-  display_name = "Cloud Functions runtime"
+  display_name = "API runtime (Cloud Run)"
 }
 
 locals {
@@ -29,8 +32,8 @@ locals {
     "roles/storage.objectAdmin", # media + backups
     "roles/secretmanager.secretAccessor",
     "roles/logging.logWriter",
-    "roles/eventarc.eventReceiver",
-    "roles/firebaseauth.admin", # identity/admins grants and revokes the admin custom claim
+    "roles/eventarc.eventReceiver", # the identity the Eventarc triggers deliver as
+    "roles/firebaseauth.admin",     # identity/admins grants and revokes the admin custom claim
   ]
 
   # No Firestore role at all: the site reads and writes data only through the Python API
@@ -41,19 +44,17 @@ locals {
     "roles/logging.logWriter",
   ]
 
-  # What `firebase deploy` (rules, functions, apphosting) needs from CI.
+  # What CI's code deploy needs: `firebase deploy` (rules, App Hosting) and `make deploy-api`
+  # (push the image, deploy the Cloud Run revision with its secrets, make it public).
   deploy_roles = [
-    "roles/cloudfunctions.admin",
     "roles/run.admin",
     "roles/firebase.admin",
     "roles/firebaseapphosting.admin",
     "roles/iam.serviceAccountUser",
     "roles/storage.admin",
-    "roles/secretmanager.viewer", # deploy checks every bound secret has a version
+    "roles/secretmanager.viewer", # bound secrets are checked for a version
     "roles/cloudbuild.builds.editor",
-    "roles/artifactregistry.repoAdmin", # writer + setting gcf-artifacts' image cleanup policy
-    "roles/cloudscheduler.admin",       # the scheduled backup
-    "roles/eventarc.admin",             # Firestore/Storage triggers
+    "roles/artifactregistry.admin", # creates the `backend` image repository on first deploy
     "roles/serviceusage.serviceUsageConsumer",
   ]
 
@@ -76,6 +77,8 @@ locals {
     "roles/firebase.admin",
     "roles/firebaseapphosting.admin",
     "roles/recaptchaenterprise.admin", # the App Check key; firebase.admin covers App Check itself
+    "roles/eventarc.admin",            # modules/api: the Storage and Firestore triggers
+    "roles/cloudscheduler.admin",      # modules/api: the nightly backup job
   ]
 
   # terraform plan on PRs: read everything, change nothing.
@@ -225,14 +228,9 @@ output "terraform_sa" { value = google_service_account.terraform.email }
 output "plan_sa" { value = google_service_account.plan.email }
 output "wif_provider" { value = google_iam_workload_identity_pool_provider.github.name }
 
-# ── Service-agent bindings for event-triggered functions ────────────
-# A project's first functions deploy grants these itself — which needs project IAM admin.
-# Declaring them here means CI's github-deploy never needs that: the CLI finds them present
-# and skips its own setIamPolicy (firebase-tools checkIam.ensureServiceAgentRoles).
-data "google_project" "this" {
-  project_id = var.project_id
-}
-
+# ── Service-agent bindings for the Eventarc triggers (modules/api) ───
+# Storage events reach Eventarc through Pub/Sub, so the Storage agent must publish; Pub/Sub's
+# agent mints the OIDC token each push delivery carries to /internal/*.
 # Google creates these agents lazily; asking for them makes sure they exist before binding.
 resource "google_project_service_identity" "pubsub" {
   provider = google-beta
@@ -245,12 +243,9 @@ data "google_storage_project_service_account" "gcs" {
 }
 
 locals {
-  compute_default_sa = "${data.google_project.this.number}-compute@developer.gserviceaccount.com"
   service_agent_bindings = {
-    "gcs-pubsub-publisher"   = { role = "roles/pubsub.publisher", member = data.google_storage_project_service_account.gcs.member }
-    "pubsub-token-creator"   = { role = "roles/iam.serviceAccountTokenCreator", member = google_project_service_identity.pubsub.member }
-    "compute-run-invoker"    = { role = "roles/run.invoker", member = "serviceAccount:${local.compute_default_sa}" }
-    "compute-event-receiver" = { role = "roles/eventarc.eventReceiver", member = "serviceAccount:${local.compute_default_sa}" }
+    "gcs-pubsub-publisher" = { role = "roles/pubsub.publisher", member = data.google_storage_project_service_account.gcs.member }
+    "pubsub-token-creator" = { role = "roles/iam.serviceAccountTokenCreator", member = google_project_service_identity.pubsub.member }
   }
 }
 

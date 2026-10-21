@@ -47,7 +47,7 @@ and [.docs/RUNBOOK.md](../../RUNBOOK.md) for operating it.
 - [x] `/docs` confirmed **disabled** in production — a real gap, not a formality: the
       first deploy had `/docs` and `/openapi.json` publicly reachable on all 12
       domains because nothing set `ENVIRONMENT=production` at deploy time. Fixed via
-      `backend/functions/.env.nikunjramani-in` and reverified — both now 404
+      `backend/.env.nikunjramani-in` and reverified — both now 404
 
 ### 6.3 · Frontend deploy
 

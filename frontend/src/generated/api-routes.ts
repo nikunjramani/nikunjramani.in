@@ -19,9 +19,5 @@ export const API_ROUTES = {
   ops: { health: "ops/health", audit: "ops/audit" },
 } as const;
 
-export const BACKEND_ROUTES = Object.values(API_ROUTES).flatMap((domain) =>
-  Object.values(domain),
-);
-
 export type ContentApiDomain =
   (typeof API_ROUTES.content)[keyof typeof API_ROUTES.content];

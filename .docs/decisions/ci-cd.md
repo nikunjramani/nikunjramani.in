@@ -20,7 +20,7 @@ operations: [RUNBOOK](../RUNBOOK.md#cicd-and-staging). Entries CI-01…CI-15 wer
   `DEPLOY_SA`, `TERRAFORM_SA`)
 - **Why:** a project id or URL copied into a workflow drifts from the real one.
 
-### CI-03 · Path filters decide what runs and what deploys — and markdown never does
+### ~~CI-03~~ Superseded by [CI-16](#ci-16--the-api-deploys-as-an-image-first-and-rolls-back-by-revision) · Path filters decide what runs and what deploys — and markdown never does
 
 - **Where:** the `changes` job in both workflows (`dorny/paths-filter@v4`)
 - **Decision:** check filters (`schemas`, `backend`, `frontend`, `infra`) and deploy-target filters
@@ -77,7 +77,7 @@ operations: [RUNBOOK](../RUNBOOK.md#cicd-and-staging). Entries CI-01…CI-15 wer
 - **Why:** the previous commit's own action might be the broken part; the current one is known to
   run. Terraform is not rolled back — infra changes are reviewed at the approval step.
 
-### CI-11 · Terraform applies after the code deploy, staging first, prod behind approval
+### ~~CI-11~~ Superseded by [CI-16](#ci-16--the-api-deploys-as-an-image-first-and-rolls-back-by-revision) · Terraform applies after the code deploy, staging first, prod behind approval
 
 - **Where:** `terraform` job in deploy.yml (`max-parallel: 1`, `production-infra` environment)
 - **Decision:** runs when `infra/terraform/**` changed (or manual `infra_only`), accepting a
@@ -110,3 +110,24 @@ operations: [RUNBOOK](../RUNBOOK.md#cicd-and-staging). Entries CI-01…CI-15 wer
 - **Where:** [actions/backend-checks](../../.github/actions/backend-checks/action.yml) — `firebase emulators:exec --only firestore`
 - **Why:** the repository and integration tests need a real Firestore; they skip without the
   emulator, so CI is where they always run (they can't run on the owner's Windows machine).
+
+### CI-16 · The API deploys as an image, first, and rolls back by revision
+
+- **Where:** [actions/cloud-run-deploy](../../.github/actions/cloud-run-deploy/action.yml); the `api` filter and job order in `pr.yml` and `deploy.yml`
+- **Decision:** the deploy targets are `rules`, `api` (was `functions`) and `apphosting`, still
+  identical across both workflows, markdown still excluded (as CI-03). `api` matches
+  `backend/**`, `architecture/**`, the Makefile and `.firebaserc`. It deploys first: build
+  `backend/Dockerfile` with buildx (GitHub Actions cache), push
+  `<region>-docker.pkg.dev/<project>/backend/api:<sha>`, `make deploy-api`, smoke-test
+  `/api/v1/ops/health` on the service URL; on failure, traffic goes back to the revision that
+  was serving before. `firebase-deploy` then does rules and App Hosting only. Terraform still
+  applies after the code deploy, staging first, prod behind approval (as CI-11), because it
+  creates the Eventarc triggers and scheduler job that point at the CI-created service.
+- **Why:** the site deployed next calls the API, so the API must be live first; rolling back a
+  revision is seconds and needs no rebuild, where re-running `firebase deploy` from an old
+  commit rebuilt functions. The project comes from `.firebaserc` and the region from the
+  Makefile, so the action holds no environment value (CI-02).
+- **Outcome:** an API-only change no longer runs the Firebase CLI. Cost: the service exists only
+  after its first deploy — in a fresh project the API must deploy before the first full apply.
+- **Related:** ADR 0023 · BE-45 · IN-16 · supersedes CI-03 (target names) and CI-11 (reason)
+- **Since:** 2026-10-21

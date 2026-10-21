@@ -1,7 +1,7 @@
 ---
 paths:
   - "architecture/**"
-  - "backend/functions/shared/generated/**"
+  - "backend/shared/generated/**"
   - "frontend/src/generated/**"
 ---
 
@@ -10,7 +10,7 @@ paths:
 `architecture/schemas/` is the only place a field or model is defined (ADR 0006). Use the
 `add-schema-field` skill. Decisions: `.docs/decisions/schemas-codegen.md`.
 
-- **Never hand-edit generated output**: `backend/functions/shared/generated/`,
+- **Never hand-edit generated output**: `backend/shared/generated/`,
   `frontend/src/generated/`, `infra/rules/firestore.indexes.json`, the generated block of
   `infra/rules/firestore.rules`, `architecture/docs/ERD.md`. Edit the schema, run `make gen`, and
   commit schema + output together. CI fails on drift.

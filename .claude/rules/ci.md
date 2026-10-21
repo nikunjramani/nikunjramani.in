@@ -23,8 +23,8 @@ operations: `.docs/RUNBOOK.md` (CI/CD and staging). ADR 0018, 0019.
 
 ## Path filters
 
-- `pr.yml` and `deploy.yml` define the **same deploy targets** (`rules`, `functions`,
-  `apphosting`) — change both together.
+- `pr.yml` and `deploy.yml` define the **same deploy targets** (`rules`, `api`, `apphosting`)
+  — change both together. `api` deploys first (`cloud-run-deploy`), then `firebase-deploy`.
 - A `.github/**` change runs everything (the `ci` anchor). Markdown never runs anything
   (`'!**/*.md'` with `predicate-quantifier: some-with-excludes`). A docs-only PR runs only
   `changes` + `checks`.

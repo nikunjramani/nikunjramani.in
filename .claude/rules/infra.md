@@ -19,9 +19,9 @@ Decisions: `.docs/decisions/infra.md`; layout and what Terraform can't do:
   anyway; the apply 403s on refresh, before it can grant itself anything — so existing projects
   need a one-time manual grant (lessons-learned, 2026-10-16).
 - **Firebase resources need `google-beta`.** A 404 on the standard provider usually means this.
-- **2nd-gen functions are Cloud Run v2 services** named with hyphens
-  (`api_ops_health` → `api-ops-health`); IAM on them uses `google_cloud_run_v2_service_iam_member`.
-  The invoker binding needs the service to exist — code deploys first.
+- **The `api` Cloud Run service is CI's, not Terraform's** (`make deploy-api`, ADR 0023), so a
+  PR preview can create it in staging. Terraform (`modules/api`) owns what points at it — the
+  Eventarc triggers and the scheduler job — which need it to exist: code deploys first.
 - **Secrets**: Terraform creates the container only; values are added out-of-band, so none ever
   sits in state. Secret Manager rejects an empty version — a placeholder is a single newline.
 - **Never commit** `*.tfvars` (only `*.tfvars.example`), `*.tfplan` or state — all gitignored, as

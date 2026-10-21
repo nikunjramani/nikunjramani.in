@@ -1,6 +1,6 @@
 # 0011 · Domain-wise separate Firebase Functions
 
-**Status:** ✅ Accepted · **Date:** 2026-09-06
+**Status:** 🔄 Superseded by [0023](./0023-backend-as-one-cloud-run-service.md) · **Date:** 2026-09-06
 **Supersedes:** [0003 · FastAPI inside a single HTTP function](./0003-fastapi-in-a-single-function.md)
 
 ---

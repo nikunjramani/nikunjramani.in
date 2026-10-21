@@ -40,7 +40,7 @@ backfilled on 2026-10-16 from the code and its history.
 
 ### FE-05 · Drafts 404 by URL; `unlisted` is reachable but never listed
 
-- **Where:** `reachable_by_url` in [ProjectService](../../backend/functions/src/content/projects/service.py) and `CrudService.list_public` (moved from `lib/data` by FE-26)
+- **Where:** `reachable_by_url` in [ProjectService](../../backend/src/content/projects/service.py) and `CrudService.list_public` (moved from `lib/data` by FE-26)
 - **Why:** guessing a draft's slug must not preview it; an unlisted project is shareable by link
   without appearing in lists or the sitemap.
 
@@ -51,7 +51,7 @@ backfilled on 2026-10-16 from the code and its history.
 
 ## Calling the API
 
-### FE-07 · Same-origin `/api/v1/*`, rewritten by Next.js to each function
+### ~~FE-07~~ Superseded by [FE-28](#fe-28--one-rewrite-to-the-api-service) · Same-origin `/api/v1/*`, rewritten by Next.js to each function
 
 - **Where:** `rewrites()` in [next.config.ts](../../frontend/next.config.ts), generated `api-routes.ts`
 - **Decision:** `/api/v1/<domain>/<sub>/*` → `$FUNCTIONS_BASE_URL/api_<domain>_<sub>/*`.
@@ -244,7 +244,7 @@ backfilled on 2026-10-16 from the code and its history.
 - **Related:** ADR 0022 · supersedes FE-01, FE-03, FE-06 · BE-39 · BE-40
 - **Since:** 2026-10-20
 
-### FE-27 · The API's URL scheme is written once, in `lib/backend.ts`
+### ~~FE-27~~ Superseded by [FE-28](#fe-28--one-rewrite-to-the-api-service) · The API's URL scheme is written once, in `lib/backend.ts`
 
 - **Where:** [lib/backend.ts](../../frontend/src/lib/backend.ts) — `API_PREFIX`, `functionName`, `functionUrl`
 - **Decision:** the `/api/v1` prefix, the `api_<domain>_<sub>` naming and the functions base URL
@@ -256,3 +256,19 @@ backfilled on 2026-10-16 from the code and its history.
 - **Outcome:** a URL-scheme change is one edit. No imports, so `next.config.ts` can load it.
 - **Related:** FE-07
 - **Since:** 2026-10-20
+
+### FE-28 · One rewrite to the API service
+
+- **Where:** `rewrites()` in [next.config.ts](../../frontend/next.config.ts); [lib/backend.ts](../../frontend/src/lib/backend.ts) — `API_PREFIX`, `apiBaseUrl`, `apiUrl`; `API_BASE_URL` in `frontend/apphosting*.yaml`
+- **Decision:** one rule, `/api/v1/:path*` → `$API_BASE_URL/api/v1/:path*`; Server Components call
+  `apiUrl(route)` directly. `API_BASE_URL` is the `api` service's deterministic URL, available at
+  BUILD and RUNTIME; locally it defaults to `make dev-backend` on `:8000`. The URL scheme is still
+  written once, in `lib/backend.ts` (as FE-27); the per-function naming is gone, and so is the
+  generated `BACKEND_ROUTES` list.
+- **Why:** the API is one service with every route under the same prefix (ADR 0023), so a rewrite
+  per subdomain only mirrored a deployment that no longer exists. One origin still means no CORS
+  preflight (FE-07's reason, unchanged).
+- **Outcome:** a new subdomain needs no rewrite. A path without its trailing slash reaches the
+  right route because the API serves both forms (BE-43).
+- **Related:** ADR 0023 · BE-43 · supersedes FE-07, FE-27
+- **Since:** 2026-10-21

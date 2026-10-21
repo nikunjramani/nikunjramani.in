@@ -20,7 +20,7 @@ interface UploadItem {
  * Drag-and-drop + multi-file, each going through the real two-step flow: a signed URL from
  * the Python API, then a direct PUT to Storage (not through Python — the whole point of a
  * signed URL is that it doesn't need to be). The resulting MediaAsset record doesn't exist
- * until on_media_uploaded finishes processing it, so "done" here means "uploaded", not
+ * until media/processing (the media-uploaded event) finishes processing it, so "done" here means "uploaded", not
  * "ready" — onUploaded fires the parent's refresh poll rather than this component
  * pretending to know when the trigger has finished.
  */

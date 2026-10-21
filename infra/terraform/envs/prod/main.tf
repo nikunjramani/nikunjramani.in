@@ -66,8 +66,8 @@ module "secrets" {
   source     = "../../modules/secrets"
   project_id = var.project_id
 
-  # Only the functions read secrets. App Hosting needs none since the revalidation
-  # webhook was removed (ADR 0015).
+  # Only the API reads secrets. App Hosting needs none since the revalidation webhook was
+  # removed (ADR 0015).
   accessor_service_accounts = [module.iam.functions_sa]
 
   depends_on = [module.project]
@@ -82,12 +82,12 @@ module "monitoring" {
   depends_on = [module.project]
 }
 
-module "functions" {
-  source            = "../../modules/functions"
-  project_id        = var.project_id
-  region            = var.region
-  services_deployed = var.functions_deployed
-  service_account   = module.iam.functions_sa
+module "api" {
+  source          = "../../modules/api"
+  project_id      = var.project_id
+  region          = var.region
+  service_account = module.iam.functions_sa
+  media_bucket    = module.storage.media_bucket
 
   depends_on = [module.project, module.iam]
 }

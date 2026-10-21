@@ -28,9 +28,11 @@ Entries SC-01…SC-07 were backfilled on 2026-10-16.
 ### SC-04 · `architecture/api-routes.json` is the manifest of HTTP subdomains
 
 - **Where:** [api-routes.json](../../architecture/api-routes.json) → `frontend/src/generated/api-routes.ts`
-  → `next.config.ts` rewrites and `site/lib/contact.ts`; checked by `tests/test_domain_registry.py`
-- **Why:** the frontend's routes, the backend's functions and Terraform's invoker list must agree;
-  one manifest plus a test makes disagreement a failing test instead of a production 404.
+  (`API_ROUTES`, used by `admin/api-client/*`, `lib/data/*` and `site/lib/contact.ts`); checked by
+  `tests/test_domain_registry.py` against the routers `backend/apps/api.py` mounts
+- **Why:** the frontend's route names and the backend's mounted routers must agree; one manifest
+  plus a test makes disagreement a failing test instead of a production 404. (Until ADR 0023 the
+  same manifest also generated a rewrite per function and had to match Terraform's invoker list.)
 - **Since:** 2026-10-13
 
 ### SC-05 · Every constraint has an invalid fixture

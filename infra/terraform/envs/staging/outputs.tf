@@ -6,6 +6,7 @@ output "plan_service_account" { value = module.iam.plan_sa }
 output "wif_provider" { value = module.iam.wif_provider }
 
 output "media_bucket" { value = module.storage.media_bucket }
+output "api_url" { value = module.api.service_url }
 output "web_app_id" { value = module.app-hosting.web_app_id }
 output "apphosting_uri" { value = module.app-hosting.uri }
 

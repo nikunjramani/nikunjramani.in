@@ -66,12 +66,12 @@ module "secrets" {
   depends_on = [module.project]
 }
 
-module "functions" {
-  source            = "../../modules/functions"
-  project_id        = var.project_id
-  region            = var.region
-  services_deployed = var.functions_deployed
-  service_account   = module.iam.functions_sa
+module "api" {
+  source          = "../../modules/api"
+  project_id      = var.project_id
+  region          = var.region
+  service_account = module.iam.functions_sa
+  media_bucket    = module.storage.media_bucket
 
   depends_on = [module.project, module.iam]
 }

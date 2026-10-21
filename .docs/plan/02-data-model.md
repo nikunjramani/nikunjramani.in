@@ -18,7 +18,7 @@ Schema-first. Every field in this project is defined exactly once, in
 
 | Target | Tool | Output |
 |---|---|---|
-| Pydantic v2 models | `datamodel-code-generator` | `backend/functions/generated/models/` |
+| Pydantic v2 models | `datamodel-code-generator` | `backend/generated/models/` |
 | TypeScript types | `json-schema-to-typescript` | `frontend/src/generated/types.ts` |
 | Zod validators | `json-schema-to-zod` | `frontend/src/generated/schemas.zod.ts` |
 | **Admin form fields** | custom `<SchemaForm>` renderer | reads the schema at runtime |

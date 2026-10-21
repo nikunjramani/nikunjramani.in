@@ -31,7 +31,7 @@ first within each section, with the date.
 ## Backend structure (ADR 0017)
 
 - **2026-10-13 · Tests placed inside `src/` subdomains.** → Tests live only in
-  `backend/functions/tests/`, mirroring the source tree.
+  `backend/tests/`, mirroring the source tree.
 - **2026-10-13 · A `common/` folder per domain that did every job.** → No `common/` anywhere; each
   subdomain owns its slice, even if that means two small files that look alike.
 - **2026-10-13 · `__init__.py` everywhere; a separate `domains/` folder instead of `src/`.** → Implicit
@@ -52,10 +52,10 @@ first within each section, with the date.
   single newline; the reading settings use `str_strip_whitespace=True`.
 - **2026-10-16 · mypy rejected `module.httpx` (not re-exported).** → Patch the library where it's
   defined (`httpx.post`), not through another module's namespace.
-- **Earlier · a2wsgi's background thread hangs after fork; Admin SDK app not created before the
-  first `verify_id_token`.** Both type-checked and passed unit tests, failed only against the
-  real emulator. → Changes to `kernel/http.py`, `kernel/wsgi_bridge.py` or auth need a real
-  request through the emulator (`backend.md`).
+- **Earlier · Admin SDK app not created before the first `verify_id_token`.** It type-checked
+  and passed unit tests, and failed only against the real emulator. → Auth changes need a real
+  request against the emulators (`make dev-backend`). (The same entry used to cover a2wsgi's
+  thread hanging after a fork; that adapter went with the move to Cloud Run, ADR 0023.)
 
 ## Tooling on Windows
 

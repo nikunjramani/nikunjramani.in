@@ -6,10 +6,10 @@ name: deploy
 # A push deploys only the parts it changed — a docs-only push deploys nothing. A manual run
 # deploys everything.
 #
-# Order: deploy (rules → functions → App Hosting → smoke test) → rollback if that failed →
-# terraform apply when infra/terraform changed, staging then prod (prod behind approval).
-# Code goes first because Firebase makes a new HTTP function public on create, while
-# Terraform's invoker binding fails on a function that doesn't exist yet. A change that adds a
+# Order: deploy (the API on Cloud Run → rules → App Hosting → smoke tests) → rollback if that
+# failed → terraform apply when infra/terraform changed, staging then prod (prod behind
+# approval). Code goes first because CI creates the `api` service, and Terraform's Eventarc
+# triggers and scheduler job need it to exist (modules/api, ADR 0023). A change that adds a
 # *secret* is the exception: run this workflow manually with infra_only first.
 
 on:
@@ -37,7 +37,7 @@ jobs:
     outputs:
       infra: ${{ steps.filter.outputs.infra }}
       rules: ${{ github.event_name != 'push' || steps.filter.outputs.rules == 'true' }}
-      functions: ${{ github.event_name != 'push' || steps.filter.outputs.functions == 'true' }}
+      api: ${{ github.event_name != 'push' || steps.filter.outputs.api == 'true' }}
       apphosting: ${{ github.event_name != 'push' || steps.filter.outputs.apphosting == 'true' }}
     steps:
       - uses: actions/checkout@v7
@@ -61,11 +61,11 @@ jobs:
               - infra/rules/**
               - firebase.json
               - .firebaserc
-            functions:
+            api:
               - *ci
               - architecture/**
               - backend/**
-              - firebase.json
+              - Makefile
               - .firebaserc
               - '!**/*.md'
             apphosting:
@@ -80,7 +80,7 @@ jobs:
     needs: changes
     if: >
       !inputs.infra_only
-      && (needs.changes.outputs.rules == 'true' || needs.changes.outputs.functions == 'true'
+      && (needs.changes.outputs.rules == 'true' || needs.changes.outputs.api == 'true'
           || needs.changes.outputs.apphosting == 'true')
     runs-on: ubuntu-latest
     environment:
@@ -91,18 +91,28 @@ jobs:
       id-token: write
     steps:
       - uses: actions/checkout@v7
+      # The API first: the site deployed next calls it. A failed API smoke test puts traffic
+      # back on the previous revision inside the action itself.
+      - uses: ./.github/actions/cloud-run-deploy
+        if: needs.changes.outputs.api == 'true'
+        with:
+          project: default
+          workload_identity_provider: ${{ vars.WIF_PROVIDER }}
+          service_account: ${{ vars.DEPLOY_SA }}
       - uses: ./.github/actions/firebase-deploy
+        if: needs.changes.outputs.rules == 'true' || needs.changes.outputs.apphosting == 'true'
         with:
           project: default
           rules: ${{ needs.changes.outputs.rules }}
-          functions: ${{ needs.changes.outputs.functions }}
           apphosting: ${{ needs.changes.outputs.apphosting }}
           url: ${{ vars.SITE_URL }}
           workload_identity_provider: ${{ vars.WIF_PROVIDER }}
           service_account: ${{ vars.DEPLOY_SA }}
 
-  # A failed deploy or smoke test redeploys the previous commit. Terraform isn't rolled back —
-  # infra changes are reviewed in the approval step and are rarely what breaks a deploy.
+  # A failed deploy or smoke test redeploys the previous commit's rules and site. The API needs
+  # nothing here: cloud-run-deploy already moved its traffic back to the previous revision.
+  # Terraform isn't rolled back — infra changes are reviewed in the approval step and are
+  # rarely what breaks a deploy.
   rollback:
     needs: deploy
     if: >

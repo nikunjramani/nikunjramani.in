@@ -213,7 +213,7 @@ drops the background thread and drives each request with a fresh `asyncio.run()`
 account. The lesson generalises: proving an adapter against a mocked or synthetic client is not
 proving it against the real runtime it will actually execute inside.
 
-**`firebase deploy`/`firebase emulators:start` need `backend/functions/requirements.txt` and a
+**`firebase deploy`/`firebase emulators:start` need `backend/requirements.txt` and a
 plain stdlib `venv/`**, distinct from the `uv`-managed `.venv/` everything else in this project
 uses. Without both, the CLI cannot even detect the Python runtime, let alone load a function.
 `make setup-backend` generates both — `requirements.txt` via `uv export`, committed (it is part of
