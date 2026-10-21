@@ -56,7 +56,8 @@ def test_api_routes_manifest_matches_the_mounted_routers() -> None:
 
 
 def test_each_router_is_served_at_its_prefix() -> None:
-    paths = {getattr(r, "path", "") for r in app.routes}
+    # The OpenAPI schema lists every served path; app.routes keeps included routers nested.
+    paths = set(app.openapi()["paths"])
     for route in ROUTES:
         prefix = f"{API_PREFIX}/{route}"
         assert any(p == prefix or p.startswith(f"{prefix}/") for p in paths), route
