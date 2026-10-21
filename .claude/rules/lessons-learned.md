@@ -41,11 +41,18 @@ first within each section, with the date.
 
 ## Infrastructure and deploys
 
+- **2026-10-21 · Asked the owner for grants Terraform would have made itself.** Phase 9's
+  prerequisites had the owner grant the apply identity roles for resource types that didn't
+  exist yet; Terraform grants those in the same apply (the module depends on `module.iam`). Only
+  the deploy identity's Artifact Registry role truly needed a hand: the PR preview runs before
+  any apply. → Ask for a manual grant only for a refresh of an existing resource (below) or a
+  role a preview needs before merge (`infra.md`).
 - **2026-10-16 · Terraform can't grant itself a role it needs to *read* a resource.** The apply
   account lacked `roles/recaptchaenterprise.admin`; refresh 403'd before apply could grant it.
   PR plans passed only because the plan account has `roles/viewer`. → When a module adds a new
   resource type, check the *apply* identity's roles (`terraform_roles` in `modules/iam`), not just
-  the plan's — and grant it by hand once in existing projects.
+  the plan's — and grant it by hand once in existing projects *if Terraform already manages a
+  resource of that type* (a refresh comes before any grant).
 - **2026-10-16 · `firebase deploy --only storage` on a project without Firebase Storage.** The media
   bucket is plain GCS behind IAM. → Storage rules are emulator-only; never deploy them.
 - **2026-10-16 · Secret Manager rejects an empty version.** → A not-yet-configured secret gets a

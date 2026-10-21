@@ -14,10 +14,13 @@ Decisions: `.docs/decisions/infra.md`; layout and what Terraform can't do:
   change applies to both; staging applies first in CI (ADR 0018, 0019).
 - **CI applies Terraform**, after the code deploy, staging then prod behind the
   `production-infra` approval. Locally you only `plan`.
-- **When a module adds a resource type, give the *apply* identity the role to read and manage it**
-  (`terraform_roles` in `modules/iam`). The PR plan runs as a `roles/viewer` identity and will pass
-  anyway; the apply 403s on refresh, before it can grant itself anything — so existing projects
-  need a one-time manual grant (lessons-learned, 2026-10-16).
+- **When a module adds a resource type, give the *apply* identity the role to manage it**
+  (`terraform_roles` in `modules/iam`). Terraform grants it in the same apply — the module must
+  `depends_on = [module.iam]` so the binding lands first. A **manual grant is needed only when
+  Terraform must refresh an existing resource it can't read** (it 403s before it can grant
+  anything; lessons-learned 2026-10-16), **or when a PR preview needs the role before merge**:
+  staging's Terraform applies only from `main`, so a role the *deploy* identity needs for the
+  preview can't come from that PR's own apply.
 - **Firebase resources need `google-beta`.** A 404 on the standard provider usually means this.
 - **The `api` Cloud Run service is CI's, not Terraform's** (`make deploy-api`, ADR 0023), so a
   PR preview can create it in staging. Terraform (`modules/api`) owns what points at it — the

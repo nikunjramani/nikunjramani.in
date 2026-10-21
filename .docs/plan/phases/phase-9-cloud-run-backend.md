@@ -60,15 +60,16 @@ Deleted: `main.py`, every `src/*/main.py` and `src/*/*/main.py`, `kernel/http.py
 
 - [x] Owner approves the plan (2026-10-21, "create single PR for all backend changes")
 - [x] Prod Terraform caught up — the PR #19 apply was approved and applied
-- [ ] **Owner, once, before this PR's first preview and its merge** — the new resource types need
-      roles on the CI identities (lessons-learned 2026-10-16; `infra.md`):
+- [x] **Owner, once, before this PR's first preview** (done 2026-10-21) — `github-deploy` needs
+      `roles/artifactregistry.admin` to create the image repository, and the preview runs before
+      any Terraform apply (staging's applies only from `main`):
       ```powershell
-      foreach ($p in 'nikunjramani-in-staging','nikunjramani-in') {
-        gcloud projects add-iam-policy-binding $p --member="serviceAccount:github-deploy@$p.iam.gserviceaccount.com" --role=roles/artifactregistry.admin --condition=None
-        foreach ($r in 'roles/eventarc.admin','roles/cloudscheduler.admin') { gcloud projects add-iam-policy-binding $p --member="serviceAccount:github-terraform@$p.iam.gserviceaccount.com" --role=$r --condition=None }
-      }
+      foreach ($p in 'nikunjramani-in-staging','nikunjramani-in') { gcloud projects add-iam-policy-binding $p --member="serviceAccount:github-deploy@$p.iam.gserviceaccount.com" --role=roles/artifactregistry.admin --condition=None }
       ```
-      The PR also adds them to `deploy_roles` / `terraform_roles`, so Terraform records them.
+      The same command also granted `github-terraform` `eventarc.admin` and `cloudscheduler.admin`.
+      That wasn't needed: Terraform grants them itself in the merge's apply, before `modules/api`
+      (which depends on `module.iam`). All three are in `deploy_roles` / `terraform_roles`, so
+      Terraform owns them from here on.
 
 ## Tasks
 
@@ -132,7 +133,7 @@ Deleted: `main.py`, every `src/*/main.py` and `src/*/*/main.py`, `kernel/http.py
 | Eventarc signs for a URL not in `SERVICE_URL` | Seen on staging before the prod apply is approved; fix is one line in `backend/deploy/<project>.yaml` |
 | `google-events` is unmaintained since 2024-12 | Round trip verified; a decode failure is a 422 that Eventarc retries; fallback is `protobuf` + the published `.proto` |
 | Double triggers between apply and deletion | Only the contact email can repeat; keep the window short |
-| New resource types 403 on first apply | The owner's one-time grants (Prerequisites) |
+| New resource types 403 on first apply | `terraform_roles` grants them in the same apply, before `modules/api` (`depends_on = [module.iam]`); IAM can take a minute to propagate — a re-run fixes it |
 
 ## Definition of done
 
