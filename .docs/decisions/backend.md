@@ -451,3 +451,18 @@ Entries BE-01…BE-38 were backfilled on 2026-10-16 from the code and its histor
   service accounts can't be renamed.
 - **Related:** ADR 0023 · supersedes BE-35, BE-36, BE-37 · IN-16 · CI-16
 - **Since:** 2026-10-21
+
+### BE-46 · Owner email: retry what a retry can fix, drop what it can't
+
+- **Where:** `send_email` / `_rejected_for_good` in [inbox/notifications/email.py](../../backend/src/inbox/notifications/email.py)
+- **Decision:** a network error, a 5xx or a 429 from Resend raises `EmailDeliveryError` (the
+  event answers 502 and Eventarc redelivers); any other 4xx is logged as an error and dropped.
+- **Why:** under Firebase the trigger never retried; under Eventarc any non-2xx is redelivered
+  for up to a day. Staging's placeholder key showed it: every contact message became a day of
+  401s from Resend. A bad key or a rejected payload fails identically each time, and the
+  message is already stored in `contact_messages` and visible in the admin inbox.
+- **Outcome:** outages and rate limits still self-heal; configuration mistakes are one error
+  line, not a retry storm. Cost: a dropped email isn't resent once the key is fixed — check the
+  admin inbox after fixing it.
+- **Related:** BE-24, BE-25, BE-44 · ADR 0023
+- **Since:** 2026-10-21
