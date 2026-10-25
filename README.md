@@ -57,7 +57,7 @@ make test      # vitest + pytest
 make deploy    # break-glass only — production deploys run in CI on merge to main
 ```
 
-**Prerequisites:** Node 22+, Python 3.13, Terraform 1.9+, Firebase CLI, gcloud CLI.
+**Prerequisites:** Node 24+, Python 3.13, Terraform 1.9+, Firebase CLI, gcloud CLI.
 
 ## Documentation
 
