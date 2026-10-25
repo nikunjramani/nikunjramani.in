@@ -19,8 +19,8 @@ export const AuditLogSchema = z
     ]),
     collection: z.string().min(1).max(60),
     docId: z.string().max(128).optional(),
-    before: z.union([z.record(z.any()), z.null()]).optional(),
-    after: z.union([z.record(z.any()), z.null()]).optional(),
+    before: z.union([z.record(z.string(), z.any()), z.null()]).optional(),
+    after: z.union([z.record(z.string(), z.any()), z.null()]).optional(),
     at: z.string().datetime({ offset: true }),
   })
   .strict()

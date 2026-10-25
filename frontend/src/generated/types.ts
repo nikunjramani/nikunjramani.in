@@ -9,18 +9,9 @@ export type MediaType = "image" | "video" | "diagram";
  */
 export type Visibility = "public" | "unlisted" | "draft";
 export type EmploymentType =
-  | "full-time"
-  | "part-time"
-  | "contract"
-  | "internship"
-  | "freelance";
+  "full-time" | "part-time" | "contract" | "internship" | "freelance";
 export type SkillCategory =
-  | "backend"
-  | "frontend"
-  | "cloud-devops"
-  | "data"
-  | "mobile"
-  | "tools";
+  "backend" | "frontend" | "cloud-devops" | "data" | "mobile" | "tools";
 export type MediaType1 = "image" | "video" | "diagram";
 export type SocialPlatform =
   | "github"
@@ -40,11 +31,7 @@ export type ProjectKind =
   | "freelance"
   | "experiment";
 export type ProjectStatus =
-  | "concept"
-  | "in-progress"
-  | "shipped"
-  | "maintained"
-  | "archived";
+  "concept" | "in-progress" | "shipped" | "maintained" | "archived";
 /**
  * An open-ended list on purpose — links are an array so new kinds need no schema change.
  */

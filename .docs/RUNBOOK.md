@@ -6,7 +6,7 @@ Operational procedures. Deploy, rollback, and the things that go wrong.
 
 ## Local development
 
-**Prerequisites:** Node 22 · Python 3.13 (via `uv`, *not* a system 3.9) · Terraform 1.9+ ·
+**Prerequisites:** Node 24 · Python 3.13 (via `uv`, *not* a system 3.9) · Terraform 1.9+ ·
 Firebase CLI · gcloud · uv
 
 ```bash
@@ -289,7 +289,7 @@ the latest. Verify `/api/v1/ops/health` and the affected feature after any rollb
 The app root is `frontend`; configuration belongs in `frontend/apphosting.yaml`.
 `API_BASE_URL` (the `api` service's URL, `terraform output api_url`) must be available at
 BUILD time because Next.js serializes rewrites.
-Node 22 is pinned in `frontend/package.json`. Use:
+Node 24 is pinned in `frontend/package.json` (`engines`) and `.nvmrc` (CI). Use:
 
 ```bash
 firebase deploy --only apphosting --project nikunjramani-in --non-interactive
